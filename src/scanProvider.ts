@@ -276,6 +276,13 @@ function getWebviewContent(plotlyJsUri: vscode.Uri, objects: any[]) {
     let mnemonicLists: { [name: string]: string[] } = {};
     let plotInd = 0;
 
+    const config = vscode.workspace.getConfiguration('vscode-spec-scan.preview');
+    const maximumPlots: number = config.get('maximumPlots', 100);
+    const columnsPerLine: number = config.get('table.columnsPerLine', 8);
+    const headerType: string = config.get('table.headerType', 'mnemonic');
+    const plotWidth: number = config.get('plot.width', 600);
+    const plotHeight: number = config.get('plot.height', 400);
+
     // const themeKind = vscode.window.activeColorTheme.kind;
 
     const header = `<!DOCTYPE html>
@@ -311,32 +318,32 @@ function getWebviewContent(plotlyJsUri: vscode.Uri, objects: any[]) {
             scanDescription = object['value'];
             body += `<h2>Scan ${object['number']}: <code>${object['code']}</code></h2>`;
         } else if (object['key'] === 'valueList') {
-            const nameList = mnemonicLists[object['type']];
-            const valueList = object['list'];
-            if (valueList.length !== nameList.length) {
-
+            if (headerType === 'None') {
+                // do nothing
             } else {
-                body += `<table><caption>${object['type']}</caption>`;
-                for (let row = 0; row < Math.ceil(valueList.length / 8); row++) {
-                    body += `<tr>`;
-                    for (let col = 0; col < 8; col++) {
-                        if (row * 8 + col < valueList.length) {
-                            body += `<td><strong>${nameList[row * 8 + col]}</<strong></td>`;
+                const valueList = object['list'];
+                const headerList = (headerType === 'Value Only') ? undefined : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : nameLists['motor'];
+                if (headerList && (headerList.length !== valueList.length)) {
+                    body += '<p><em>The number of scan headers and data columns mismatched.</c></p>';
+                } else  {
+                    body += `<table><caption>${object['type']}</caption>`;
+                    for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
+                        if (headerList) {
+                            body += `<tr>`;
+                            for (let col = 0; col < columnsPerLine && row * columnsPerLine + col < valueList.length; col++) {
+                                body += `<td><strong>${headerList[row * columnsPerLine + col]}</<strong></td>`;
+                            }
+                            body += `</tr>`;
                         }
-                    }
-                    body += `</tr><tr>`;
-                    for (let col = 0; col < 8; col++) {
-                        if (row * 8 + col < valueList.length) {
+                        body += `<tr>`;
+                        for (let col = 0; col < columnsPerLine && row * columnsPerLine + col < valueList.length; col++) {
                             body += `<td>${valueList[row * 8 + col]}</td>`;
                         }
+                        body += `</tr>`;
                     }
-                    body += `</tr>`;
+                    body += `</table>`;
                 }
-                body += `</tr></table></p>`;
             }
-            if (object['type'] === 'motor') {
-            }
-            object['list'];
 
         } else if (object['key'] === 'scanList') {
             const data: number[][] | null = object['data'];
@@ -345,7 +352,7 @@ function getWebviewContent(plotlyJsUri: vscode.Uri, objects: any[]) {
             // skip empty scan list (cancelled immediately after scan start)
             if (data === null) {
                 continue;
-            } else if (plotInd >= 100) {
+            } else if (plotInd >= maximumPlots) {
                 body += `<p><em>Too many Plots!</em> The plot is ommited for the performance reason.</p>`;
                 continue;
             }
@@ -358,8 +365,8 @@ Plotly.newPlot("specScan${plotInd}", /* JSON object */ {
         "y": ${JSON.stringify(data[rows - 1])}
     }],
     "layout": {
-        "width": 600,
-        "height": 400,
+        "width": ${plotWidth},
+        "height": ${plotHeight},
         "xaxis": { "title": "${object['headers'][0]}" },
         "yaxis": { "title": "${object['headers'][rows - 1]}" },
         "margin": { "t": 0 }
