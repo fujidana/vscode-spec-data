@@ -7,20 +7,20 @@ const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
  * Provider class
  */
 export class ScanProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider {
-    // panels: {[name: string]: vscode.WebviewPanel[]} = {};
+    panels: Map<string, vscode.WebviewPanel> = new Map();
 
     constructor(context: vscode.ExtensionContext) {
         const showPreviewCommand = async (...args: unknown[]) => {
             const target = await getTargetUriAndContents(args);
             if (target) {
-                createWebViewPanel(context, target['uri'], target['contents']);
+                this.showWebViewPanel(context, target['uri'], target['contents']);
             }
         };
 
         const showPreviewToSideCommand = async (...args: unknown[]) => {
             const target = await getTargetUriAndContents(args);
             if (target) {
-                createWebViewPanel(context, target['uri'], target['contents'], true);
+                this.showWebViewPanel(context, target['uri'], target['contents'], true);
             }
         };
 
@@ -84,6 +84,45 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         }
         return results;
     }
+
+    private showWebViewPanel(context: vscode.ExtensionContext, uri: vscode.Uri, contents: string, showToSide: boolean = false): vscode.WebviewPanel | undefined {
+        let panel: vscode.WebviewPanel | undefined;
+
+        panel = this.panels.get(uri.toString());
+        if (panel) {
+            panel.reveal();
+            return panel;
+        }
+
+        const parsed = parseTextDocument(contents);
+        if (!parsed) {
+            vscode.window.showErrorMessage('Failed in parsing the document.');
+            return undefined;
+        }
+    
+        panel = vscode.window.createWebviewPanel(
+            'specScanPreview',
+            'Preview spec scan',
+            showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
+            {
+                localResourceRoots: [context.extensionUri],
+                enableScripts: true
+            }
+        );
+        this.panels.set(uri.toString(),  panel);
+        panel.onDidDispose(() => this.panels.delete(uri.toString()), null, context.subscriptions);
+    
+        const plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
+    
+        panel.title = `Preview ${uri.path.substring(uri.path.lastIndexOf('/') + 1)}`;
+        const content = getWebviewContent(panel.webview.asWebviewUri(plotlyJsUri), parsed);
+        if (content) {
+            panel.webview.html = content;
+        }
+    
+        return panel;        
+    }
+
 }
 
 async function getTargetUriAndContents(args: unknown[]) {
@@ -92,7 +131,7 @@ async function getTargetUriAndContents(args: unknown[]) {
     if (args && args.length > 0 && args[0] instanceof vscode.Uri) {
         uri = args[0];
         const editors = vscode.window.visibleTextEditors.filter(editor => editor.document.uri.toString() === uri.toString());
-        if (editors) {
+        if (editors.length) {
             contents = editors[0].document.getText();
         } else {
             contents = new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(uri));
@@ -107,36 +146,6 @@ async function getTargetUriAndContents(args: unknown[]) {
         contents = editor.document.getText();
     }
     return {uri, contents};
-}
-
-
-function createWebViewPanel(context: vscode.ExtensionContext, uri: vscode.Uri, contents: string, showToSide: boolean = false): vscode.WebviewPanel | undefined {
-
-    const parsed = parseTextDocument(contents);
-    if (!parsed) {
-        vscode.window.showErrorMessage('Failed in parsing the document.');
-        return undefined;
-    }
-
-    const panel = vscode.window.createWebviewPanel(
-        'specScanPreview',
-        'Preview spec scan',
-        showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
-        {
-            localResourceRoots: [context.extensionUri],
-            enableScripts: true
-        }
-    );
-
-    const plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
-
-    panel.title = `Preview ${uri.path.substring(uri.path.lastIndexOf('/') + 1)}`;
-    const content = getWebviewContent(panel.webview.asWebviewUri(plotlyJsUri), parsed);
-    if (content) {
-        panel.webview.html = content;
-    }
-
-    return panel;
 }
 
 function parseTextDocument(contents: string) {
