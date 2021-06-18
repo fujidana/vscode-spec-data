@@ -8,23 +8,26 @@ const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
  */
 export class ScanProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider {
     panels: Map<string, vscode.WebviewPanel> = new Map();
+    // livePanel: vscode.WebviewPanel | undefined = undefined;
 
     constructor(context: vscode.ExtensionContext) {
+        // callback of 'vscode-spec-scan.showPreview'.
         const showPreviewCommand = async (...args: unknown[]) => {
-            const target = await getTargetUriAndContents(args);
-            if (target) {
-                this.showWebViewPanel(context, target['uri'], target['contents']);
+            let [sourceUri, contents] = getUriAndContents(args);
+            if (sourceUri) {
+                this.showWebViewPanel(context, sourceUri, contents);
             }
         };
 
+        // callback of 'vscode-spec-scan.showPreviewToSide'.
         const showPreviewToSideCommand = async (...args: unknown[]) => {
-            const target = await getTargetUriAndContents(args);
-            if (target) {
-                this.showWebViewPanel(context, target['uri'], target['contents'], true);
+            let [sourceUri, contents] = getUriAndContents(args);
+            if (sourceUri) {
+                this.showWebViewPanel(context, sourceUri, contents, true);
             }
         };
 
-        // register providers
+        // register providers and commands
         context.subscriptions.push(
             vscode.commands.registerCommand('vscode-spec-scan.showPreview', showPreviewCommand),
             vscode.commands.registerCommand('vscode-spec-scan.showPreviewToSide', showPreviewToSideCommand),
@@ -85,67 +88,74 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         return results;
     }
 
-    private showWebViewPanel(context: vscode.ExtensionContext, uri: vscode.Uri, contents: string, showToSide: boolean = false): vscode.WebviewPanel | undefined {
-        let panel: vscode.WebviewPanel | undefined;
+    private async showWebViewPanel(context: vscode.ExtensionContext, sourceUri: vscode.Uri, contents: string | undefined, showToSide: boolean = false) {
+        const sourceUriString = sourceUri.toString();
 
-        panel = this.panels.get(uri.toString());
-        if (panel) {
+        if (this.panels.has(sourceUriString)) {
+            // show a panel corresponding to the `sourceUri` if it exists.
+            const panel = this.panels.get(sourceUriString)!;
             panel.reveal();
             return panel;
-        }
+        } else {
+            // else create a new panel.
 
-        const parsed = parseTextDocument(contents);
-        if (!parsed) {
-            vscode.window.showErrorMessage('Failed in parsing the document.');
-            return undefined;
-        }
-    
-        panel = vscode.window.createWebviewPanel(
-            'specScanPreview',
-            'Preview spec scan',
-            showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
-            {
-                localResourceRoots: [context.extensionUri],
-                enableScripts: true
+            // first, parse the document contents. Simultaneously load the contents if the filenot yet opened.
+            let parsed;
+            if (contents) {
+                parsed = parseTextDocument(contents);
+            } else {
+                parsed = parseTextDocument(new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(sourceUri)));
             }
-        );
-        this.panels.set(uri.toString(),  panel);
-        panel.onDidDispose(() => this.panels.delete(uri.toString()), null, context.subscriptions);
-    
-        const plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
-    
-        panel.title = `Preview ${uri.path.substring(uri.path.lastIndexOf('/') + 1)}`;
-        const content = getWebviewContent(panel.webview.asWebviewUri(plotlyJsUri), parsed);
-        if (content) {
-            panel.webview.html = content;
-        }
-    
-        return panel;        
-    }
+   
+            if (!parsed) {
+                vscode.window.showErrorMessage('Failed in parsing the document.');
+                return undefined;
+            }
+            const panel = vscode.window.createWebviewPanel(
+                'specScanPreview',
+                'Preview spec scan',
+                showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
+                {
+                    localResourceRoots: [context.extensionUri],
+                    enableScripts: true
+                }
+            );
+            this.panels.set(sourceUriString,  panel);
+            panel.onDidDispose(() => this.panels.delete(sourceUriString), null, context.subscriptions);
+            
+            const plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
+        
+            panel.title = `Preview ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
+            initWebviewContent(panel, plotlyJsUri, parsed);
+        
+            return panel;
 
+        }
+    }
 }
 
-async function getTargetUriAndContents(args: unknown[]) {
-    let uri: vscode.Uri;
-    let contents: string;
+function getUriAndContents(args: unknown[]): [vscode.Uri | undefined, string | undefined] {
     if (args && args.length > 0 && args[0] instanceof vscode.Uri) {
-        uri = args[0];
+        // If the URI is provided via the arguments, returns the URI.
+        // If there is an corresponding editor, use its contents.
+        const uri = args[0];
         const editors = vscode.window.visibleTextEditors.filter(editor => editor.document.uri.toString() === uri.toString());
         if (editors.length) {
-            contents = editors[0].document.getText();
+            return [uri, editors[0].document.getText()];
         } else {
-            contents = new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(uri));
+            return [uri, undefined];
         }
     } else {
+        // If the URI is not provided via the arguments, returns the URI and contents of the active editor.
+        // If there is no active editor, return [unndefined, undefined].
         const editor = vscode.window.activeTextEditor;
-        if (!editor) {
+        if (editor) {
+            return [editor.document.uri, editor.document.getText()];
+        } else {
             vscode.window.showErrorMessage('Active editor is not found.');
-            return;
-        }
-        uri = editor.document.uri;
-        contents = editor.document.getText();
+            return [undefined, undefined];
+        }   
     }
-    return {uri, contents};
 }
 
 function parseTextDocument(contents: string) {
@@ -279,11 +289,13 @@ function parseTextDocument(contents: string) {
     return objects;
 }
 
-function getWebviewContent(plotlyJsUri: vscode.Uri, objects: any[]) {
+function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, objects: any[]) {
     let scanDescription = '';
     let nameLists: { [name: string]: string[] } = {};
     let mnemonicLists: { [name: string]: string[] } = {};
     let plotInd = 0;
+
+    const webview = panel.webview;
 
     const config = vscode.workspace.getConfiguration('vscode-spec-scan.preview');
     const maximumPlots: number = config.get('maximumPlots', 100);
@@ -299,11 +311,11 @@ function getWebviewContent(plotlyJsUri: vscode.Uri, objects: any[]) {
 <head>
 	<meta charset="UTF-8">
     <!--
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src \${webview.cspSource} https:; style-src \${webview.cspSource}; script-src 'unsafe-inline';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https:; style-src ${webview.cspSource}; script-src 'unsafe-inline' ${webview.cspSource};">
     -->
     <title>Preview spec scan</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="${plotlyJsUri}"></script>
+    <script src="${webview.asWebviewUri(plotlyUri)}"></script>
 </head>
 <body>
 `;
@@ -388,5 +400,5 @@ Plotly.newPlot("specScan${plotInd}", /* JSON object */ {
         }
     }
     // "title": "${scanDescription}",
-    return header + body + footer;
+    webview.html = header + body + footer;
 }
