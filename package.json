@@ -60,6 +60,16 @@
 					"light": "./resources/go-to-file-light.svg",
 					"dark": "./resources/go-to-file-dark.svg"
 				}
+			},
+			{
+				"command": "vscode-spec-scan.refreshPreview",
+				"title": "Refresh Preview",
+				"category": "spec-scan"
+			},
+			{
+				"command": "vscode-spec-scan.togglePreviewLock",
+				"title": "Toggle Preview Locking",
+				"category": "spec-scan"
 			}
 		],
 		"menus": {
@@ -81,8 +91,17 @@
 					"command": "vscode-spec-scan.showSource",
 					"group": "navigation",
 					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+				},
+				{
+					"command": "vscode-spec-scan.refreshPreview",
+					"group": "2_specscan",
+					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+				},
+				{
+					"command": "vscode-spec-scan.togglePreviewLock",
+					"group": "2_specscan",
+					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
 				}
-				
 			],
 			"editor/title/context": [
 				{
@@ -99,6 +118,18 @@
 				{
 					"command": "vscode-spec-scan.showPreviewToSide",
 					"when": "editorLangId == spec-scan"
+				},
+				{
+					"command": "vscode-spec-scan.showSource",
+					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+				},
+				{
+					"command": "vscode-spec-scan.refreshPreview",
+					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+				},
+				{
+					"command": "vscode-spec-scan.togglePreviewLock",
+					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
 				}
 			]
 		},

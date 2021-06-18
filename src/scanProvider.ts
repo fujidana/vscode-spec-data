@@ -7,9 +7,13 @@ const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
  * Provider class
  */
 export class ScanProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider {
-    panels: Map<string, vscode.WebviewPanel> = new Map();
+    previews: [string, vscode.WebviewPanel][] = [];
+    livePreview: [string, vscode.WebviewPanel] | undefined = undefined;
+    plotlyJsUri: vscode.Uri;
 
     constructor(context: vscode.ExtensionContext) {
+        this.plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
+
         // callback of 'vscode-spec-scan.showPreview'.
         const showPreviewCommand = async (...args: unknown[]) => {
             let [sourceUri, contents] = getUriAndContents(args);
@@ -26,11 +30,53 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
+        // callback of 'vscode-spec-scan.showSource'.
         const showSourceCommand = async (...args: unknown[]) => {
-            const preview = this.getActivePreview();
-            if (preview) {
-                const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(preview[0]));
+            const activePreview = this.getActivePreview();
+            if (activePreview) {
+                const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(activePreview[0]));
                 vscode.window.showTextDocument(document);
+            } else {
+                vscode.window.showErrorMessage('Failed in finding active preview tab.');
+            }
+        };
+
+        // callback of 'vscode-spec-scan.refreshPreview'.
+        const refreshPreviewCommand = async (...args: unknown[]) => {
+            const activePreview = this.getActivePreview();
+            if (activePreview) {
+                const [activeUriString, activePanel] = activePreview;
+                const editors = vscode.window.visibleTextEditors.filter(editor => editor.document.uri.toString() === activeUriString);
+                const contents = editors.length ? editors[0].document.getText() : undefined;
+                const isLocked = !(this.livePreview && this.livePreview[1] === activePanel);
+                this.updateWebViewPanel(activePanel, vscode.Uri.parse(activeUriString), contents, isLocked);
+            } else {
+                vscode.window.showErrorMessage('Failed in finding active preview tab.');
+            }
+        };
+            
+        const setPreviewLockCommand = (...args: unknown[]) => {
+            const activePreview = this.getActivePreview();
+            if (activePreview) {
+                const [activeUriString, activePanel] = activePreview;
+                if (this.livePreview) {
+                    if (activePanel === this.livePreview[1]) {
+                        // If the active view is a live preview, lock the view to the file.
+                        this.livePreview = undefined;
+                        activePanel.title = `[Preview] ${activeUriString.substring(activeUriString.lastIndexOf('/') + 1)}`;
+                    } else {
+                        // If the active view is not a live preview, close the current live view and set the active view to live view.
+                        this.livePreview[1].dispose();
+                        this.livePreview = activePreview;
+                        activePanel.title = `Preview ${activeUriString.substring(activeUriString.lastIndexOf('/') + 1)}`;
+                    }
+                } else {
+                    // If there is no live view, the active view must be a locked view. Set the view to live view.
+                    this.livePreview = activePreview;
+                    activePanel.title = `Preview ${activeUriString.substring(activeUriString.lastIndexOf('/') + 1)}`;
+                }
+            } else {
+                vscode.window.showErrorMessage('Failed in finding active preview tab.');
             }
         };
 
@@ -39,6 +85,8 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.commands.registerCommand('vscode-spec-scan.showPreview', showPreviewCommand),
             vscode.commands.registerCommand('vscode-spec-scan.showPreviewToSide', showPreviewToSideCommand),
             vscode.commands.registerCommand('vscode-spec-scan.showSource', showSourceCommand),
+            vscode.commands.registerCommand('vscode-spec-scan.refreshPreview', refreshPreviewCommand),
+            vscode.commands.registerCommand('vscode-spec-scan.togglePreviewLock', setPreviewLockCommand),
             vscode.languages.registerFoldingRangeProvider(SCAN_SELECTOR, this),
             vscode.languages.registerDocumentSymbolProvider(SCAN_SELECTOR, this),
         );
@@ -98,28 +146,18 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     private async showWebViewPanel(context: vscode.ExtensionContext, sourceUri: vscode.Uri, contents: string | undefined, showToSide: boolean = false) {
         const sourceUriString = sourceUri.toString();
-
-        if (this.panels.has(sourceUriString)) {
-            // show a panel corresponding to the `sourceUri` if it exists.
-            const panel = this.panels.get(sourceUriString)!;
-            panel.reveal();
-            return panel;
+        
+        if (this.livePreview) {
+            const [liveUriString, livePanel] = this.livePreview;
+    
+            if (liveUriString !==  sourceUriString) {
+                this.updateWebViewPanel(livePanel, sourceUri, contents);
+            }
+            livePanel.reveal();
+            return livePanel;
         } else {
             // else create a new panel.
-
-            // first, parse the document contents. Simultaneously load the contents if the filenot yet opened.
-            let parsed;
-            if (contents) {
-                parsed = parseTextDocument(contents);
-            } else {
-                parsed = parseTextDocument(new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(sourceUri)));
-            }
-   
-            if (!parsed) {
-                vscode.window.showErrorMessage('Failed in parsing the document.');
-                return undefined;
-            }
-            const panel = vscode.window.createWebviewPanel(
+            const livePanel = vscode.window.createWebviewPanel(
                 'specScanPreview',
                 'Preview spec scan',
                 showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
@@ -128,29 +166,49 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     enableScripts: true
                 }
             );
-            this.panels.set(sourceUriString,  panel);
+            this.previews.push([sourceUriString, livePanel]);
+            this.livePreview = [sourceUriString, livePanel];
 
-            panel.onDidDispose(() => {
+            livePanel.onDidDispose(() => {
                 vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', false);
-                this.panels.delete(sourceUriString);
+                // remove the closed preview from the array.
+                this.previews = this.previews.filter(([uriString, panel]) => (sourceUriString !== uriString || livePanel !== panel));
+                if (this.livePreview && livePanel === this.livePreview[1]) {
+                    this.livePreview = undefined;
+                }
             }, null, context.subscriptions);
 
-            panel.onDidChangeViewState((event) => {
+            livePanel.onDidChangeViewState((event) => {
                 vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', event.webviewPanel.active);
             }, null, context.subscriptions);
 
-            const plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
+            this.updateWebViewPanel(livePanel, sourceUri, contents);
         
-            panel.title = `Preview ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
-            initWebviewContent(panel, plotlyJsUri, parsed);
-        
-            return panel;
-
+            return livePanel;
         }
     }
 
+    private async updateWebViewPanel(panel: vscode.WebviewPanel, sourceUri: vscode.Uri, contents: string | undefined, isLocked: boolean = false) {
+        // first, parse the document contents. Simultaneously load the contents if the filenot yet opened.
+        let parsed;
+        if (contents) {
+            parsed = parseTextDocument(contents);
+        } else {
+            parsed = parseTextDocument(new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(sourceUri)));
+        }
+
+        if (!parsed) {
+            vscode.window.showErrorMessage('Failed in parsing the document.');
+            return false;
+        }
+        const label = isLocked ? '[Preview]' : 'Preview';
+        panel.title = `${label} ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
+        initWebviewContent(panel, this.plotlyJsUri, parsed);
+        return true;
+    }
+    
     private getActivePreview(): [string, vscode.WebviewPanel] | undefined {
-        for (const [uriString, panel] of this.panels) {
+        for (const [uriString, panel] of this.previews) {
             if (panel.active) {
                 return [uriString, panel];
             }
