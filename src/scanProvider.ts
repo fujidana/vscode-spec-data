@@ -8,7 +8,6 @@ const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
  */
 export class ScanProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider {
     panels: Map<string, vscode.WebviewPanel> = new Map();
-    // livePanel: vscode.WebviewPanel | undefined = undefined;
 
     constructor(context: vscode.ExtensionContext) {
         // callback of 'vscode-spec-scan.showPreview'.
@@ -27,10 +26,19 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
+        const showSourceCommand = async (...args: unknown[]) => {
+            const preview = this.getActivePreview();
+            if (preview) {
+                const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(preview[0]));
+                vscode.window.showTextDocument(document);
+            }
+        };
+
         // register providers and commands
         context.subscriptions.push(
             vscode.commands.registerCommand('vscode-spec-scan.showPreview', showPreviewCommand),
             vscode.commands.registerCommand('vscode-spec-scan.showPreviewToSide', showPreviewToSideCommand),
+            vscode.commands.registerCommand('vscode-spec-scan.showSource', showSourceCommand),
             vscode.languages.registerFoldingRangeProvider(SCAN_SELECTOR, this),
             vscode.languages.registerDocumentSymbolProvider(SCAN_SELECTOR, this),
         );
@@ -121,8 +129,16 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 }
             );
             this.panels.set(sourceUriString,  panel);
-            panel.onDidDispose(() => this.panels.delete(sourceUriString), null, context.subscriptions);
-            
+
+            panel.onDidDispose(() => {
+                vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', false);
+                this.panels.delete(sourceUriString);
+            }, null, context.subscriptions);
+
+            panel.onDidChangeViewState((event) => {
+                vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', event.webviewPanel.active);
+            }, null, context.subscriptions);
+
             const plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
         
             panel.title = `Preview ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
@@ -130,6 +146,14 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         
             return panel;
 
+        }
+    }
+
+    private getActivePreview(): [string, vscode.WebviewPanel] | undefined {
+        for (const [uriString, panel] of this.panels) {
+            if (panel.active) {
+                return [uriString, panel];
+            }
         }
     }
 }

@@ -51,6 +51,15 @@
 					"light": "./resources/open-preview-light.svg",
 					"dark": "./resources/open-preview-dark.svg"
 				}
+			},
+			{
+				"command": "vscode-spec-scan.showSource",
+				"title": "Show Source",
+				"category": "spec-scan",
+				"icon": {
+					"light": "./resources/go-to-file-light.svg",
+					"dark": "./resources/go-to-file-dark.svg"
+				}
 			}
 		],
 		"menus": {
@@ -67,7 +76,13 @@
 					"alt": "vscode-spec-scan.showPreview",
 					"when": "editorLangId == spec-scan",
 					"group": "navigation"
+				},
+				{
+					"command": "vscode-spec-scan.showSource",
+					"group": "navigation",
+					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
 				}
+				
 			],
 			"editor/title/context": [
 				{
