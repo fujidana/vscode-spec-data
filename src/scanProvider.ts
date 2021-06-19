@@ -1,24 +1,27 @@
 import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
+import { parse } from 'path';
 
 const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
 
-type Node = FileNode | DateNode | CommentNode | NameListNode |  ValueListNode | ScanNode | ScanDataNode | UnknownNode;
-type FileNode = { type: 'file', value: string };
-type DateNode = { type: 'date', value: string };
-type CommentNode = { type: 'comment', value: string };
-type NameListNode = { type: 'nameList', kind: string, index: number, values: string[], mnemonic: boolean };
-type ValueListNode = { type: 'valueList', kind: string, index: number, values: number[] };
-type ScanNode = { type: 'scan', value: string, index: number, code: string };
-type ScanDataNode = { type: 'scanList', rows: number, headers: string[], data: number[][] | null };
-type UnknownNode = { type: 'unknown', kind: string, value: string };
+type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanNode | ScanDataNode | UnknownNode;
+type FileNode = { type: 'file', line: number, value: string };
+type DateNode = { type: 'date', line: number, value: string };
+type CommentNode = { type: 'comment', line: number, value: string };
+type NameListNode = { type: 'nameList', line: number, kind: string, index: number, values: string[], mnemonic: boolean };
+type ValueListNode = { type: 'valueList', line: number, kind: string, index: number, values: number[] };
+type ScanNode = { type: 'scan', line: number, value: string, index: number, code: string };
+type ScanDataNode = { type: 'scanList', line: number, rows: number, headers: string[], data: number[][] | null };
+type UnknownNode = { type: 'unknown', line: number, kind: string, value: string };
+
+interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
 
 /**
  * Provider class
  */
 export class ScanProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider {
-    previews: [string, vscode.WebviewPanel][] = [];
-    livePreview: [string, vscode.WebviewPanel] | undefined = undefined;
+    previews: Preview[] = [];
+    livePreview: Preview | undefined = undefined;
     plotlyJsUri: vscode.Uri;
 
     constructor(context: vscode.ExtensionContext) {
@@ -26,17 +29,17 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         // callback of 'vscode-spec-scan.showPreview'.
         const showPreviewCommand = async (...args: unknown[]) => {
-            let [sourceUri, contents] = getUriAndContents(args);
-            if (sourceUri) {
-                this.showWebViewPanel(context, sourceUri, contents);
+            let [uri, text] = getUriAndText(args);
+            if (uri) {
+                this.showPreview(context, uri, text);
             }
         };
 
         // callback of 'vscode-spec-scan.showPreviewToSide'.
         const showPreviewToSideCommand = async (...args: unknown[]) => {
-            let [sourceUri, contents] = getUriAndContents(args);
-            if (sourceUri) {
-                this.showWebViewPanel(context, sourceUri, contents, true);
+            let [uri, text] = getUriAndText(args);
+            if (uri) {
+                this.showPreview(context, uri, text, true);
             }
         };
 
@@ -44,7 +47,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const showSourceCommand = async (...args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
-                const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(activePreview[0]));
+                const document = await vscode.workspace.openTextDocument(activePreview.uri);
                 vscode.window.showTextDocument(document);
             } else {
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
@@ -55,11 +58,9 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const refreshPreviewCommand = async (...args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
-                const [activeUriString, activePanel] = activePreview;
-                const editors = vscode.window.visibleTextEditors.filter(editor => editor.document.uri.toString() === activeUriString);
-                const contents = editors.length ? editors[0].document.getText() : undefined;
-                const isLocked = !(this.livePreview && this.livePreview[1] === activePanel);
-                this.updateWebViewPanel(activePanel, vscode.Uri.parse(activeUriString), contents, isLocked);
+                const editors = vscode.window.visibleTextEditors.filter(editor => editor.document.uri.toString() === activePreview.uri.toString());
+                const text = editors.length ? editors[0].document.getText() : undefined;
+                this.updatePreview(activePreview, activePreview.uri, text);
             } else {
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
             }
@@ -69,22 +70,20 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const togglePreviewLockCommand = (...args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
-                const [activeUriString, activePanel] = activePreview;
-                if (this.livePreview) {
-                    if (activePanel === this.livePreview[1]) {
-                        // If the active view is a live preview, lock the view to the file.
-                        this.livePreview = undefined;
-                        activePanel.title = `[Preview] ${activeUriString.substring(activeUriString.lastIndexOf('/') + 1)}`;
-                    } else {
-                        // If the active view is not a live preview, close the current live view and set the active view to live view.
-                        this.livePreview[1].dispose();
-                        this.livePreview = activePreview;
-                        activePanel.title = `Preview ${activeUriString.substring(activeUriString.lastIndexOf('/') + 1)}`;
-                    }
+                const activeUriString = activePreview.uri.toString();
+                if (this.livePreview && activePreview.panel === this.livePreview.panel) {
+                    // If the active view is a live preview, lock the view to the file.
+                    this.livePreview = undefined;
+                    activePreview.panel.title = `[Preview] ${activeUriString.substring(activeUriString.lastIndexOf('/') + 1)}`;
                 } else {
-                    // If there is no live view, the active view must be a locked view. Set the view to live view.
+                    // If the active view is not a live preview...
+                    if (this.livePreview) {
+                        // close the current live view if it exists...
+                        this.livePreview.panel.dispose();
+                    }
+                    // and set the active view to live view.
                     this.livePreview = activePreview;
-                    activePanel.title = `Preview ${activeUriString.substring(activeUriString.lastIndexOf('/') + 1)}`;
+                    activePreview.panel.title = `Preview ${activeUriString.substring(activeUriString.lastIndexOf('/') + 1)}`;
                 }
             } else {
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
@@ -93,8 +92,8 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         const onDidChangeActiveTextEditorListner = (editor: vscode.TextEditor | undefined) => {
             if (editor && editor.document.languageId === 'spec-scan' && editor.document.uri.scheme === 'file') {
-                if (this.livePreview && this.livePreview[0] !== editor.document.uri.toString()) {
-                    this.updateWebViewPanel(this.livePreview[1], editor.document.uri, editor.document.getText());
+                if (this.livePreview && this.livePreview.uri.toString() !== editor.document.uri.toString()) {
+                    this.updatePreview(this.livePreview, editor.document.uri, editor.document.getText());
                 }
             }
         };
@@ -164,19 +163,17 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         return results;
     }
 
-    private async showWebViewPanel(context: vscode.ExtensionContext, sourceUri: vscode.Uri, contents: string | undefined, showToSide: boolean = false) {
-        const sourceUriString = sourceUri.toString();
-
+    private async showPreview(context: vscode.ExtensionContext, sourceUri: vscode.Uri, text: string | undefined, showToSide: boolean = false) {
         if (this.livePreview) {
-            const [liveUriString, livePanel] = this.livePreview;
-
-            if (liveUriString !== sourceUriString) {
-                this.updateWebViewPanel(livePanel, sourceUri, contents);
+            // If a live preview panel exists...
+            if (this.livePreview.uri.toString() !== sourceUri.toString()) {
+                // Update the content if the URLs are different.
+                this.updatePreview(this.livePreview, sourceUri, text);
             }
-            livePanel.reveal();
-            return livePanel;
+            this.livePreview.panel.reveal();
+            return true;
         } else {
-            // else create a new panel as a live panel.
+            // Else create a new panel as a live panel.
             const panel = vscode.window.createWebviewPanel(
                 'specScanPreview',
                 'Preview spec scan',
@@ -186,13 +183,15 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     enableScripts: true
                 }
             );
-            this.previews.push([sourceUriString, panel]);
+            const newPreview = { uri: sourceUri, panel: panel };
+            this.previews.push(newPreview);
+            this.livePreview = newPreview;
 
             panel.onDidDispose(() => {
                 vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', false);
                 // remove the closed preview from the array.
-                this.previews = this.previews.filter(([uriString, panel]) => (sourceUriString !== uriString || panel !== panel));
-                if (this.livePreview && panel === this.livePreview[1]) {
+                this.previews.filter(preview => preview !== newPreview);
+                if (this.livePreview && panel === this.livePreview.panel) {
                     this.livePreview = undefined;
                 }
             }, null, context.subscriptions);
@@ -201,45 +200,41 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', event.webviewPanel.active);
             }, null, context.subscriptions);
 
-            this.updateWebViewPanel(panel, sourceUri, contents);
+            this.updatePreview(newPreview, sourceUri, text);
 
             return panel;
         }
     }
 
-    private async updateWebViewPanel(panel: vscode.WebviewPanel, sourceUri: vscode.Uri, contents: string | undefined, isLocked: boolean = false) {
-        // first, parse the document contents. Simultaneously load the contents if the filenot yet opened.
-        let parsed;
-        if (contents) {
-            parsed = parseTextDocument(contents);
-        } else {
-            parsed = parseTextDocument(new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(sourceUri)));
-        }
-
-        if (!parsed) {
+    private async updatePreview(preview: Preview, sourceUri: vscode.Uri, text: string | undefined) {
+        // first, parse the document contents. Simultaneously load the contents if the file is not yet opened.
+        const tree = parseScanFileContents(text ? text : new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(sourceUri)));
+        if (!tree) {
             vscode.window.showErrorMessage('Failed in parsing the document.');
             return false;
         }
-        const label = isLocked ? '[Preview]' : 'Preview';
-        panel.title = `${label} ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
-        initWebviewContent(panel, this.plotlyJsUri, parsed);
-        
-        if (!isLocked) {
-            this.livePreview = [sourceUri.toString(), panel];
-        }
+
+        const webview = preview.panel.webview;
+        const label = (this.livePreview && this.livePreview === preview) ? 'Preview' : '[Preview]';
+
+        preview.uri = sourceUri;
+        preview.tree = tree;
+        preview.panel.title = `${label} ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
+        preview.panel.webview.html = getPreviewHtml(webview.cspSource, webview.asWebviewUri(this.plotlyJsUri), tree);
+
         return true;
     }
 
-    private getActivePreview(): [string, vscode.WebviewPanel] | undefined {
-        for (const [uriString, panel] of this.previews) {
-            if (panel.active) {
-                return [uriString, panel];
+    private getActivePreview(): Preview | undefined {
+        for (const preview of this.previews) {
+            if (preview.panel.active) {
+                return preview;
             }
         }
     }
 }
 
-function getUriAndContents(args: unknown[]): [vscode.Uri | undefined, string | undefined] {
+function getUriAndText(args: unknown[]): [vscode.Uri | undefined, string | undefined] {
     if (args && args.length > 0 && args[0] instanceof vscode.Uri) {
         // If the URI is provided via the arguments, returns the URI.
         // If there is an corresponding editor, use its contents.
@@ -263,8 +258,8 @@ function getUriAndContents(args: unknown[]): [vscode.Uri | undefined, string | u
     }
 }
 
-function parseTextDocument(contents: string) {
-    const lines = contents.split('\n');
+function parseScanFileContents(text: string): Node[] | undefined {
+    const lines = text.split('\n');
     const lineCount = lines.length;
     const fileRegex = /^(#F) (.*)$/;
     const dateRegex = /^(#D) (.*)$/;
@@ -284,11 +279,11 @@ function parseTextDocument(contents: string) {
     for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
         const lineText = lines[lineIndex];
         if (matched = lineText.match(fileRegex)) {
-            nodes.push({ type: 'file', value: matched[2] });
+            nodes.push({ type: 'file', line: lineIndex, value: matched[2] });
         } else if (matched = lineText.match(dateRegex)) {
-            nodes.push({ type: 'date', value: matched[2] });
+            nodes.push({ type: 'date', line: lineIndex, value: matched[2] });
         } else if (matched = lineText.match(commentRegex)) {
-            nodes.push({ type: 'comment', value: matched[2] });
+            nodes.push({ type: 'comment', line: lineIndex, value: matched[2] });
         } else if (matched = lineText.match(nameListRegex)) {
             let kind, isMnemonic, separator;
             if (matched[1] === matched[1].toLowerCase()) {
@@ -319,7 +314,7 @@ function parseTextDocument(contents: string) {
                     vscode.window.showErrorMessage(`The name list not starding with 0: line ${lineIndex + 1}`);
                     return undefined;
                 }
-                nodes.push({ type: 'nameList', kind: kind, index: listIndex, values: matched[3].trimEnd().split(separator), mnemonic: isMnemonic });
+                nodes.push({ type: 'nameList', line: lineIndex, kind: kind, index: listIndex, values: matched[3].trimEnd().split(separator), mnemonic: isMnemonic });
             }
         } else if (matched = lineText.match(valueListRegex)) {
             let kind;
@@ -342,10 +337,10 @@ function parseTextDocument(contents: string) {
                     vscode.window.showErrorMessage(`The value list not starding with 0: line ${lineIndex + 1}`);
                     return undefined;
                 }
-                nodes.push({ type: 'valueList', kind: kind, index: listIndex, values: matched[3].trimEnd().split(' ').map(value => parseFloat(value)) });
+                nodes.push({ type: 'valueList', line: lineIndex, kind: kind, index: listIndex, values: matched[3].trimEnd().split(' ').map(value => parseFloat(value)) });
             }
         } else if (matched = lineText.match(scanRegex)) {
-            nodes.push({ type: 'scan', value: matched[2], index: parseInt(matched[3]), code: matched[4] });
+            nodes.push({ type: 'scan', line: lineIndex, value: matched[2], index: parseInt(matched[3]), code: matched[4] });
         } else if (matched = lineText.match(scanNumberRegex)) {
             rowNumber = parseInt(matched[2]);
         } else if (matched = lineText.match(scanListRegex)) {
@@ -357,6 +352,9 @@ function parseTextDocument(contents: string) {
                 vscode.window.showErrorMessage(`Scan number mismatched (header): line ${lineIndex + 1}`);
                 return undefined;
             }
+            const dataNode: ScanDataNode = { type: 'scanList', line: lineIndex, rows: rowNumber, headers: headers, data: null };
+            nodes.push(dataNode);
+
             // read succeeding lines until EOF or non-data line.
             const data: number[][] = [];
             for (; lineIndex + 1 < lineCount; lineIndex++) {
@@ -376,26 +374,21 @@ function parseTextDocument(contents: string) {
             }
             // transpose 2D array
             if (data.length > 0) {
-                const data2 = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
-                nodes.push({ type: 'scanList', rows: rowNumber, headers: headers, data: data2 });
-            } else {
-                nodes.push({ type: 'scanList', rows: rowNumber, headers: headers, data: null });
+                dataNode.data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
             }
         } else if (matched = lineText.match(allRegex)) {
-            nodes.push({ type: 'unknown', kind: matched[1], value: matched[2] });
+            nodes.push({ type: 'unknown', line: lineIndex, kind: matched[1], value: matched[2] });
         }
     }
     return nodes;
 }
 
-function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, nodes: Node[]) {
+function getPreviewHtml(cspSource: string, plotlyUri: vscode.Uri, nodes: Node[]): string {
     let scanDescription = '';
     let nameLists: { [name: string]: string[] } = {};
     let mnemonicLists: { [name: string]: string[] } = {};
     let tableInd = 0;
     let plotInd = 0;
-
-    const webview = panel.webview;
 
     const config = vscode.workspace.getConfiguration('vscode-spec-scan.preview');
     const hideTable: boolean = config.get('table.hide', true);
@@ -411,11 +404,11 @@ function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, n
 <head>
 	<meta charset="UTF-8">
     <!--
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https:; style-src ${webview.cspSource}; script-src 'unsafe-inline' ${webview.cspSource};">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} https:; style-src ${cspSource}; script-src 'unsafe-inline' ${cspSource};">
     -->
     <title>Preview spec scan</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="${webview.asWebviewUri(plotlyUri)}"></script>
+    <script src="${plotlyUri}"></script>
     <script>
         function hideElement(elemId, flag) {
             document.getElementById(elemId).hidden = flag;
@@ -432,10 +425,6 @@ function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, n
     </script>
 </head>
 <body onresize="resizeBody()">
-`;
-
-    const footer = `</body>
-</html>
 `;
     let body = "";
     for (const node of nodes) {
@@ -516,10 +505,15 @@ Plotly.newPlot("specScan${plotInd}", /* JSON object */ {
 `;
                 plotInd++;
             }
-        // } else if (node.type === 'unknown') {
-        //     body += `<p> #${node.kind} ${node.value}`;
+            // } else if (node.type === 'unknown') {
+            //     body += `<p> #${node.kind} ${node.value}`;
         }
     }
+
+    body += `</body>
+    </html>
+    `;
+
     // "title": "${scanDescription}",
-    webview.html = header + body + footer;
+    return header + body;
 }
