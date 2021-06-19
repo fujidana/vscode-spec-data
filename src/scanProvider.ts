@@ -381,11 +381,10 @@ function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, o
     const webview = panel.webview;
 
     const config = vscode.workspace.getConfiguration('vscode-spec-scan.preview');
-    const maximumPlots: number = config.get('maximumPlots', 50);
-    const columnsPerLine: number = config.get('table.columnsPerLine', 8);
     const hideTable: boolean = config.get('table.hide', true);
+    const columnsPerLine: number = config.get('table.columnsPerLine', 8);
     const headerType: string = config.get('table.headerType', 'mnemonic');
-    const plotWidth: number = config.get('plot.width', 600);
+    const maximumPlots: number = config.get('plot.maximumNumberOfPlots', 50);
     const plotHeight: number = config.get('plot.height', 400);
 
     // const themeKind = vscode.window.activeColorTheme.kind;
@@ -473,16 +472,16 @@ function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, o
             if (data.length > 0) {
                 body += `<script>
 Plotly.newPlot("specScan${plotInd}", /* JSON object */ {
-    "data": [{
-        "x": ${JSON.stringify(data[0])},
-        "y": ${JSON.stringify(data[rows - 1])}
+    data: [{
+        x: ${JSON.stringify(data[0])},
+        y: ${JSON.stringify(data[rows - 1])}
     }],
-    "layout": {
-        "width": ${plotWidth},
-        "height": ${plotHeight},
-        "xaxis": { "title": "${object['headers'][0]}" },
-        "yaxis": { "title": "${object['headers'][rows - 1]}" },
-        "margin": { "t": 0 }
+    layout: {
+        width: document.body.clientWidth * 0.9,
+        height: ${plotHeight},
+        xaxis: { title: "${object['headers'][0]}" },
+        yaxis: { title: "${object['headers'][rows - 1]}" },
+        margin: { t:20, r: 20 }
     }
 })
 </script>

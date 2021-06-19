@@ -151,17 +151,11 @@
 			{
 				"title": "spec scan",
 				"properties": {
-					"vscode-spec-scan.preview.maximumPlots": {
+					"vscode-spec-scan.preview.plot.maximumNumberOfPlots": {
 						"type": "number",
 						"default": 50,
 						"minimum": 0,
 						"description": "Maximum number of graphs to be drawn. Overflowed graphs are not displayed. Making a preview containing large number of scans requires both long time and vast memory footprint."
-					},
-					"vscode-spec-scan.preview.plot.width": {
-						"type": "number",
-						"default": 600,
-						"minimum": 200,
-						"description": "Width of the respective plots."
 					},
 					"vscode-spec-scan.preview.plot.height": {
 						"type": "number",
@@ -172,7 +166,7 @@
 					"vscode-spec-scan.preview.table.hide": {
 						"type": "boolean",
 						"default": true,
-						"description": "Hides motor-position tables in a preview."
+						"description": "Hides motor-position tables in a preview when a preview is opened."
 					},
 					"vscode-spec-scan.preview.table.columnsPerLine": {
 						"type": "number",
