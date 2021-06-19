@@ -375,13 +375,15 @@ function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, o
     let scanDescription = '';
     let nameLists: { [name: string]: string[] } = {};
     let mnemonicLists: { [name: string]: string[] } = {};
+    let tableInd = 0;
     let plotInd = 0;
 
     const webview = panel.webview;
 
     const config = vscode.workspace.getConfiguration('vscode-spec-scan.preview');
-    const maximumPlots: number = config.get('maximumPlots', 100);
+    const maximumPlots: number = config.get('maximumPlots', 50);
     const columnsPerLine: number = config.get('table.columnsPerLine', 8);
+    const hideTable: boolean = config.get('table.hide', true);
     const headerType: string = config.get('table.headerType', 'mnemonic');
     const plotWidth: number = config.get('plot.width', 600);
     const plotHeight: number = config.get('plot.height', 400);
@@ -398,6 +400,11 @@ function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, o
     <title>Preview spec scan</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="${webview.asWebviewUri(plotlyUri)}"></script>
+    <script>
+        function hideElement(elemId, flag) {
+            document.getElementById(elemId).hidden = flag;
+        }
+    </script>
 </head>
 <body>
 `;
@@ -421,31 +428,34 @@ function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, o
             scanDescription = object['value'];
             body += `<h2>Scan ${object['number']}: <code>${object['code']}</code></h2>`;
         } else if (object['key'] === 'valueList') {
-            if (headerType === 'None') {
-                // do nothing
+            const valueList = object['list'];
+            const headerList = (headerType === 'Name') ? nameLists['motor'] : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : undefined;
+            if (headerList && (headerList.length !== valueList.length)) {
+                body += '<p><em>The number of scan headers and data columns mismatched.</em></p>';
             } else {
-                const valueList = object['list'];
-                const headerList = (headerType === 'Value Only') ? undefined : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : nameLists['motor'];
-                if (headerList && (headerList.length !== valueList.length)) {
-                    body += '<p><em>The number of scan headers and data columns mismatched.</c></p>';
-                } else  {
-                    body += `<table><caption>${object['type']}</caption>`;
-                    for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
-                        if (headerList) {
-                            body += `<tr>`;
-                            for (let col = 0; col < columnsPerLine && row * columnsPerLine + col < valueList.length; col++) {
-                                body += `<td><strong>${headerList[row * columnsPerLine + col]}</<strong></td>`;
-                            }
-                            body += `</tr>`;
-                        }
+                body += `<p>
+<input type="checkbox" ${hideTable ? ' checked' : ''} id="tableChckbox${tableInd}" onclick="hideElement('table${tableInd}', this.checked)">
+<label for="tableChckbox${tableInd}">Hide Table</label>
+</p>
+<table ${hideTable ? ' hidden' : ''} id="table${tableInd}">
+<caption>${object['type']}</caption>
+`;
+                tableInd++;
+                for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
+                    if (headerList) {
                         body += `<tr>`;
                         for (let col = 0; col < columnsPerLine && row * columnsPerLine + col < valueList.length; col++) {
-                            body += `<td>${valueList[row * 8 + col]}</td>`;
+                            body += `<td><strong>${headerList[row * columnsPerLine + col]}</<strong></td>`;
                         }
                         body += `</tr>`;
                     }
-                    body += `</table>`;
+                    body += `<tr>`;
+                    for (let col = 0; col < columnsPerLine && row * columnsPerLine + col < valueList.length; col++) {
+                        body += `<td>${valueList[row * 8 + col]}</td>`;
+                    }
+                    body += `</tr>`;
                 }
+                body += `</table>`;
             }
 
         } else if (object['key'] === 'scanList') {

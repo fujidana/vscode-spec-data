@@ -153,7 +153,7 @@
 				"properties": {
 					"vscode-spec-scan.preview.maximumPlots": {
 						"type": "number",
-						"default": 100,
+						"default": 50,
 						"minimum": 0,
 						"description": "Maximum number of graphs to be drawn. Overflowed graphs are not displayed. Making a preview containing large number of scans requires both long time and vast memory footprint."
 					},
@@ -169,6 +169,11 @@
 						"minimum": 200,
 						"description": "Height of the respective plots."
 					},
+					"vscode-spec-scan.preview.table.hide": {
+						"type": "boolean",
+						"default": true,
+						"description": "Hides motor-position tables in a preview."
+					},
 					"vscode-spec-scan.preview.table.columnsPerLine": {
 						"type": "number",
 						"default": 8,
@@ -181,7 +186,6 @@
 						"enum": [
 							"Name",
 							"Mnemonic",
-							"Value Only",
 							"None"
 						],
 						"description": "Header type of data cells of motor-potision tables."
