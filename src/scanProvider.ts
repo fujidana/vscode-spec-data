@@ -65,7 +65,8 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        const setPreviewLockCommand = (...args: unknown[]) => {
+        // callback of 'vscode-spec-scan.togglePreviewLock'.
+        const togglePreviewLockCommand = (...args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
                 const [activeUriString, activePanel] = activePreview;
@@ -90,15 +91,24 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
+        const onDidChangeActiveTextEditorListner = (editor: vscode.TextEditor | undefined) => {
+            if (editor && editor.document.languageId === 'spec-scan' && editor.document.uri.scheme === 'file') {
+                if (this.livePreview && this.livePreview[0] !== editor.document.uri.toString()) {
+                    this.updateWebViewPanel(this.livePreview[1], editor.document.uri, editor.document.getText());
+                }
+            }
+        };
+
         // register providers and commands
         context.subscriptions.push(
             vscode.commands.registerCommand('vscode-spec-scan.showPreview', showPreviewCommand),
             vscode.commands.registerCommand('vscode-spec-scan.showPreviewToSide', showPreviewToSideCommand),
             vscode.commands.registerCommand('vscode-spec-scan.showSource', showSourceCommand),
             vscode.commands.registerCommand('vscode-spec-scan.refreshPreview', refreshPreviewCommand),
-            vscode.commands.registerCommand('vscode-spec-scan.togglePreviewLock', setPreviewLockCommand),
+            vscode.commands.registerCommand('vscode-spec-scan.togglePreviewLock', togglePreviewLockCommand),
             vscode.languages.registerFoldingRangeProvider(SCAN_SELECTOR, this),
             vscode.languages.registerDocumentSymbolProvider(SCAN_SELECTOR, this),
+            vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditorListner)
         );
     }
 
@@ -166,8 +176,8 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             livePanel.reveal();
             return livePanel;
         } else {
-            // else create a new panel.
-            const livePanel = vscode.window.createWebviewPanel(
+            // else create a new panel as a live panel.
+            const panel = vscode.window.createWebviewPanel(
                 'specScanPreview',
                 'Preview spec scan',
                 showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
@@ -176,25 +186,24 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     enableScripts: true
                 }
             );
-            this.previews.push([sourceUriString, livePanel]);
-            this.livePreview = [sourceUriString, livePanel];
+            this.previews.push([sourceUriString, panel]);
 
-            livePanel.onDidDispose(() => {
+            panel.onDidDispose(() => {
                 vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', false);
                 // remove the closed preview from the array.
-                this.previews = this.previews.filter(([uriString, panel]) => (sourceUriString !== uriString || livePanel !== panel));
-                if (this.livePreview && livePanel === this.livePreview[1]) {
+                this.previews = this.previews.filter(([uriString, panel]) => (sourceUriString !== uriString || panel !== panel));
+                if (this.livePreview && panel === this.livePreview[1]) {
                     this.livePreview = undefined;
                 }
             }, null, context.subscriptions);
 
-            livePanel.onDidChangeViewState((event) => {
+            panel.onDidChangeViewState((event) => {
                 vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', event.webviewPanel.active);
             }, null, context.subscriptions);
 
-            this.updateWebViewPanel(livePanel, sourceUri, contents);
+            this.updateWebViewPanel(panel, sourceUri, contents);
 
-            return livePanel;
+            return panel;
         }
     }
 
@@ -214,6 +223,10 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const label = isLocked ? '[Preview]' : 'Preview';
         panel.title = `${label} ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
         initWebviewContent(panel, this.plotlyJsUri, parsed);
+        
+        if (!isLocked) {
+            this.livePreview = [sourceUri.toString(), panel];
+        }
         return true;
     }
 
