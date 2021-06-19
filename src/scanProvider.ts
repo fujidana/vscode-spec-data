@@ -3,6 +3,16 @@ import { TextDecoder } from 'util';
 
 const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
 
+type Node = FileNode | DateNode | CommentNode | NameListNode |  ValueListNode | ScanNode | ScanDataNode | UnknownNode;
+type FileNode = { type: 'file', value: string };
+type DateNode = { type: 'date', value: string };
+type CommentNode = { type: 'comment', value: string };
+type NameListNode = { type: 'nameList', kind: string, index: number, values: string[], mnemonic: boolean };
+type ValueListNode = { type: 'valueList', kind: string, index: number, values: number[] };
+type ScanNode = { type: 'scan', value: string, index: number, code: string };
+type ScanDataNode = { type: 'scanList', rows: number, headers: string[], data: number[][] | null };
+type UnknownNode = { type: 'unknown', kind: string, value: string };
+
 /**
  * Provider class
  */
@@ -54,7 +64,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
             }
         };
-            
+
         const setPreviewLockCommand = (...args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
@@ -146,11 +156,11 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     private async showWebViewPanel(context: vscode.ExtensionContext, sourceUri: vscode.Uri, contents: string | undefined, showToSide: boolean = false) {
         const sourceUriString = sourceUri.toString();
-        
+
         if (this.livePreview) {
             const [liveUriString, livePanel] = this.livePreview;
-    
-            if (liveUriString !==  sourceUriString) {
+
+            if (liveUriString !== sourceUriString) {
                 this.updateWebViewPanel(livePanel, sourceUri, contents);
             }
             livePanel.reveal();
@@ -183,7 +193,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }, null, context.subscriptions);
 
             this.updateWebViewPanel(livePanel, sourceUri, contents);
-        
+
             return livePanel;
         }
     }
@@ -206,7 +216,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         initWebviewContent(panel, this.plotlyJsUri, parsed);
         return true;
     }
-    
+
     private getActivePreview(): [string, vscode.WebviewPanel] | undefined {
         for (const [uriString, panel] of this.previews) {
             if (panel.active) {
@@ -236,7 +246,7 @@ function getUriAndContents(args: unknown[]): [vscode.Uri | undefined, string | u
         } else {
             vscode.window.showErrorMessage('Active editor is not found.');
             return [undefined, undefined];
-        }   
+        }
     }
 }
 
@@ -246,90 +256,83 @@ function parseTextDocument(contents: string) {
     const fileRegex = /^(#F) (.*)$/;
     const dateRegex = /^(#D) (.*)$/;
     const commentRegex = /^(#C) (.*)$/;
-    const nameListRegex = /^(?:#([OJ])([0-9]+)) (.*)$/;
-    const mnemonicListRegex = /^(?:#([oj])([0-9]+)) (.*)$/;
+    const nameListRegex = /^(?:#([OJoj])([0-9]+)) (.*)$/;
     const valueListRegex = /^(?:#([P])([0-9]+)) (.*)$/;
     const scanRegex = /^(#S) (([0-9]+) (.*))$/;
     const scanNumberRegex = /^(#N) ([0-9]+)$/;
     const scanListRegex = /^(#L) (.*)$/;
-    const allRegex = /^(#[a-zA-Z][0-9]*) (.*)$/;
+    const allRegex = /^#([a-zA-Z][0-9]*) (.*)$/;
     const emptyLineRegex = /^\s*$/;
 
     let matched: RegExpMatchArray | null;
     let rowNumber = 0;
-    const objects = [];
+    const nodes: Node[] = [];
 
     for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
         const lineText = lines[lineIndex];
         if (matched = lineText.match(fileRegex)) {
-            objects.push({ key: 'file', value: matched[2] });
+            nodes.push({ type: 'file', value: matched[2] });
         } else if (matched = lineText.match(dateRegex)) {
-            objects.push({ key: 'date', value: matched[2] });
+            nodes.push({ type: 'date', value: matched[2] });
         } else if (matched = lineText.match(commentRegex)) {
-            objects.push({ key: 'comment', value: matched[2] });
+            nodes.push({ type: 'comment', value: matched[2] });
         } else if (matched = lineText.match(nameListRegex)) {
-            let nameType;
-            if (matched[1] === 'O') {
-                nameType = 'motor';
-            } else if (matched[1] === 'J') {
-                nameType = 'counter';
+            let kind, isMnemonic, separator;
+            if (matched[1] === matched[1].toLowerCase()) {
+                isMnemonic = true;
+                separator = ' ';
             } else {
-                nameType = matched[1];
+                isMnemonic = false;
+                separator = '  ';
+            }
+            if (matched[1].toLowerCase() === 'o') {
+                kind = 'motor';
+            } else if (matched[1].toLowerCase() === 'j') {
+                kind = 'counter';
+            } else {
+                kind = matched[1];
             }
             const listIndex = parseInt(matched[2]);
-            const prevObj: any = objects[objects.length - 1];
-            if (prevObj['key'] === 'nameList' && prevObj['type'] === nameType) {
-                if (prevObj['index'] === listIndex - 1) {
-                    prevObj['list'].push(...(matched[3].trimEnd().split('  ')));
-                    prevObj['index'] = listIndex;
+            const prevNode: Node = nodes[nodes.length - 1];
+            if (prevNode && prevNode.type === 'nameList' && prevNode.kind === kind && prevNode.mnemonic === isMnemonic) {
+                if (prevNode.index !== listIndex - 1) {
+                    vscode.window.showErrorMessage(`Inconsequent index of the name list: line ${lineIndex + 1}`);
+                    return undefined;
                 }
+                prevNode.values.push(...(matched[3].trimEnd().split(separator)));
+                prevNode.index = listIndex;
             } else {
-                if (listIndex === 0) {
-                    objects.push({ key: 'nameList', type: nameType, 'index': listIndex, 'list': matched[3].trimEnd().split('  ') });
+                if (listIndex !== 0) {
+                    vscode.window.showErrorMessage(`The name list not starding with 0: line ${lineIndex + 1}`);
+                    return undefined;
                 }
-            }
-        } else if (matched = lineText.match(mnemonicListRegex)) {
-            let type;
-            if (matched[1] === 'o') {
-                type = 'motor';
-            } else if (matched[1] === 'j') {
-                type = 'counter';
-            } else {
-                type = matched[1];
-            }
-            const listIndex = parseInt(matched[2]);
-            const prevObj: any = objects[objects.length - 1];
-            if (prevObj['key'] === 'mnemonicList' && prevObj['type'] === type) {
-                if (prevObj['index'] === listIndex - 1) {
-                    prevObj['list'].push(...(matched[3].trimEnd().split(' ')));
-                    prevObj['index'] = listIndex;
-                }
-            } else {
-                if (listIndex === 0) {
-                    objects.push({ key: 'mnemonicList', type: type, 'index': listIndex, 'list': matched[3].trimEnd().split(' ') });
-                }
+                nodes.push({ type: 'nameList', kind: kind, index: listIndex, values: matched[3].trimEnd().split(separator), mnemonic: isMnemonic });
             }
         } else if (matched = lineText.match(valueListRegex)) {
-            let type;
+            let kind;
             if (matched[1] === 'P') {
-                type = 'motor';
+                kind = 'motor';
             } else {
-                type = matched[1];
+                kind = matched[1];
             }
             const listIndex = parseInt(matched[2]);
-            const prevObj: any = objects[objects.length - 1];
-            if (prevObj['key'] === 'valueList' && prevObj['type'] === type) {
-                if (prevObj['index'] === listIndex - 1) {
-                    prevObj['list'].push(...(matched[3].trimEnd().split(' ').map(value => parseFloat(value))));
-                    prevObj['index'] = listIndex;
+            const prevNode: Node = nodes[nodes.length - 1];
+            if (prevNode.type === 'valueList' && prevNode.kind === kind) {
+                if (prevNode.index !== listIndex - 1) {
+                    vscode.window.showErrorMessage(`Inconsequent index of the value list: line ${lineIndex + 1}`);
+                    return undefined;
                 }
+                prevNode.values.push(...(matched[3].trimEnd().split(' ').map(value => parseFloat(value))));
+                prevNode.index = listIndex;
             } else {
-                if (listIndex === 0) {
-                    objects.push({ key: 'valueList', type: type, 'index': listIndex, 'list': matched[3].trimEnd().split(' ').map(value => parseFloat(value)) });
+                if (listIndex !== 0) {
+                    vscode.window.showErrorMessage(`The value list not starding with 0: line ${lineIndex + 1}`);
+                    return undefined;
                 }
+                nodes.push({ type: 'valueList', kind: kind, index: listIndex, values: matched[3].trimEnd().split(' ').map(value => parseFloat(value)) });
             }
         } else if (matched = lineText.match(scanRegex)) {
-            objects.push({ key: 'scan', value: matched[2], number: matched[3], code: matched[4] });
+            nodes.push({ type: 'scan', value: matched[2], index: parseInt(matched[3]), code: matched[4] });
         } else if (matched = lineText.match(scanNumberRegex)) {
             rowNumber = parseInt(matched[2]);
         } else if (matched = lineText.match(scanListRegex)) {
@@ -361,17 +364,18 @@ function parseTextDocument(contents: string) {
             // transpose 2D array
             if (data.length > 0) {
                 const data2 = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
-                objects.push({ key: 'scanList', rows: rowNumber, headers: headers, data: data2 });
+                nodes.push({ type: 'scanList', rows: rowNumber, headers: headers, data: data2 });
             } else {
-                objects.push({ key: 'scanList', rows: rowNumber, headers: headers, data: null });
+                nodes.push({ type: 'scanList', rows: rowNumber, headers: headers, data: null });
             }
-
+        } else if (matched = lineText.match(allRegex)) {
+            nodes.push({ type: 'unknown', kind: matched[1], value: matched[2] });
         }
     }
-    return objects;
+    return nodes;
 }
 
-function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, objects: any[]) {
+function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, nodes: Node[]) {
     let scanDescription = '';
     let nameLists: { [name: string]: string[] } = {};
     let mnemonicLists: { [name: string]: string[] } = {};
@@ -403,31 +407,42 @@ function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, o
         function hideElement(elemId, flag) {
             document.getElementById(elemId).hidden = flag;
         }
+        function resizeBody() {
+            for (let i = 0; i < ${maximumPlots}; i++) {
+                const specScanElement = document.getElementById("specScan" + i);
+                if (!specScanElement) {
+                    break;
+                }
+                Plotly.relayout("specScan" + i, { width: document.body.clientWidth * 0.9 });
+            }
+        }
     </script>
 </head>
-<body>
+<body onresize="resizeBody()">
 `;
 
     const footer = `</body>
 </html>
 `;
     let body = "";
-    for (const object of objects) {
-        if (object['key'] === 'file') {
-            body += `<h1>File: ${object['value']}</h1>`;
-        } else if (object['key'] === 'date') {
-            body += `<p>Date: ${object['value']}</p>`;
-        } else if (object['key'] === 'comment') {
-            body += `<p>Comment: ${object['value']}</p>`;
-        } else if (object['key'] === 'nameList') {
-            nameLists[object['type']] = object['list'];
-        } else if (object['key'] === 'mnemonicList') {
-            mnemonicLists[object['type']] = object['list'];
-        } else if (object['key'] === 'scan') {
-            scanDescription = object['value'];
-            body += `<h2>Scan ${object['number']}: <code>${object['code']}</code></h2>`;
-        } else if (object['key'] === 'valueList') {
-            const valueList = object['list'];
+    for (const node of nodes) {
+        if (node.type === 'file') {
+            body += `<h1>File: ${node.value}</h1>`;
+        } else if (node.type === 'date') {
+            body += `<p>Date: ${node.value}</p>`;
+        } else if (node.type === 'comment') {
+            body += `<p>Comment: ${node.value}</p>`;
+        } else if (node.type === 'nameList') {
+            if (node.mnemonic) {
+                mnemonicLists[node.kind] = node.values;
+            } else {
+                nameLists[node.kind] = node.values;
+            }
+        } else if (node.type === 'scan') {
+            scanDescription = node.value;
+            body += `<h2>Scan ${node.index}: <code>${node.code}</code></h2>`;
+        } else if (node.type === 'valueList') {
+            const valueList = node.values;
             const headerList = (headerType === 'Name') ? nameLists['motor'] : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : undefined;
             if (headerList && (headerList.length !== valueList.length)) {
                 body += '<p><em>The number of scan headers and data columns mismatched.</em></p>';
@@ -437,7 +452,7 @@ function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, o
 <label for="tableChckbox${tableInd}">Hide Table</label>
 </p>
 <table ${hideTable ? ' hidden' : ''} id="table${tableInd}">
-<caption>${object['type']}</caption>
+<caption>${node['type']}</caption>
 `;
                 tableInd++;
                 for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
@@ -457,9 +472,9 @@ function initWebviewContent(panel: vscode.WebviewPanel, plotlyUri: vscode.Uri, o
                 body += `</table>`;
             }
 
-        } else if (object['key'] === 'scanList') {
-            const data: number[][] | null = object['data'];
-            const rows: number = object['rows'];
+        } else if (node.type === 'scanList') {
+            const data: number[][] | null = node.data;
+            const rows: number = node.rows;
 
             // skip empty scan list (cancelled immediately after scan start)
             if (data === null) {
@@ -479,8 +494,8 @@ Plotly.newPlot("specScan${plotInd}", /* JSON object */ {
     layout: {
         width: document.body.clientWidth * 0.9,
         height: ${plotHeight},
-        xaxis: { title: "${object['headers'][0]}" },
-        yaxis: { title: "${object['headers'][rows - 1]}" },
+        xaxis: { title: "${node.headers[0]}" },
+        yaxis: { title: "${node.headers[rows - 1]}" },
         margin: { t:20, r: 20 }
     }
 })
@@ -488,6 +503,8 @@ Plotly.newPlot("specScan${plotInd}", /* JSON object */ {
 `;
                 plotInd++;
             }
+        // } else if (node.type === 'unknown') {
+        //     body += `<p> #${node.kind} ${node.value}`;
         }
     }
     // "title": "${scanDescription}",
