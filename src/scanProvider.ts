@@ -246,7 +246,9 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             panel.webview.onDidReceiveMessage(message => {
                 // console.log(message);
                 if (message.command === 'requestPlotAxesUpdate') {
-                    this.updatePlotAxes(sourceUri, message.occurance, message.indexes, message.labels);
+                    this.updatePlotAxes(sourceUri, message.occurance, message.indexes, false);
+                } else if (message.command === 'requestNewPlot') {
+                    this.updatePlotAxes(sourceUri, message.occurance, message.indexes, true);
                 }
             }, undefined, context.subscriptions);
 
@@ -275,22 +277,24 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         return true;
     }
 
-    private updatePlotAxes(sourceUri: vscode.Uri, occurance: number, indexes: number[], labels: number[]) {
+    private updatePlotAxes(sourceUri: vscode.Uri, occurance: number, indexes: [number, number], createNew: boolean) {
+        // occurance: number, indexes: number[], labels: number[]) {
         const preview = this.previews.find(preview => preview.uri.toString() === sourceUri.toString());
         if (preview && preview.tree) {
             const tree = preview.tree;
-            const node = tree.find(node => node.type === 'scanData' && node.occurance !== undefined && node.occurance === occurance);
-            if (node) {
-                const data = (<ScanDataNode>node).data;
+            const node = tree.find(node => node.occurance === occurance && node.type === 'scanData');
+            if (node && node.type === 'scanData') {
+                const data = node.data;
                 if (data && data.length) {
-                    const xIndex = indexes[0];
-                    const yIndex = indexes[1];
+                    const xIndex = (indexes[0] === -1) ? node.headers.length - 1 : indexes[0];
+                    const yIndex = (indexes[1] === -1) ? node.headers.length - 1 : indexes[1];
                     if (xIndex >= 0 && xIndex < data.length && yIndex >= 0 && yIndex < data.length) {
                         preview.panel.webview.postMessage({
                             command: 'updatePlotAxes',
                             elementId: `plotly${occurance}`,
                             data: [{ x: data[xIndex], y: data[yIndex] }],
-                            labels: labels
+                            labels: [node.headers[xIndex], node.headers[yIndex]],
+                            createNew: createNew
                         });
                     }
                 }
@@ -484,7 +488,7 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
     const hideTable: boolean = config.get('table.hide', true);
     const columnsPerLine: number = config.get('table.columnsPerLine', 8);
     const headerType: string = config.get('table.headerType', 'mnemonic');
-    const maximumPlots: number = config.get('plot.maximumNumberOfPlots', 50);
+    const maximumPlots: number = config.get('plot.maximumNumberOfPlots', 25);
     const plotHeight: number = config.get('plot.height', 400);
 
     // const themeKind = vscode.window.activeColorTheme.kind;
@@ -502,19 +506,30 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
     <script>
         const vscode = acquireVsCodeApi();
 
-        function onDidBodyResized() {
+        function onDidResizeBody() {
             const elements = document.body.getElementsByClassName('scanDataPlot');
             for (const element of elements) {
-                Plotly.relayout(element.id, { width: document.body.clientWidth * 0.9 });
+                if (element.hidden === false) {
+                    Plotly.relayout(element.id, { width: document.body.clientWidth * 0.9 });
+                }
             }
         }
 
-        function onDidCheckboxClicked(elemId, flag) {
+        function onDidClickHideTableCheckbox(elemId, flag) {
             document.getElementById(elemId).hidden = flag;
         }
 
-        function onDidPlotAxisSelectionChanged(occurance) {
-            
+        function onDidClickPlotItButton(occurance) {
+            vscode.postMessage({
+                command: 'requestNewPlot',
+                occurance: occurance,
+                indexes: [0, -1]
+            });
+            document.getElementById('plotAlert' + occurance).hidden = true;
+            document.getElementById('plotCtrl' + occurance).hidden = false;
+        }
+
+        function onDidChangePlotAxisSelection(occurance) {
             const xAxis = document.getElementById('selectX' + occurance);
             const yAxis = document.getElementById('selectY' + occurance);
 
@@ -540,34 +555,47 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
             } else if (message.command === 'updatePlotAxes') {
                 const element = document.getElementById(message.elementId);
                 if (element) {
-                    Plotly.react(element, {
-                        data: message.data,
-                        layout: {
-                            xaxis: { title: message.labels[0] },
-                            yaxis: { title: message.labels[1] },
-                            margin: { t:20, r: 20 }
-                        }
-                    });
+                    if (message.createNew) {
+                        element.hidden = false;
+                        Plotly.newPlot(element, {
+                            data: message.data,
+                            layout: {
+                                width: document.body.clientWidth * 0.9,
+                                height: ${plotHeight},
+                                xaxis: { title: message.labels[0] },
+                                yaxis: { title: message.labels[1] },
+                                margin: { t:20, r: 20 }
+                            }
+                        });
+                    } else {
+                        Plotly.react(element, {
+                            data: message.data,
+                            layout: {
+                                xaxis: { title: message.labels[0] },
+                                yaxis: { title: message.labels[1] },
+                                margin: { t:20, r: 20 }
+                            }
+                        });
+                    }
                 }
             }
         });
-
     </script>
 </head>
-<body onresize="onDidBodyResized()">
+<body onresize="onDidResizeBody()">
 `;
-    const printNodeId = function (node: Node) {
+    const getAttributesForNode = function (node: Node) {
         return `id="l${node.lineStart}" class="${node.type}"`;
     };
 
     let body = "";
     for (const node of nodes) {
         if (node.type === 'file') {
-            body += `<h1 ${printNodeId(node)}>File: ${node.value}</h1>`;
+            body += `<h1 ${getAttributesForNode(node)}>File: ${node.value}</h1>`;
         } else if (node.type === 'date') {
-            body += `<p ${printNodeId(node)}>Date: ${node.value}</p>`;
+            body += `<p ${getAttributesForNode(node)}>Date: ${node.value}</p>`;
         } else if (node.type === 'comment') {
-            body += `<p ${printNodeId(node)}>Comment: ${node.value}</p>`;
+            body += `<p ${getAttributesForNode(node)}>Comment: ${node.value}</p>`;
         } else if (node.type === 'nameList') {
             if (node.mnemonic) {
                 mnemonicLists[node.kind] = node.values;
@@ -576,16 +604,16 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
             }
         } else if (node.type === 'scanHead') {
             scanDescription = node.value;
-            body += `<h2 ${printNodeId(node)}>Scan ${node.index}: <code>${node.code}</code></h2>`;
+            body += `<h2 ${getAttributesForNode(node)}>Scan ${node.index}: <code>${node.code}</code></h2>`;
         } else if (node.type === 'valueList') {
             const valueList = node.values;
             const headerList = (headerType === 'Name') ? nameLists['motor'] : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : undefined;
-            body += `<div ${printNodeId(node)}>`;
+            body += `<div ${getAttributesForNode(node)}>`;
             if (headerList && (headerList.length !== valueList.length)) {
                 body += '<p><em>The number of scan headers and data columns mismatched.</em></p>';
             } else {
                 body += `<p>
-<input type="checkbox" ${hideTable ? ' checked' : ''} id="valueListCheckbox${node.occurance}" onclick="onDidCheckboxClicked('valueListTable${node.occurance}', this.checked)">
+<input type="checkbox" ${hideTable ? ' checked' : ''} id="valueListCheckbox${node.occurance}" onclick="onDidClickHideTableCheckbox('valueListTable${node.occurance}', this.checked)">
 <label for="valueListCheckbox${node.occurance}">Hide Table</label>
 </p>
 <table ${hideTable ? ' hidden' : ''} id="valueListTable${node.occurance}">
@@ -612,17 +640,15 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
             const data: number[][] | null = node.data;
             const rows: number = node.rows;
 
-            body += `<div ${printNodeId(node)}>`;
-            // skip empty scan list (cancelled immediately after scan start)
-            if (node.occurance && node.occurance >= maximumPlots) {
-                body += `<p><em>Too many Plots!</em> The plot is ommited for the performance reason.</p>`;
-                continue;
-            } else if (data && data.length) {
+            body += `<div ${getAttributesForNode(node)}>`;
+            if (data && data.length) {
+                const hiddenFlag = (node.occurance && node.occurance >= maximumPlots);
+                body += `<div id="plotCtrl${node.occurance}"${hiddenFlag ? ' hidden' : ''}>`;
                 const axes = ['x', 'y'];
                 for (let j = 0; j < axes.length; j++) {
                     const axis = axes[j];
                     body += `<label for="select${axis.toUpperCase()}${node.occurance}">${axis}:</label>
-<select id="select${axis.toUpperCase()}${node.occurance}" onchange="onDidPlotAxisSelectionChanged(${node.occurance})">`;
+    <select id="select${axis.toUpperCase()}${node.occurance}" onchange="onDidChangePlotAxisSelection(${node.occurance})">`;
                     for (let i = 0; i < node.headers.length; i++) {
                         const header = node.headers[i];
                         body += `<option${j === 0 ? (i === 0 ? ' selected' : '') : (i === node.headers.length - 1 ? ' selected' : '')}>${header}</option>`;
@@ -632,9 +658,14 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
                         body += '  ';
                     }
                 }
-
-                body += `<div id="plotly${node.occurance}" class="scanDataPlot"></div>`;
-                body += `<script>
+                body += `</div>`;
+                if (hiddenFlag) {
+                    body += `<div id="plotAlert${node.occurance}"><em>Too many Plots!</em> The plot is ommited for the performance reason.
+<button type="button" onclick="onDidClickPlotItButton(${node.occurance})">Plot It!</button></div>
+<div id="plotly${node.occurance}" class="scanDataPlot" hidden></div>`;
+                } else if (data && data.length) {
+                    body += `<div id="plotly${node.occurance}" class="scanDataPlot"></div>
+<script>
 Plotly.newPlot("plotly${node.occurance}", {
     data: [{
         x: ${JSON.stringify(data[0])},
@@ -648,8 +679,9 @@ Plotly.newPlot("plotly${node.occurance}", {
         margin: { t:20, r: 20 }
     }
 })
-</script>
-`;
+</script>`;
+                }
+
             }
             body += `</div>`;
             // } else if (node.type === 'unknown') {

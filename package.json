@@ -158,7 +158,7 @@
 					},
 					"vscode-spec-scan.preview.plot.maximumNumberOfPlots": {
 						"type": "number",
-						"default": 50,
+						"default": 25,
 						"minimum": 0,
 						"description": "Maximum number of graphs to be drawn. Overflowed graphs are not displayed. Making a preview containing large number of scans requires both long time and vast memory footprint."
 					},
