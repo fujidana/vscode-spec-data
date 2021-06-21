@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
-import { parse } from 'path';
 
 const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
 
@@ -108,7 +107,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 if (preview && preview.tree) {
                     const node = preview.tree.find(node => (node.lineEnd >= line));
                     if (node) {
-                        preview.panel.webview.postMessage({ command: 'scrollTo', elementId: `l${node.lineStart}`});
+                        preview.panel.webview.postMessage({ command: 'scrollToElement', elementId: `l${node.lineStart}` });
                     }
                 }
             }
@@ -125,7 +124,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 } else {
                     if (this.onDidChangeTextEditorVisibleRangesDisposable) {
                         const index = context.subscriptions.indexOf(this.onDidChangeTextEditorVisibleRangesDisposable);
-                        if (index >=0) {
+                        if (index >= 0) {
                             context.subscriptions.splice(index, 1);
                         }
                         this.onDidChangeTextEditorVisibleRangesDisposable.dispose();
@@ -148,7 +147,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditorListner),
             vscode.workspace.onDidChangeConfiguration(onDidChangeConfigurationListner)
         );
-        
+
         const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('vscode-spec-scan.preview').get('scrollPreviewWithEditor', false);
         if (scrollPreviewWithEditor) {
             this.onDidChangeTextEditorVisibleRangesDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(onDidChangeTextEditorVisibleRangesListener);
@@ -235,8 +234,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             panel.onDidDispose(() => {
                 vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', false);
                 // remove the closed preview from the array.
-                this.previews.filter(preview => preview !== newPreview);
-                if (this.livePreview && panel === this.livePreview.panel) {
+                if (this.livePreview && this.livePreview.panel === panel) {
                     this.livePreview = undefined;
                 }
             }, null, context.subscriptions);
@@ -244,6 +242,13 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             panel.onDidChangeViewState((event) => {
                 vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', event.webviewPanel.active);
             }, null, context.subscriptions);
+
+            panel.webview.onDidReceiveMessage(message => {
+                // console.log(message);
+                if (message.command === 'requestPlotAxesUpdate') {
+                    this.updatePlotAxes(sourceUri, message.occurance, message.indexes, message.labels);
+                }
+            }, undefined, context.subscriptions);
 
             this.updatePreview(newPreview, sourceUri, text);
 
@@ -268,6 +273,29 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.panel.webview.html = getWebviewContent(webview.cspSource, webview.asWebviewUri(this.plotlyJsUri), tree);
 
         return true;
+    }
+
+    private updatePlotAxes(sourceUri: vscode.Uri, occurance: number, indexes: number[], labels: number[]) {
+        const preview = this.previews.find(preview => preview.uri.toString() === sourceUri.toString());
+        if (preview && preview.tree) {
+            const tree = preview.tree;
+            const node = tree.find(node => node.type === 'scanData' && node.occurance !== undefined && node.occurance === occurance);
+            if (node) {
+                const data = (<ScanDataNode>node).data;
+                if (data && data.length) {
+                    const xIndex = indexes[0];
+                    const yIndex = indexes[1];
+                    if (xIndex >= 0 && xIndex < data.length && yIndex >= 0 && yIndex < data.length) {
+                        preview.panel.webview.postMessage({
+                            command: 'updatePlotAxes',
+                            elementId: `plotly${occurance}`,
+                            data: [{ x: data[xIndex], y: data[yIndex] }],
+                            labels: labels
+                        });
+                    }
+                }
+            }
+        }
     }
 
     private getActivePreview(): Preview | undefined {
@@ -472,21 +500,36 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="${plotlyUri}"></script>
     <script>
-        function hideElement(elemId, flag) {
-            document.getElementById(elemId).hidden = flag;
-        }
+        const vscode = acquireVsCodeApi();
 
-        function resizeBody() {
+        function onDidBodyResized() {
             const elements = document.body.getElementsByClassName('scanDataPlot');
             for (const element of elements) {
                 Plotly.relayout(element.id, { width: document.body.clientWidth * 0.9 });
             }
         }
 
+        function onDidCheckboxClicked(elemId, flag) {
+            document.getElementById(elemId).hidden = flag;
+        }
+
+        function onDidPlotAxisSelectionChanged(occurance) {
+            
+            const xAxis = document.getElementById('selectX' + occurance);
+            const yAxis = document.getElementById('selectY' + occurance);
+
+            vscode.postMessage({
+                command: 'requestPlotAxesUpdate',
+                occurance: occurance,
+                indexes: [xAxis.selectedIndex, yAxis.selectedIndex ],
+                labels: [xAxis.value, yAxis.value ],
+            });
+        }
+
         window.addEventListener('message', event => {
             const message = event.data;
 
-            if (message.command ===  'scrollTo') {
+            if (message.command === 'scrollToElement') {
                 const element = document.getElementById(message.elementId);
                 if (element) {
                     element.scrollIntoView({
@@ -494,14 +537,26 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
                         block: 'start'
                     });
                 }
+            } else if (message.command === 'updatePlotAxes') {
+                const element = document.getElementById(message.elementId);
+                if (element) {
+                    Plotly.react(element, {
+                        data: message.data,
+                        layout: {
+                            xaxis: { title: message.labels[0] },
+                            yaxis: { title: message.labels[1] },
+                            margin: { t:20, r: 20 }
+                        }
+                    });
+                }
             }
         });
 
     </script>
 </head>
-<body onresize="resizeBody()">
+<body onresize="onDidBodyResized()">
 `;
-    const printNodeId = function(node: Node) {
+    const printNodeId = function (node: Node) {
         return `id="l${node.lineStart}" class="${node.type}"`;
     };
 
@@ -530,7 +585,7 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
                 body += '<p><em>The number of scan headers and data columns mismatched.</em></p>';
             } else {
                 body += `<p>
-<input type="checkbox" ${hideTable ? ' checked' : ''} id="valueListCheckbox${node.occurance}" onclick="hideElement('valueListTable${node.occurance}', this.checked)">
+<input type="checkbox" ${hideTable ? ' checked' : ''} id="valueListCheckbox${node.occurance}" onclick="onDidCheckboxClicked('valueListTable${node.occurance}', this.checked)">
 <label for="valueListCheckbox${node.occurance}">Hide Table</label>
 </p>
 <table ${hideTable ? ' hidden' : ''} id="valueListTable${node.occurance}">
@@ -563,6 +618,21 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
                 body += `<p><em>Too many Plots!</em> The plot is ommited for the performance reason.</p>`;
                 continue;
             } else if (data && data.length) {
+                const axes = ['x', 'y'];
+                for (let j = 0; j < axes.length; j++) {
+                    const axis = axes[j];
+                    body += `<label for="select${axis.toUpperCase()}${node.occurance}">${axis}:</label>
+<select id="select${axis.toUpperCase()}${node.occurance}" onchange="onDidPlotAxisSelectionChanged(${node.occurance})">`;
+                    for (let i = 0; i < node.headers.length; i++) {
+                        const header = node.headers[i];
+                        body += `<option${j === 0 ? (i === 0 ? ' selected' : '') : (i === node.headers.length - 1 ? ' selected' : '')}>${header}</option>`;
+                    }
+                    body += `</select>`;
+                    if (j !== axes.length - 1) {
+                        body += '  ';
+                    }
+                }
+
                 body += `<div id="plotly${node.occurance}" class="scanDataPlot"></div>`;
                 body += `<script>
 Plotly.newPlot("plotly${node.occurance}", {
