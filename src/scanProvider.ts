@@ -4,15 +4,16 @@ import { parse } from 'path';
 
 const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
 
-type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanNode | ScanDataNode | UnknownNode;
-type FileNode = { type: 'file', line: number, value: string };
-type DateNode = { type: 'date', line: number, value: string };
-type CommentNode = { type: 'comment', line: number, value: string };
-type NameListNode = { type: 'nameList', line: number, kind: string, index: number, values: string[], mnemonic: boolean };
-type ValueListNode = { type: 'valueList', line: number, kind: string, index: number, values: number[] };
-type ScanNode = { type: 'scan', line: number, value: string, index: number, code: string };
-type ScanDataNode = { type: 'scanList', line: number, rows: number, headers: string[], data: number[][] | null };
-type UnknownNode = { type: 'unknown', line: number, kind: string, value: string };
+type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
+type BaseNode = { type: string, lineStart: number, lineEnd: number, occurance?: number };
+type FileNode = BaseNode & { type: 'file', value: string };
+type DateNode = BaseNode & { type: 'date', value: string };
+type CommentNode = BaseNode & { type: 'comment', value: string };
+type NameListNode = BaseNode & { type: 'nameList', kind: string, values: string[], mnemonic: boolean };
+type ValueListNode = BaseNode & { type: 'valueList', kind: string, values: number[] };
+type ScanHeadNode = BaseNode & { type: 'scanHead', value: string, index: number, code: string };
+type ScanDataNode = BaseNode & { type: 'scanData', rows: number, headers: string[], data: number[][] | null };
+type UnknownNode = BaseNode & { type: 'unknown', kind: string, value: string };
 
 interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
 
@@ -23,6 +24,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
     previews: Preview[] = [];
     livePreview: Preview | undefined = undefined;
     plotlyJsUri: vscode.Uri;
+    onDidChangeTextEditorVisibleRangesDisposable: vscode.Disposable | undefined;
 
     constructor(context: vscode.ExtensionContext) {
         this.plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
@@ -98,6 +100,42 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
+        const onDidChangeTextEditorVisibleRangesListener = (event: vscode.TextEditorVisibleRangesChangeEvent) => {
+            // event.textEditor.document.uri;
+            if (event.visibleRanges.length) {
+                const line = event.visibleRanges[0].start.line;
+                const preview = this.previews.find(preview => preview.uri.toString() === event.textEditor.document.uri.toString());
+                if (preview && preview.tree) {
+                    const node = preview.tree.find(node => (node.lineEnd >= line));
+                    if (node) {
+                        preview.panel.webview.postMessage({ command: 'scrollTo', elementId: `l${node.lineStart}`});
+                    }
+                }
+            }
+        };
+
+        const onDidChangeConfigurationListner = (event: vscode.ConfigurationChangeEvent) => {
+            if (event.affectsConfiguration('vscode-spec-scan.preview.scrollPreviewWithEditor')) {
+                const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('vscode-spec-scan.preview').get('scrollPreviewWithEditor', false);
+                if (scrollPreviewWithEditor) {
+                    if (!this.onDidChangeTextEditorVisibleRangesDisposable) {
+                        this.onDidChangeTextEditorVisibleRangesDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(onDidChangeTextEditorVisibleRangesListener);
+                        context.subscriptions.push(this.onDidChangeTextEditorVisibleRangesDisposable);
+                    }
+                } else {
+                    if (this.onDidChangeTextEditorVisibleRangesDisposable) {
+                        const index = context.subscriptions.indexOf(this.onDidChangeTextEditorVisibleRangesDisposable);
+                        if (index >=0) {
+                            context.subscriptions.splice(index, 1);
+                        }
+                        this.onDidChangeTextEditorVisibleRangesDisposable.dispose();
+                    };
+                    this.onDidChangeTextEditorVisibleRangesDisposable = undefined;
+                }
+                console.log(context.subscriptions.length);
+            }
+        };
+
         // register providers and commands
         context.subscriptions.push(
             vscode.commands.registerCommand('vscode-spec-scan.showPreview', showPreviewCommand),
@@ -107,8 +145,15 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.commands.registerCommand('vscode-spec-scan.togglePreviewLock', togglePreviewLockCommand),
             vscode.languages.registerFoldingRangeProvider(SCAN_SELECTOR, this),
             vscode.languages.registerDocumentSymbolProvider(SCAN_SELECTOR, this),
-            vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditorListner)
+            vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditorListner),
+            vscode.workspace.onDidChangeConfiguration(onDidChangeConfigurationListner)
         );
+        
+        const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('vscode-spec-scan.preview').get('scrollPreviewWithEditor', false);
+        if (scrollPreviewWithEditor) {
+            this.onDidChangeTextEditorVisibleRangesDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(onDidChangeTextEditorVisibleRangesListener);
+            context.subscriptions.push(this.onDidChangeTextEditorVisibleRangesDisposable);
+        }
     }
 
     /**
@@ -220,17 +265,13 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.uri = sourceUri;
         preview.tree = tree;
         preview.panel.title = `${label} ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
-        preview.panel.webview.html = getPreviewHtml(webview.cspSource, webview.asWebviewUri(this.plotlyJsUri), tree);
+        preview.panel.webview.html = getWebviewContent(webview.cspSource, webview.asWebviewUri(this.plotlyJsUri), tree);
 
         return true;
     }
 
     private getActivePreview(): Preview | undefined {
-        for (const preview of this.previews) {
-            if (preview.panel.active) {
-                return preview;
-            }
-        }
+        return this.previews.find(preview => preview.panel.active);
     }
 }
 
@@ -261,29 +302,44 @@ function getUriAndText(args: unknown[]): [vscode.Uri | undefined, string | undef
 function parseScanFileContents(text: string): Node[] | undefined {
     const lines = text.split('\n');
     const lineCount = lines.length;
+
     const fileRegex = /^(#F) (.*)$/;
     const dateRegex = /^(#D) (.*)$/;
     const commentRegex = /^(#C) (.*)$/;
     const nameListRegex = /^(?:#([OJoj])([0-9]+)) (.*)$/;
     const valueListRegex = /^(?:#([P])([0-9]+)) (.*)$/;
-    const scanRegex = /^(#S) (([0-9]+) (.*))$/;
+    const scanHeadRegex = /^(#S) (([0-9]+) (.*))$/;
     const scanNumberRegex = /^(#N) ([0-9]+)$/;
-    const scanListRegex = /^(#L) (.*)$/;
+    const scanDataRegex = /^(#L) (.*)$/;
     const allRegex = /^#([a-zA-Z][0-9]*) (.*)$/;
     const emptyLineRegex = /^\s*$/;
 
     let matched: RegExpMatchArray | null;
+    let prevNodeIndex = -1;
     let rowNumber = 0;
     const nodes: Node[] = [];
+
+    let fileOccurance = 0;
+    let dateOccurance = 0;
+    let commentOccurance = 0;
+    // let nameListOccurance = 0;
+    let valueListOccuracne = 0;
+    let scanHeadOccurance = 0;
+    // let scanNumberOccurance = 0;
+    let scanDataOccurance = 0;
+    // let  unknownOccurance = 0;
 
     for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
         const lineText = lines[lineIndex];
         if (matched = lineText.match(fileRegex)) {
-            nodes.push({ type: 'file', line: lineIndex, value: matched[2] });
+            nodes.push({ type: 'file', lineStart: lineIndex, lineEnd: lineIndex, occurance: fileOccurance, value: matched[2] });
+            fileOccurance++;
         } else if (matched = lineText.match(dateRegex)) {
-            nodes.push({ type: 'date', line: lineIndex, value: matched[2] });
+            nodes.push({ type: 'date', lineStart: lineIndex, lineEnd: lineIndex, occurance: dateOccurance, value: matched[2] });
+            dateOccurance++;
         } else if (matched = lineText.match(commentRegex)) {
-            nodes.push({ type: 'comment', line: lineIndex, value: matched[2] });
+            nodes.push({ type: 'comment', lineStart: lineIndex, lineEnd: lineIndex, occurance: commentOccurance, value: matched[2] });
+            commentOccurance++;
         } else if (matched = lineText.match(nameListRegex)) {
             let kind, isMnemonic, separator;
             if (matched[1] === matched[1].toLowerCase()) {
@@ -301,20 +357,22 @@ function parseScanFileContents(text: string): Node[] | undefined {
                 kind = matched[1];
             }
             const listIndex = parseInt(matched[2]);
-            const prevNode: Node = nodes[nodes.length - 1];
+            const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
             if (prevNode && prevNode.type === 'nameList' && prevNode.kind === kind && prevNode.mnemonic === isMnemonic) {
-                if (prevNode.index !== listIndex - 1) {
+                if (prevNodeIndex !== listIndex - 1) {
                     vscode.window.showErrorMessage(`Inconsequent index of the name list: line ${lineIndex + 1}`);
                     return undefined;
                 }
                 prevNode.values.push(...(matched[3].trimEnd().split(separator)));
-                prevNode.index = listIndex;
+                prevNode.lineEnd = lineIndex;
+                prevNodeIndex = listIndex;
             } else {
                 if (listIndex !== 0) {
                     vscode.window.showErrorMessage(`The name list not starding with 0: line ${lineIndex + 1}`);
                     return undefined;
                 }
-                nodes.push({ type: 'nameList', line: lineIndex, kind: kind, index: listIndex, values: matched[3].trimEnd().split(separator), mnemonic: isMnemonic });
+                nodes.push({ type: 'nameList', lineStart: lineIndex, lineEnd: lineIndex, kind: kind, values: matched[3].trimEnd().split(separator), mnemonic: isMnemonic });
+                prevNodeIndex = 0;
             }
         } else if (matched = lineText.match(valueListRegex)) {
             let kind;
@@ -324,26 +382,30 @@ function parseScanFileContents(text: string): Node[] | undefined {
                 kind = matched[1];
             }
             const listIndex = parseInt(matched[2]);
-            const prevNode: Node = nodes[nodes.length - 1];
-            if (prevNode.type === 'valueList' && prevNode.kind === kind) {
-                if (prevNode.index !== listIndex - 1) {
+            const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
+            if (prevNode && prevNode.type === 'valueList' && prevNode.kind === kind) {
+                if (prevNodeIndex !== listIndex - 1) {
                     vscode.window.showErrorMessage(`Inconsequent index of the value list: line ${lineIndex + 1}`);
                     return undefined;
                 }
                 prevNode.values.push(...(matched[3].trimEnd().split(' ').map(value => parseFloat(value))));
-                prevNode.index = listIndex;
+                prevNode.lineEnd = lineIndex;
+                prevNodeIndex = listIndex;
             } else {
                 if (listIndex !== 0) {
                     vscode.window.showErrorMessage(`The value list not starding with 0: line ${lineIndex + 1}`);
                     return undefined;
                 }
-                nodes.push({ type: 'valueList', line: lineIndex, kind: kind, index: listIndex, values: matched[3].trimEnd().split(' ').map(value => parseFloat(value)) });
+                nodes.push({ type: 'valueList', lineStart: lineIndex, lineEnd: lineIndex, occurance: valueListOccuracne, kind: kind, values: matched[3].trimEnd().split(' ').map(value => parseFloat(value)) });
+                valueListOccuracne++;
+                prevNodeIndex = 0;
             }
-        } else if (matched = lineText.match(scanRegex)) {
-            nodes.push({ type: 'scan', line: lineIndex, value: matched[2], index: parseInt(matched[3]), code: matched[4] });
+        } else if (matched = lineText.match(scanHeadRegex)) {
+            nodes.push({ type: 'scanHead', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanHeadOccurance, value: matched[2], index: parseInt(matched[3]), code: matched[4] });
+            scanHeadOccurance++;
         } else if (matched = lineText.match(scanNumberRegex)) {
             rowNumber = parseInt(matched[2]);
-        } else if (matched = lineText.match(scanListRegex)) {
+        } else if (matched = lineText.match(scanDataRegex)) {
             // The separator between motors and counters are 4 whitespaces.
             // The separator between respective motors and counters are 2 whitespaces.
             const headersMotCnt = matched[2].split('    ', 2);
@@ -352,8 +414,9 @@ function parseScanFileContents(text: string): Node[] | undefined {
                 vscode.window.showErrorMessage(`Scan number mismatched (header): line ${lineIndex + 1}`);
                 return undefined;
             }
-            const dataNode: ScanDataNode = { type: 'scanList', line: lineIndex, rows: rowNumber, headers: headers, data: null };
+            const dataNode: ScanDataNode = { type: 'scanData', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanDataOccurance, rows: rowNumber, headers: headers, data: null };
             nodes.push(dataNode);
+            scanDataOccurance++;
 
             // read succeeding lines until EOF or non-data line.
             const data: number[][] = [];
@@ -376,19 +439,18 @@ function parseScanFileContents(text: string): Node[] | undefined {
             if (data.length > 0) {
                 dataNode.data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
             }
+            dataNode.lineEnd = lineIndex;
         } else if (matched = lineText.match(allRegex)) {
-            nodes.push({ type: 'unknown', line: lineIndex, kind: matched[1], value: matched[2] });
+            nodes.push({ type: 'unknown', lineStart: lineIndex, lineEnd: lineIndex, kind: matched[1], value: matched[2] });
         }
     }
     return nodes;
 }
 
-function getPreviewHtml(cspSource: string, plotlyUri: vscode.Uri, nodes: Node[]): string {
+function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node[]): string {
     let scanDescription = '';
     let nameLists: { [name: string]: string[] } = {};
     let mnemonicLists: { [name: string]: string[] } = {};
-    let tableInd = 0;
-    let plotInd = 0;
 
     const config = vscode.workspace.getConfiguration('vscode-spec-scan.preview');
     const hideTable: boolean = config.get('table.hide', true);
@@ -413,50 +475,67 @@ function getPreviewHtml(cspSource: string, plotlyUri: vscode.Uri, nodes: Node[])
         function hideElement(elemId, flag) {
             document.getElementById(elemId).hidden = flag;
         }
+
         function resizeBody() {
-            for (let i = 0; i < ${maximumPlots}; i++) {
-                const specScanElement = document.getElementById("specScan" + i);
-                if (!specScanElement) {
-                    break;
-                }
-                Plotly.relayout("specScan" + i, { width: document.body.clientWidth * 0.9 });
+            const elements = document.body.getElementsByClassName('scanDataPlot');
+            for (const element of elements) {
+                Plotly.relayout(element.id, { width: document.body.clientWidth * 0.9 });
             }
         }
+
+        window.addEventListener('message', event => {
+            const message = event.data;
+
+            if (message.command ===  'scrollTo') {
+                const element = document.getElementById(message.elementId);
+                if (element) {
+                    element.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            }
+        });
+
     </script>
 </head>
 <body onresize="resizeBody()">
 `;
+    const printNodeId = function(node: Node) {
+        return `id="l${node.lineStart}" class="${node.type}"`;
+    };
+
     let body = "";
     for (const node of nodes) {
         if (node.type === 'file') {
-            body += `<h1>File: ${node.value}</h1>`;
+            body += `<h1 ${printNodeId(node)}>File: ${node.value}</h1>`;
         } else if (node.type === 'date') {
-            body += `<p>Date: ${node.value}</p>`;
+            body += `<p ${printNodeId(node)}>Date: ${node.value}</p>`;
         } else if (node.type === 'comment') {
-            body += `<p>Comment: ${node.value}</p>`;
+            body += `<p ${printNodeId(node)}>Comment: ${node.value}</p>`;
         } else if (node.type === 'nameList') {
             if (node.mnemonic) {
                 mnemonicLists[node.kind] = node.values;
             } else {
                 nameLists[node.kind] = node.values;
             }
-        } else if (node.type === 'scan') {
+        } else if (node.type === 'scanHead') {
             scanDescription = node.value;
-            body += `<h2>Scan ${node.index}: <code>${node.code}</code></h2>`;
+            body += `<h2 ${printNodeId(node)}>Scan ${node.index}: <code>${node.code}</code></h2>`;
         } else if (node.type === 'valueList') {
             const valueList = node.values;
             const headerList = (headerType === 'Name') ? nameLists['motor'] : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : undefined;
+            body += `<div ${printNodeId(node)}>`;
             if (headerList && (headerList.length !== valueList.length)) {
                 body += '<p><em>The number of scan headers and data columns mismatched.</em></p>';
             } else {
                 body += `<p>
-<input type="checkbox" ${hideTable ? ' checked' : ''} id="tableChckbox${tableInd}" onclick="hideElement('table${tableInd}', this.checked)">
-<label for="tableChckbox${tableInd}">Hide Table</label>
+<input type="checkbox" ${hideTable ? ' checked' : ''} id="valueListCheckbox${node.occurance}" onclick="hideElement('valueListTable${node.occurance}', this.checked)">
+<label for="valueListCheckbox${node.occurance}">Hide Table</label>
 </p>
-<table ${hideTable ? ' hidden' : ''} id="table${tableInd}">
-<caption>${node['type']}</caption>
+<table ${hideTable ? ' hidden' : ''} id="valueListTable${node.occurance}">
+<caption>${node.kind}</caption>
 `;
-                tableInd++;
                 for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
                     if (headerList) {
                         body += `<tr>`;
@@ -473,22 +552,20 @@ function getPreviewHtml(cspSource: string, plotlyUri: vscode.Uri, nodes: Node[])
                 }
                 body += `</table>`;
             }
-
-        } else if (node.type === 'scanList') {
+            body += `</div>`;
+        } else if (node.type === 'scanData') {
             const data: number[][] | null = node.data;
             const rows: number = node.rows;
 
+            body += `<div ${printNodeId(node)}>`;
             // skip empty scan list (cancelled immediately after scan start)
-            if (data === null) {
-                continue;
-            } else if (plotInd >= maximumPlots) {
+            if (node.occurance && node.occurance >= maximumPlots) {
                 body += `<p><em>Too many Plots!</em> The plot is ommited for the performance reason.</p>`;
                 continue;
-            }
-            body += `<div id="specScan${plotInd}"></div>`;
-            if (data.length > 0) {
+            } else if (data && data.length) {
+                body += `<div id="plotly${node.occurance}" class="scanDataPlot"></div>`;
                 body += `<script>
-Plotly.newPlot("specScan${plotInd}", /* JSON object */ {
+Plotly.newPlot("plotly${node.occurance}", {
     data: [{
         x: ${JSON.stringify(data[0])},
         y: ${JSON.stringify(data[rows - 1])}
@@ -503,8 +580,8 @@ Plotly.newPlot("specScan${plotInd}", /* JSON object */ {
 })
 </script>
 `;
-                plotInd++;
             }
+            body += `</div>`;
             // } else if (node.type === 'unknown') {
             //     body += `<p> #${node.kind} ${node.value}`;
         }
