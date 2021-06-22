@@ -133,7 +133,7 @@
 				}
 			]
 		},
-		"keybindings":[
+		"keybindings": [
 			{
 				"command": "vscode-spec-scan.showPreview",
 				"key": "ctrl+shift+v",
@@ -147,14 +147,19 @@
 				"when": "!notebookEditorFocused && editorLangId == 'spec-scan'"
 			}
 		],
-		"configuration":[
+		"configuration": [
 			{
 				"title": "spec scan",
 				"properties": {
 					"vscode-spec-scan.preview.scrollPreviewWithEditor": {
 						"type": "boolean",
-						"default": false,
+						"default": true,
 						"description": "Synchronizes page scroll of preview with that of editor."
+					},
+					"vscode-spec-scan.preview.retainContextWhenHidden": {
+						"type": "boolean",
+						"default": false,
+						"description": "Controls whether the preview content remains in memory when the view is hidden. Enabling this option potentially requires high memory overhead. A change in this option does not affect previews currently open."
 					},
 					"vscode-spec-scan.preview.plot.maximumNumberOfPlots": {
 						"type": "number",

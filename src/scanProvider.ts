@@ -4,15 +4,15 @@ import { TextDecoder } from 'util';
 const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
 
 type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
-type BaseNode = { type: string, lineStart: number, lineEnd: number, occurance?: number };
-type FileNode = BaseNode & { type: 'file', value: string };
-type DateNode = BaseNode & { type: 'date', value: string };
-type CommentNode = BaseNode & { type: 'comment', value: string };
-type NameListNode = BaseNode & { type: 'nameList', kind: string, values: string[], mnemonic: boolean };
-type ValueListNode = BaseNode & { type: 'valueList', kind: string, values: number[] };
-type ScanHeadNode = BaseNode & { type: 'scanHead', value: string, index: number, code: string };
-type ScanDataNode = BaseNode & { type: 'scanData', rows: number, headers: string[], data: number[][] | null };
-type UnknownNode = BaseNode & { type: 'unknown', kind: string, value: string };
+interface BaseNode { type: string, lineStart: number, lineEnd: number, occurance?: number }
+interface FileNode extends BaseNode { type: 'file', value: string }
+interface DateNode extends BaseNode { type: 'date', value: string }
+interface CommentNode extends BaseNode  { type: 'comment', value: string }
+interface NameListNode extends BaseNode { type: 'nameList', kind: string, values: string[], mnemonic: boolean }
+interface ValueListNode extends BaseNode { type: 'valueList', kind: string, values: number[] }
+interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
+interface ScanDataNode extends BaseNode { type: 'scanData', rows: number, headers: string[], data?: number[][] }
+interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
 interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
 
@@ -115,7 +115,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         const onDidChangeConfigurationListner = (event: vscode.ConfigurationChangeEvent) => {
             if (event.affectsConfiguration('vscode-spec-scan.preview.scrollPreviewWithEditor')) {
-                const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('vscode-spec-scan.preview').get('scrollPreviewWithEditor', false);
+                const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('vscode-spec-scan.preview').get('scrollPreviewWithEditor', true);
                 if (scrollPreviewWithEditor) {
                     if (!this.onDidChangeTextEditorVisibleRangesDisposable) {
                         this.onDidChangeTextEditorVisibleRangesDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(onDidChangeTextEditorVisibleRangesListener);
@@ -148,7 +148,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.workspace.onDidChangeConfiguration(onDidChangeConfigurationListner)
         );
 
-        const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('vscode-spec-scan.preview').get('scrollPreviewWithEditor', false);
+        const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('vscode-spec-scan.preview').get('scrollPreviewWithEditor', true);
         if (scrollPreviewWithEditor) {
             this.onDidChangeTextEditorVisibleRangesDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(onDidChangeTextEditorVisibleRangesListener);
             context.subscriptions.push(this.onDidChangeTextEditorVisibleRangesDisposable);
@@ -217,6 +217,9 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             this.livePreview.panel.reveal();
             return true;
         } else {
+            const config = vscode.workspace.getConfiguration('vscode-spec-scan.preview');
+            const retainContextWhenHidden: boolean = config.get('retainContextWhenHidden', false);
+
             // Else create a new panel as a live panel.
             const panel = vscode.window.createWebviewPanel(
                 'specScanPreview',
@@ -224,7 +227,8 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
                 {
                     localResourceRoots: [context.extensionUri],
-                    enableScripts: true
+                    enableScripts: true,
+                    retainContextWhenHidden: retainContextWhenHidden
                 }
             );
             const newPreview = { uri: sourceUri, panel: panel };
@@ -340,7 +344,7 @@ function parseScanFileContents(text: string): Node[] | undefined {
     const commentRegex = /^(#C) (.*)$/;
     const nameListRegex = /^(?:#([OJoj])([0-9]+)) (.*)$/;
     const valueListRegex = /^(?:#([P])([0-9]+)) (.*)$/;
-    const scanHeadRegex = /^(#S) (([0-9]+) (.*))$/;
+    const scanHeadRegex = /^(#S) ([0-9]+) (.*)$/;
     const scanNumberRegex = /^(#N) ([0-9]+)$/;
     const scanDataRegex = /^(#L) (.*)$/;
     const allRegex = /^#([a-zA-Z][0-9]*) (.*)$/;
@@ -433,7 +437,7 @@ function parseScanFileContents(text: string): Node[] | undefined {
                 prevNodeIndex = 0;
             }
         } else if (matched = lineText.match(scanHeadRegex)) {
-            nodes.push({ type: 'scanHead', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanHeadOccurance, value: matched[2], index: parseInt(matched[3]), code: matched[4] });
+            nodes.push({ type: 'scanHead', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanHeadOccurance, index: parseInt(matched[2]), code: matched[3] });
             scanHeadOccurance++;
         } else if (matched = lineText.match(scanNumberRegex)) {
             rowNumber = parseInt(matched[2]);
@@ -446,7 +450,7 @@ function parseScanFileContents(text: string): Node[] | undefined {
                 vscode.window.showErrorMessage(`Scan number mismatched (header): line ${lineIndex + 1}`);
                 return undefined;
             }
-            const dataNode: ScanDataNode = { type: 'scanData', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanDataOccurance, rows: rowNumber, headers: headers, data: null };
+            const dataNode: ScanDataNode = { type: 'scanData', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanDataOccurance, rows: rowNumber, headers: headers };
             nodes.push(dataNode);
             scanDataOccurance++;
 
@@ -480,7 +484,6 @@ function parseScanFileContents(text: string): Node[] | undefined {
 }
 
 function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node[]): string {
-    let scanDescription = '';
     let nameLists: { [name: string]: string[] } = {};
     let mnemonicLists: { [name: string]: string[] } = {};
 
@@ -603,7 +606,6 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
                 nameLists[node.kind] = node.values;
             }
         } else if (node.type === 'scanHead') {
-            scanDescription = node.value;
             body += `<h2 ${getAttributesForNode(node)}>Scan ${node.index}: <code>${node.code}</code></h2>`;
         } else if (node.type === 'valueList') {
             const valueList = node.values;
@@ -637,7 +639,7 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
             }
             body += `</div>`;
         } else if (node.type === 'scanData') {
-            const data: number[][] | null = node.data;
+            const data: number[][] | undefined = node.data;
             const rows: number = node.rows;
 
             body += `<div ${getAttributesForNode(node)}>`;
@@ -693,6 +695,5 @@ Plotly.newPlot("plotly${node.occurance}", {
     </html>
     `;
 
-    // "title": "${scanDescription}",
     return header + body;
 }
