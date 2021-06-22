@@ -4,7 +4,7 @@ export const dark = {
             "type": "scatter",
             "line": {
                 "color": "#88CCFF"
-            },
+            }
         }
     ], "layout": {
         "plot_bgcolor": "#1E1E1E",
@@ -33,7 +33,7 @@ export const highContast = {
             "type": "scatter",
             "line": {
                 "color": "#FFF"
-            },
+            }
         }
     ], "layout": {
         "plot_bgcolor": "#000",

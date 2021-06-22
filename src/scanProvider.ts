@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
 import * as plotTemplate from './plotTemplate';
+import merge = require('lodash.merge');
 
 const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
 
@@ -495,15 +496,26 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
     const maximumPlots: number = config.get('plot.maximumNumberOfPlots', 25);
     const plotHeight: number = config.get('plot.height', 400);
 
-    const themeKind = vscode.window.activeColorTheme.kind;
-    let template: { data: object[], layout: object };
-    if (themeKind === vscode.ColorThemeKind.Dark) {
-        template = plotTemplate.dark;
-    } else if (themeKind === vscode.ColorThemeKind.HighContrast) {
-        template = plotTemplate.highContast;
-    } else {
-        template = plotTemplate.light;
+    type PlotlyTemplate = { data: object[], layout: object };
+    let systemTemplate: PlotlyTemplate;
+    let userTemplate: PlotlyTemplate | undefined;
+
+    switch (vscode.window.activeColorTheme.kind) {
+        case vscode.ColorThemeKind.Dark:
+            systemTemplate = plotTemplate.dark;
+            userTemplate = config.get('plot.template.dark');
+            break;
+        case vscode.ColorThemeKind.HighContrast:
+            systemTemplate = plotTemplate.highContast;
+            userTemplate = config.get('plot.template.highContrast');
+            break;
+        default:
+            systemTemplate = plotTemplate.light;
+            userTemplate = config.get('plot.template.light');
     }
+
+    const userTemplateIsEmpty = !userTemplate || Object.keys(userTemplate).length === 0 || (userTemplate.data.length === 0 && Object.keys(userTemplate.layout).length === 0);
+    const template = userTemplateIsEmpty ? systemTemplate : merge({}, systemTemplate, userTemplate);
 
     const header = `<!DOCTYPE html>
 <html lang="en">
