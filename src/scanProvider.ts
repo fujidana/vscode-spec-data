@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
+import * as plotTemplate from './plotTemplate';
 
 const SCAN_SELECTOR = { scheme: 'file', language: 'spec-scan' };
 
@@ -494,7 +495,15 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
     const maximumPlots: number = config.get('plot.maximumNumberOfPlots', 25);
     const plotHeight: number = config.get('plot.height', 400);
 
-    // const themeKind = vscode.window.activeColorTheme.kind;
+    const themeKind = vscode.window.activeColorTheme.kind;
+    let template: { data: object[], layout: object };
+    if (themeKind === vscode.ColorThemeKind.Dark) {
+        template = plotTemplate.dark;
+    } else if (themeKind === vscode.ColorThemeKind.HighContrast) {
+        template = plotTemplate.highContast;
+    } else {
+        template = plotTemplate.light;
+    }
 
     const header = `<!DOCTYPE html>
 <html lang="en">
@@ -508,6 +517,8 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
     <script src="${plotlyUri}"></script>
     <script>
         const vscode = acquireVsCodeApi();
+
+        const template = Plotly.makeTemplate(${JSON.stringify(template)});
 
         function onDidResizeBody() {
             const elements = document.body.getElementsByClassName('scanDataPlot');
@@ -563,6 +574,7 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
                         Plotly.newPlot(element, {
                             data: message.data,
                             layout: {
+                                template: template,
                                 width: document.body.clientWidth * 0.9,
                                 height: ${plotHeight},
                                 xaxis: { title: message.labels[0] },
@@ -674,6 +686,7 @@ Plotly.newPlot("plotly${node.occurance}", {
         y: ${JSON.stringify(data[rows - 1])}
     }],
     layout: {
+        template: template,
         width: document.body.clientWidth * 0.9,
         height: ${plotHeight},
         xaxis: { title: "${node.headers[0]}" },
