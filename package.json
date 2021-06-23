@@ -76,7 +76,7 @@
 			"explorer/context": [
 				{
 					"command": "vscode-spec-scan.showPreview",
-					"when": "resourceLangId == spec-scan",
+					"when": "isWorkspaceTrusted && resourceLangId == spec-scan",
 					"group": "navigation"
 				}
 			],
@@ -84,52 +84,52 @@
 				{
 					"command": "vscode-spec-scan.showPreviewToSide",
 					"alt": "vscode-spec-scan.showPreview",
-					"when": "editorLangId == spec-scan",
+					"when": "isWorkspaceTrusted && editorLangId == spec-scan",
 					"group": "navigation"
 				},
 				{
 					"command": "vscode-spec-scan.showSource",
 					"group": "navigation",
-					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
 				},
 				{
 					"command": "vscode-spec-scan.refreshPreview",
 					"group": "2_specscan",
-					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
 				},
 				{
 					"command": "vscode-spec-scan.togglePreviewLock",
 					"group": "2_specscan",
-					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
 				}
 			],
 			"editor/title/context": [
 				{
 					"command": "vscode-spec-scan.showPreview",
-					"when": "resourceLangId == spec-scan",
+					"when": "isWorkspaceTrusted && resourceLangId == spec-scan",
 					"group": "3_preview"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "vscode-spec-scan.showPreview",
-					"when": "editorLangId == spec-scan"
+					"when": "isWorkspaceTrusted && editorLangId == spec-scan"
 				},
 				{
 					"command": "vscode-spec-scan.showPreviewToSide",
-					"when": "editorLangId == spec-scan"
+					"when": "isWorkspaceTrusted && editorLangId == spec-scan"
 				},
 				{
 					"command": "vscode-spec-scan.showSource",
-					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
 				},
 				{
 					"command": "vscode-spec-scan.refreshPreview",
-					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
 				},
 				{
 					"command": "vscode-spec-scan.togglePreviewLock",
-					"when": "resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
 				}
 			]
 		},
@@ -138,89 +138,98 @@
 				"command": "vscode-spec-scan.showPreview",
 				"key": "ctrl+shift+v",
 				"mac": "cmd+shift+v",
-				"when": "!notebookEditorFocused && editorLangId == 'spec-scan'"
+				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId == 'spec-scan'"
 			},
 			{
 				"command": "vscode-spec-scan.showPreviewToSide",
 				"key": "ctrl+k v",
 				"mac": "cmd+k v",
-				"when": "!notebookEditorFocused && editorLangId == 'spec-scan'"
+				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId == 'spec-scan'"
 			}
 		],
-		"configuration": [
-			{
-				"title": "spec scan",
-				"properties": {
-					"vscode-spec-scan.preview.scrollPreviewWithEditor": {
-						"type": "boolean",
-						"default": true,
-						"description": "Synchronizes page scroll of preview with that of editor."
+		"configuration": {
+			"title": "spec scan",
+			"properties": {
+				"vscode-spec-scan.preview.scrollPreviewWithEditor": {
+					"type": "boolean",
+					"default": true,
+					"description": "Synchronizes page scroll of preview with that of editor."
+				},
+				"vscode-spec-scan.preview.retainContextWhenHidden": {
+					"type": "boolean",
+					"default": false,
+					"description": "Controls whether the preview content remains in memory when the view is hidden. Enabling this option potentially requires high memory overhead. A change in this option does not affect previews already open."
+				},
+				"vscode-spec-scan.preview.plot.maximumNumberOfPlots": {
+					"type": "number",
+					"default": 25,
+					"minimum": 0,
+					"description": "Maximum number of graphs to be drawn. Overflowed graphs are not displayed. Making a preview containing large number of scans requires both long time and vast memory footprint."
+				},
+				"vscode-spec-scan.preview.plot.height": {
+					"type": "number",
+					"default": 400,
+					"minimum": 200,
+					"description": "Height of the respective graphs."
+				},
+				"vscode-spec-scan.preview.plot.template.light": {
+					"type": "object",
+					"default": {
+						"data": [],
+						"layout": {}
 					},
-					"vscode-spec-scan.preview.retainContextWhenHidden": {
-						"type": "boolean",
-						"default": false,
-						"description": "Controls whether the preview content remains in memory when the view is hidden. Enabling this option potentially requires high memory overhead. A change in this option does not affect previews already open."
+					"markdownDescription": "Controls plot appearance for _light_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
+				},
+				"vscode-spec-scan.preview.plot.template.dark": {
+					"type": "object",
+					"default": {
+						"data": [],
+						"layout": {}
 					},
-					"vscode-spec-scan.preview.plot.maximumNumberOfPlots": {
-						"type": "number",
-						"default": 25,
-						"minimum": 0,
-						"description": "Maximum number of graphs to be drawn. Overflowed graphs are not displayed. Making a preview containing large number of scans requires both long time and vast memory footprint."
+					"markdownDescription": "Controls plot appearance for _dark_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
+				},
+				"vscode-spec-scan.preview.plot.template.highContrast": {
+					"type": "object",
+					"default": {
+						"data": [],
+						"layout": {}
 					},
-					"vscode-spec-scan.preview.plot.height": {
-						"type": "number",
-						"default": 400,
-						"minimum": 200,
-						"description": "Height of the respective graphs."
-					},
-					"vscode-spec-scan.preview.plot.template.light": {
-						"type": "object",
-						"default": {
-							"data": [],
-							"layout": {}
-						},
-						"markdownDescription": "Controls plot appearance for _light_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
-					},
-					"vscode-spec-scan.preview.plot.template.dark": {
-						"type": "object",
-						"default": {
-							"data": [],
-							"layout": {}
-						},
-						"markdownDescription": "Controls plot appearance for _dark_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
-					},
-					"vscode-spec-scan.preview.plot.template.highContrast": {
-						"type": "object",
-						"default": {
-							"data": [],
-							"layout": {}
-						},
-						"markdownDescription": "Controls plot appearance for _high contast_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
-					},
-					"vscode-spec-scan.preview.table.hide": {
-						"type": "boolean",
-						"default": true,
-						"description": "Hides motor-position tables in a preview when a preview is opened."
-					},
-					"vscode-spec-scan.preview.table.columnsPerLine": {
-						"type": "number",
-						"default": 8,
-						"minimum": 1,
-						"description": "Maximum column number of motor-potision tables. Overflowed columns are folded in the next row."
-					},
-					"vscode-spec-scan.preview.table.headerType": {
-						"type": "string",
-						"default": "Mnemonic",
-						"enum": [
-							"Name",
-							"Mnemonic",
-							"None"
-						],
-						"description": "Header type of data cells of motor-potision tables."
-					}
+					"markdownDescription": "Controls plot appearance for _high contast_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
+				},
+				"vscode-spec-scan.preview.table.hide": {
+					"type": "boolean",
+					"default": true,
+					"description": "Hides motor-position tables in a preview when a preview is opened."
+				},
+				"vscode-spec-scan.preview.table.columnsPerLine": {
+					"type": "number",
+					"default": 8,
+					"minimum": 1,
+					"description": "Maximum column number of motor-potision tables. Overflowed columns are folded in the next row."
+				},
+				"vscode-spec-scan.preview.table.headerType": {
+					"type": "string",
+					"default": "Mnemonic",
+					"enum": [
+						"Name",
+						"Mnemonic",
+						"None"
+					],
+					"description": "Header type of data cells of motor-potision tables."
 				}
 			}
-		]
+		}
+	},
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": "limited",
+			"description": "Preview feature is disabled in untrusted workspaces. Preview feature is built on HTML/JavaScript and protection against content injections has not been comprehensively surveyed.",
+			"restrictedConfigurations": [
+				"vscode-spec-scan.preview.plot.template.light",
+				"vscode-spec-scan.preview.plot.template.dark",
+				"vscode-spec-scan.preview.plot.template.highContrast"
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run compile",

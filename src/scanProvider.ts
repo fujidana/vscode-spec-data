@@ -212,6 +212,11 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
     }
 
     private async showPreview(context: vscode.ExtensionContext, sourceUri: vscode.Uri, text: string | undefined, showToSide: boolean = false) {
+        if (!vscode.workspace.isTrusted) {
+            vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
+            return;
+        }
+
         if (this.livePreview) {
             // If a live preview panel exists...
             if (this.livePreview.uri.toString() !== sourceUri.toString()) {
@@ -219,7 +224,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 this.updatePreview(this.livePreview, sourceUri, text);
             }
             this.livePreview.panel.reveal();
-            return true;
+            return this.livePreview;
         } else {
             const config = vscode.workspace.getConfiguration('vscode-spec-scan.preview');
             const retainContextWhenHidden: boolean = config.get('retainContextWhenHidden', false);
@@ -235,7 +240,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     retainContextWhenHidden: retainContextWhenHidden
                 }
             );
-            const newPreview = { uri: sourceUri, panel: panel };
+            const newPreview: Preview = { uri: sourceUri, panel: panel };
             this.previews.push(newPreview);
             this.livePreview = newPreview;
 
@@ -265,11 +270,16 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
             this.updatePreview(newPreview, sourceUri, text);
 
-            return panel;
+            return newPreview;
         }
     }
 
     private async updatePreview(preview: Preview, sourceUri: vscode.Uri, text: string | undefined) {
+        if (!vscode.workspace.isTrusted) {
+            vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
+            return;
+        }
+
         // first, parse the document contents. Simultaneously load the contents if the file is not yet opened.
         const tree = parseScanFileContent(text ? text : new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(sourceUri)));
         if (!tree) {
