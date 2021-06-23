@@ -24,11 +24,11 @@ interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
 export class ScanProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider {
     previews: Preview[] = [];
     livePreview: Preview | undefined = undefined;
-    plotlyJsUri: vscode.Uri;
+    plotlyUri: vscode.Uri;
     onDidChangeTextEditorVisibleRangesDisposable: vscode.Disposable | undefined;
 
     constructor(context: vscode.ExtensionContext) {
-        this.plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
+        this.plotlyUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
 
         // callback of 'vscode-spec-scan.showPreview'.
         const showPreviewCommand = async (...args: unknown[]) => {
@@ -283,7 +283,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.uri = sourceUri;
         preview.tree = tree;
         preview.panel.title = `${label} ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
-        preview.panel.webview.html = getWebviewContent(webview.cspSource, webview.asWebviewUri(this.plotlyJsUri), tree);
+        preview.panel.webview.html = getWebviewContent(webview.cspSource, webview.asWebviewUri(this.plotlyUri), tree);
 
         return true;
     }
@@ -618,19 +618,19 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
     let body = "";
     for (const node of nodes) {
         if (node.type === 'file') {
-            body += `<h1 ${getAttributesForNode(node)}>File: ${node.value}</h1>`;
+            body += `<h1 ${getAttributesForNode(node)}>File: ${getSanitizedString(node.value)}</h1>`;
         } else if (node.type === 'date') {
-            body += `<p ${getAttributesForNode(node)}>Date: ${node.value}</p>`;
+            body += `<p ${getAttributesForNode(node)}>Date: ${getSanitizedString(node.value)}</p>`;
         } else if (node.type === 'comment') {
-            body += `<p ${getAttributesForNode(node)}>Comment: ${node.value}</p>`;
+            body += `<p ${getAttributesForNode(node)}>Comment: ${getSanitizedString(node.value)}</p>`;
         } else if (node.type === 'nameList') {
             if (node.mnemonic) {
-                mnemonicLists[node.kind] = node.values;
+                mnemonicLists[node.kind] = node.values.map(value => getSanitizedString(value));
             } else {
-                nameLists[node.kind] = node.values;
+                nameLists[node.kind] = node.values.map(value => getSanitizedString(value));
             }
         } else if (node.type === 'scanHead') {
-            body += `<h2 ${getAttributesForNode(node)}>Scan ${node.index}: <code>${node.code}</code></h2>`;
+            body += `<h2 ${getAttributesForNode(node)}>Scan ${node.index}: <code>${getSanitizedString(node.code)}</code></h2>`;
         } else if (node.type === 'valueList') {
             const valueList = node.values;
             const headerList = (headerType === 'Name') ? nameLists['motor'] : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : undefined;
@@ -643,7 +643,7 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
 <label for="valueListCheckbox${node.occurance}">Hide Table</label>
 </p>
 <table ${hideTable ? ' hidden' : ''} id="valueListTable${node.occurance}">
-<caption>${node.kind}</caption>
+<caption>${getSanitizedString(node.kind)}</caption>
 `;
                 for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
                     if (headerList) {
@@ -676,7 +676,7 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
                     body += `<label for="select${axis.toUpperCase()}${node.occurance}">${axis}:</label>
     <select id="select${axis.toUpperCase()}${node.occurance}" onchange="onDidChangePlotAxisSelection(${node.occurance})">`;
                     for (let i = 0; i < node.headers.length; i++) {
-                        const header = node.headers[i];
+                        const header = getSanitizedString(node.headers[i]);
                         body += `<option${j === 0 ? (i === 0 ? ' selected' : '') : (i === node.headers.length - 1 ? ' selected' : '')}>${header}</option>`;
                     }
                     body += `</select>`;
@@ -701,14 +701,13 @@ Plotly.newPlot("plotly${node.occurance}", {
         template: template,
         width: document.body.clientWidth * 0.9,
         height: ${plotHeight},
-        xaxis: { title: "${node.headers[0]}" },
-        yaxis: { title: "${node.headers[rows - 1]}" },
+        xaxis: { title: "${getSanitizedString(node.headers[0])}" },
+        yaxis: { title: "${getSanitizedString(node.headers[rows - 1])}" },
         margin: { t:20, r: 20 }
     }
 })
 </script>`;
                 }
-
             }
             body += `</div>`;
             // } else if (node.type === 'unknown') {
@@ -721,4 +720,8 @@ Plotly.newPlot("plotly${node.occurance}", {
     `;
 
     return header + body;
+}
+
+function getSanitizedString(text: string) {
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
