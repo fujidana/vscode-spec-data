@@ -47,11 +47,14 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         // callback of 'vscode-spec-scan.showSource'.
-        const showSourceCommand = async (...args: unknown[]) => {
+        const showSourceCommand = (...args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
-                const document = await vscode.workspace.openTextDocument(activePreview.uri);
-                vscode.window.showTextDocument(document);
+                // const editor = vscode.window.visibleTextEditors.find(editor => editor.document.uri.toString() === activePreview.uri.toString());
+                // if (editor) {
+                //     vscode.window.activeTextEditor = editor;
+                // }
+                vscode.window.showTextDocument(activePreview.uri);
             } else {
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
             }
@@ -61,8 +64,8 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const refreshPreviewCommand = async (...args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
-                const editors = vscode.window.visibleTextEditors.filter(editor => editor.document.uri.toString() === activePreview.uri.toString());
-                const text = editors.length ? editors[0].document.getText() : undefined;
+                const editor = vscode.window.visibleTextEditors.find(editor => editor.document.uri.toString() === activePreview.uri.toString());
+                const text = editor?.document.getText();
                 this.updatePreview(activePreview, activePreview.uri, text);
             } else {
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
@@ -133,7 +136,6 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     };
                     this.onDidChangeTextEditorVisibleRangesDisposable = undefined;
                 }
-                console.log(context.subscriptions.length);
             }
         };
 
@@ -240,6 +242,9 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             panel.onDidDispose(() => {
                 vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', false);
                 // remove the closed preview from the array.
+                this.previews = this.previews.filter(preview => preview.panel !== panel);
+
+                // clear the live preview reference if the closed panel is the live preview.
                 if (this.livePreview && this.livePreview.panel === panel) {
                     this.livePreview = undefined;
                 }
@@ -252,9 +257,9 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             panel.webview.onDidReceiveMessage(message => {
                 // console.log(message);
                 if (message.command === 'requestPlotAxesUpdate') {
-                    this.updatePlotAxes(sourceUri, message.occurance, message.indexes, false);
+                    this.updatePlotAxes(newPreview, message.occurance, message.indexes, false);
                 } else if (message.command === 'requestNewPlot') {
-                    this.updatePlotAxes(sourceUri, message.occurance, message.indexes, true);
+                    this.updatePlotAxes(newPreview, message.occurance, message.indexes, true);
                 }
             }, undefined, context.subscriptions);
 
@@ -266,7 +271,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     private async updatePreview(preview: Preview, sourceUri: vscode.Uri, text: string | undefined) {
         // first, parse the document contents. Simultaneously load the contents if the file is not yet opened.
-        const tree = parseScanFileContents(text ? text : new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(sourceUri)));
+        const tree = parseScanFileContent(text ? text : new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(sourceUri)));
         if (!tree) {
             vscode.window.showErrorMessage('Failed in parsing the document.');
             return false;
@@ -283,12 +288,10 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         return true;
     }
 
-    private updatePlotAxes(sourceUri: vscode.Uri, occurance: number, indexes: [number, number], createNew: boolean) {
+    private updatePlotAxes(preview: Preview, occurance: number, indexes: [number, number], createNew: boolean) {
         // occurance: number, indexes: number[], labels: number[]) {
-        const preview = this.previews.find(preview => preview.uri.toString() === sourceUri.toString());
-        if (preview && preview.tree) {
-            const tree = preview.tree;
-            const node = tree.find(node => node.occurance === occurance && node.type === 'scanData');
+        if (preview.tree) {
+            const node = preview.tree.find(node => node.occurance === occurance && node.type === 'scanData');
             if (node && node.type === 'scanData') {
                 const data = node.data;
                 if (data && data.length) {
@@ -318,12 +321,8 @@ function getUriAndText(args: unknown[]): [vscode.Uri | undefined, string | undef
         // If the URI is provided via the arguments, returns the URI.
         // If there is an corresponding editor, use its contents.
         const uri = args[0];
-        const editors = vscode.window.visibleTextEditors.filter(editor => editor.document.uri.toString() === uri.toString());
-        if (editors.length) {
-            return [uri, editors[0].document.getText()];
-        } else {
-            return [uri, undefined];
-        }
+        const editor = vscode.window.visibleTextEditors.find(editor => editor.document.uri.toString() === uri.toString());
+        return [uri, editor?.document.getText()];
     } else {
         // If the URI is not provided via the arguments, returns the URI and contents of the active editor.
         // If there is no active editor, return [unndefined, undefined].
@@ -337,7 +336,7 @@ function getUriAndText(args: unknown[]): [vscode.Uri | undefined, string | undef
     }
 }
 
-function parseScanFileContents(text: string): Node[] | undefined {
+function parseScanFileContent(text: string): Node[] | undefined {
     const lines = text.split('\n');
     const lineCount = lines.length;
 
@@ -598,6 +597,7 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
                         Plotly.react(element, {
                             data: message.data,
                             layout: {
+                                template: template,
                                 xaxis: { title: message.labels[0] },
                                 yaxis: { title: message.labels[1] },
                                 margin: { t:20, r: 20 }
