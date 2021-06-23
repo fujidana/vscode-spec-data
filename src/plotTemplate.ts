@@ -2,8 +2,11 @@ export const dark = {
     "data": [
         {
             "type": "scatter",
+            "marker": {
+                "color": "#76BCFF"
+            },
             "line": {
-                "color": "#88CCFF"
+                "color": "#76BCFF"
             }
         }
     ], "layout": {
@@ -31,6 +34,9 @@ export const highContast = {
     "data": [
         {
             "type": "scatter",
+            "marker": {
+                "color": "#FFF"
+            },
             "line": {
                 "color": "#FFF"
             }
