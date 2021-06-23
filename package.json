@@ -38,38 +38,31 @@
 				"command": "vscode-spec-scan.showPreview",
 				"title": "Open Preview",
 				"category": "spec-scan",
-				"icon": {
-					"light": "./resources/preview-light.svg",
-					"dark": "./resources/preview-dark.svg"
-				}
+				"icon": "$(preview)"
 			},
 			{
 				"command": "vscode-spec-scan.showPreviewToSide",
 				"title": "Open Preview to the Side",
 				"category": "spec-scan",
-				"icon": {
-					"light": "./resources/open-preview-light.svg",
-					"dark": "./resources/open-preview-dark.svg"
-				}
+				"icon": "$(open-preview)"
 			},
 			{
 				"command": "vscode-spec-scan.showSource",
 				"title": "Show Source",
 				"category": "spec-scan",
-				"icon": {
-					"light": "./resources/go-to-file-light.svg",
-					"dark": "./resources/go-to-file-dark.svg"
-				}
+				"icon": "$(go-to-file)"
 			},
 			{
 				"command": "vscode-spec-scan.refreshPreview",
 				"title": "Refresh Preview",
-				"category": "spec-scan"
+				"category": "spec-scan",
+				"icon": "$(refresh)"
 			},
 			{
 				"command": "vscode-spec-scan.togglePreviewLock",
 				"title": "Toggle Preview Locking",
-				"category": "spec-scan"
+				"category": "spec-scan",
+				"icon": "$(lock)"
 			}
 		],
 		"menus": {
