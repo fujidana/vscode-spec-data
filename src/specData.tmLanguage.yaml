@@ -1,0 +1,94 @@
+$schema: https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json
+name: spec-data
+scopeName: source.spec-data
+patterns:
+  - include: "#information-line"
+  - include: "#literal-numeric"
+repository:
+  information-line:
+    patterns:
+      - match: ^(#F) (.*)$
+        # name: markup.heading.file.spec-data
+        name: meta.information-line.file.spec-data
+        captures:
+          # "1": { name: support.type.information-line.file.spec-data }
+          "1": { name: markup.heading.file.spec-data }
+          "2": { name: string.other.file.spec-data }
+      - match: ^(#S) (.*)$
+        # name: markup.heading.scan.spec-data
+        name: meta.information-line.scan.spec-data
+        captures:
+          # "1": { name: support.type.information-line.scan.spec-data }
+          "1": { name: markup.heading.file.spec-data }
+          "2": { name: string.other.file.spec-data }
+      - match: ^(#D) (.*)$
+        name: meta.information-line.date.spec-data
+        captures:
+          # "1": { name: support.type.information-line.date.spec-data }
+          "1": { name: markup.heading.date.spec-data }
+          "2": { name: string.other.date.spec-data }
+      - match: ^(#C) (.*)$
+        name: meta.information-line.comment.spec-data
+        captures:
+          # "1": { name: support.type.information-line.comment.spec-data }
+          "1": { name: markup.heading.comment.spec-data }
+          "2": { name: string.other.comment.spec-data }
+      - match: ^(#(?:[OJ][0-9]+|L)) (.*)$
+        name: meta.information-line.name-list.spec-data
+        captures:
+          # "1": { name: support.type.information-line.name-list.spec-data }
+          "1": { name: markup.heading.name-list.spec-data }
+          "2": { patterns: [{ include: "#name-list" }] }
+      - match: ^(#[oj][0-9]+) (.*)$
+        name: meta.information-line.mnemonic-list.spec-data
+        captures:
+          # "1": { name: support.type.information-line.mnemonic-list.spec-data }
+          "1": { name: markup.heading.mnemonic-list.spec-data }
+          "2": { patterns: [{ include: "#mnemonic-list" }] }
+      - match: ^(#[A-Za-z][0-9]*)(?:\s(.*))?$
+        name: meta.information-line.other.spec-data
+        captures:
+          # "1": { name: support.type.information-line.other.spec-data }
+          "1": { name: markup.heading.other.spec-data }
+          "2": { patterns: [{ include: "#literal-numeric" }] }
+  literal-numeric:
+    patterns:
+      # - include: "#literal-numeric-hexagonal"
+      # - include: "#literal-numeric-octal"
+      - include: "#literal-numeric-decimal"
+      - include: "#literal-numeric-fractional"
+      # - include: "#literal-numeric-invalid"
+  literal-numeric-hexagonal:
+    match: \b(?<!\.)(0[xX])[0-9a-fA-F]+(?![\.\w])
+    name: constant.numeric.integer.hexadecimal.spec-data
+    captures:
+      "1": { name: keyword.other.integer.hexadecimal.spec-data }
+  literal-numeric-octal:
+    match: \b(?<!\.)(0)[0-7]+(?![\.\w])
+    name: constant.numeric.integer.octal.spec-data
+    captures:
+      "1": { name: keyword.other.integer.otcal.spec-data }
+  literal-numeric-decimal:
+    match: \b(?<!\.)(0|[1-9][0-9]*)(?![\.\w])
+    name: constant.numeric.integer.decimal.spec-data
+  literal-numeric-fractional:
+    patterns:
+      - match: \b(?<!\.)[0-9]+(?:\.[0-9]*)?(?:(e|E)[+-]?[0-9]+)?(?![\.\w])
+        name: constant.numeric.float.spec-data
+        # captures:
+        #   "1": { name: keyword.other.float.scientific-notation.spec-data }
+      - match: (?<!\w)\.[0-9]+(?:(e|E)[+-]?[0-9]+)?(?![\.\w])
+        name: constant.numeric.float.spec-data
+        # captures:
+        #   "1": { name: keyword.other.float.scientific-notation.spec-data }
+  literal-numeric-invalid:
+    match: \b[0-9][\w.]*
+    name: invalid.illegal.numeric.other.spec-data
+  name-list:
+    match: \b[^ ].*?(?=  |$)
+    name: entity.name.other.name.spec-data
+    captures:
+      "0": { name: markup.underline.spec-data }
+  mnemonic-list:
+    match: \b[a-zA-Z_][a-zA-Z0-9_]*\b
+    name: entity.name.variable.mnemonic.spec-data

@@ -1,24 +1,33 @@
 {
 	"publisher": "fujidana",
-	"name": "vscode-spec-scan",
-	"displayName": "spec scan files",
-	"description": "webview for spec scan",
+	"name": "vscode-spec-data",
+	"displayName": "spec Data File Support",
+	"description": "Language Support for CSS's spec Standard Data Format Files",
 	"version": "0.1.0",
 	"engines": {
 		"vscode": "^1.57.0"
 	},
 	"categories": [
-		"Other"
+		"Programming Languages",
+		"Visualization"
+	],
+	"keywords": [
+		"X-ray diffraction",
+		"synchrotron",
+		"instrument control",
+		"data acquisition"
 	],
 	"activationEvents": [
-		"onLanguage:spec-scan"
+		"onLanguage:spec-data"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"languages": [
 			{
-				"id": "spec-scan",
+				"id": "spec-data",
 				"aliases": [
+					"spec data",
+					"spec standard data format",
 					"spec scan"
 				],
 				"extensions": [
@@ -28,173 +37,173 @@
 		],
 		"grammars": [
 			{
-				"language": "spec-scan",
-				"scopeName": "source.spec-scan",
-				"path": "./syntaxes/specScan.tmLanguage.json"
+				"language": "spec-data",
+				"scopeName": "source.spec-data",
+				"path": "./syntaxes/specData.tmLanguage.json"
 			}
 		],
 		"commands": [
 			{
-				"command": "vscode-spec-scan.showPreview",
+				"command": "vscode-spec-data.showPreview",
 				"title": "Open Preview",
-				"category": "spec-scan",
+				"category": "spec Data",
 				"icon": "$(preview)"
 			},
 			{
-				"command": "vscode-spec-scan.showPreviewToSide",
+				"command": "vscode-spec-data.showPreviewToSide",
 				"title": "Open Preview to the Side",
-				"category": "spec-scan",
+				"category": "spec Data",
 				"icon": "$(open-preview)"
 			},
 			{
-				"command": "vscode-spec-scan.showLockedPreview",
+				"command": "vscode-spec-data.showLockedPreview",
 				"title": "Open Locked Preview",
-				"category": "spec-scan"
+				"category": "spec Data"
 			},
 			{
-				"command": "vscode-spec-scan.showLockedPreviewToSide",
+				"command": "vscode-spec-data.showLockedPreviewToSide",
 				"title": "Open Locked Preview to the Side",
-				"category": "spec-scan"
+				"category": "spec Data"
 			},
 			{
-				"command": "vscode-spec-scan.showSource",
+				"command": "vscode-spec-data.showSource",
 				"title": "Show Source",
-				"category": "spec-scan",
+				"category": "spec Data",
 				"icon": "$(go-to-file)"
 			},
 			{
-				"command": "vscode-spec-scan.refreshPreview",
+				"command": "vscode-spec-data.refreshPreview",
 				"title": "Refresh Preview",
-				"category": "spec-scan",
+				"category": "spec Data",
 				"icon": "$(refresh)"
 			},
 			{
-				"command": "vscode-spec-scan.togglePreviewLock",
+				"command": "vscode-spec-data.togglePreviewLock",
 				"title": "Toggle Preview Locking",
-				"category": "spec-scan",
+				"category": "spec Data",
 				"icon": "$(lock)"
 			}
 		],
 		"menus": {
 			"explorer/context": [
 				{
-					"command": "vscode-spec-scan.showPreview",
-					"when": "isWorkspaceTrusted && resourceLangId == spec-scan",
+					"command": "vscode-spec-data.showPreview",
+					"when": "isWorkspaceTrusted && resourceLangId == spec-data",
 					"group": "navigation"
 				},
 				{
-					"command": "vscode-spec-scan.showLockedPreview",
-					"when": "isWorkspaceTrusted && resourceLangId == spec-scan",
+					"command": "vscode-spec-data.showLockedPreview",
+					"when": "isWorkspaceTrusted && resourceLangId == spec-data",
 					"group": "navigation"
 				}
 			],
 			"editor/title": [
 				{
-					"command": "vscode-spec-scan.showPreviewToSide",
-					"alt": "vscode-spec-scan.showPreview",
-					"when": "isWorkspaceTrusted && editorLangId == spec-scan",
+					"command": "vscode-spec-data.showPreviewToSide",
+					"alt": "vscode-spec-data.showPreview",
+					"when": "isWorkspaceTrusted && editorLangId == spec-data",
 					"group": "navigation"
 				},
 				{
-					"command": "vscode-spec-scan.showLockedPreviewToSide",
-					"alt": "vscode-spec-scan.showLockedPreview",
-					"when": "isWorkspaceTrusted && editorLangId == spec-scan",
-					"group": "2_specscan"
+					"command": "vscode-spec-data.showLockedPreviewToSide",
+					"alt": "vscode-spec-data.showLockedPreview",
+					"when": "isWorkspaceTrusted && editorLangId == spec-data",
+					"group": "2_specdata"
 				},
 				{
-					"command": "vscode-spec-scan.showSource",
+					"command": "vscode-spec-data.showSource",
 					"group": "navigation",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-data.previewEditorActive"
 				},
 				{
-					"command": "vscode-spec-scan.refreshPreview",
-					"group": "2_specscan",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"command": "vscode-spec-data.refreshPreview",
+					"group": "2_specdata",
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-data.previewEditorActive"
 				},
 				{
-					"command": "vscode-spec-scan.togglePreviewLock",
-					"group": "2_specscan",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"command": "vscode-spec-data.togglePreviewLock",
+					"group": "2_specdata",
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-data.previewEditorActive"
 				}
 			],
 			"editor/title/context": [
 				{
-					"command": "vscode-spec-scan.showPreview",
-					"when": "isWorkspaceTrusted && editorLangId == spec-scan",
+					"command": "vscode-spec-data.showPreview",
+					"when": "isWorkspaceTrusted && editorLangId == spec-data",
 					"group": "3_preview"
 				}
 			],
 			"commandPalette": [
 				{
-					"command": "vscode-spec-scan.showPreview",
-					"when": "isWorkspaceTrusted && editorLangId == spec-scan"
+					"command": "vscode-spec-data.showPreview",
+					"when": "isWorkspaceTrusted && editorLangId == spec-data"
 				},
 				{
-					"command": "vscode-spec-scan.showPreviewToSide",
-					"when": "isWorkspaceTrusted && editorLangId == spec-scan"
+					"command": "vscode-spec-data.showPreviewToSide",
+					"when": "isWorkspaceTrusted && editorLangId == spec-data"
 				},
 				{
-					"command": "vscode-spec-scan.showLockedPreview",
-					"when": "isWorkspaceTrusted && editorLangId == spec-scan"
+					"command": "vscode-spec-data.showLockedPreview",
+					"when": "isWorkspaceTrusted && editorLangId == spec-data"
 				},
 				{
-					"command": "vscode-spec-scan.showLockedPreviewToSide",
-					"when": "isWorkspaceTrusted && editorLangId == spec-scan"
+					"command": "vscode-spec-data.showLockedPreviewToSide",
+					"when": "isWorkspaceTrusted && editorLangId == spec-data"
 				},
 				{
-					"command": "vscode-spec-scan.showSource",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"command": "vscode-spec-data.showSource",
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-data.previewEditorActive"
 				},
 				{
-					"command": "vscode-spec-scan.refreshPreview",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"command": "vscode-spec-data.refreshPreview",
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-data.previewEditorActive"
 				},
 				{
-					"command": "vscode-spec-scan.togglePreviewLock",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-scan.previewEditorActive"
+					"command": "vscode-spec-data.togglePreviewLock",
+					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && vscode-spec-data.previewEditorActive"
 				}
 			]
 		},
 		"keybindings": [
 			{
-				"command": "vscode-spec-scan.showPreview",
+				"command": "vscode-spec-data.showPreview",
 				"key": "ctrl+shift+v",
 				"mac": "cmd+shift+v",
-				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId == 'spec-scan'"
+				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId == 'spec-data'"
 			},
 			{
-				"command": "vscode-spec-scan.showPreviewToSide",
+				"command": "vscode-spec-data.showPreviewToSide",
 				"key": "ctrl+k v",
 				"mac": "cmd+k v",
-				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId == 'spec-scan'"
+				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId == 'spec-data'"
 			}
 		],
 		"configuration": {
-			"title": "spec scan",
+			"title": "spec Data",
 			"properties": {
-				"vscode-spec-scan.preview.scrollPreviewWithEditor": {
+				"vscode-spec-data.preview.scrollPreviewWithEditor": {
 					"type": "boolean",
 					"default": true,
 					"description": "Synchronizes page scroll of preview with that of editor."
 				},
-				"vscode-spec-scan.preview.retainContextWhenHidden": {
+				"vscode-spec-data.preview.retainContextWhenHidden": {
 					"type": "boolean",
 					"default": false,
 					"description": "Controls whether the preview content remains in memory when the view is hidden. Enabling this option potentially requires high memory overhead. A change in this option does not affect previews already open."
 				},
-				"vscode-spec-scan.preview.plot.maximumNumberOfPlots": {
+				"vscode-spec-data.preview.plot.maximumNumberOfPlots": {
 					"type": "number",
 					"default": 25,
 					"minimum": 0,
 					"description": "Maximum number of graphs to be drawn. Overflowed graphs are not displayed. Making a preview containing large number of scans requires both long time and vast memory footprint."
 				},
-				"vscode-spec-scan.preview.plot.height": {
+				"vscode-spec-data.preview.plot.height": {
 					"type": "number",
 					"default": 400,
 					"minimum": 200,
 					"description": "Height of the respective graphs."
 				},
-				"vscode-spec-scan.preview.plot.template.light": {
+				"vscode-spec-data.preview.plot.template.light": {
 					"type": "object",
 					"default": {
 						"data": [],
@@ -202,7 +211,7 @@
 					},
 					"markdownDescription": "Controls plot appearance for _light_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
 				},
-				"vscode-spec-scan.preview.plot.template.dark": {
+				"vscode-spec-data.preview.plot.template.dark": {
 					"type": "object",
 					"default": {
 						"data": [],
@@ -210,7 +219,7 @@
 					},
 					"markdownDescription": "Controls plot appearance for _dark_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
 				},
-				"vscode-spec-scan.preview.plot.template.highContrast": {
+				"vscode-spec-data.preview.plot.template.highContrast": {
 					"type": "object",
 					"default": {
 						"data": [],
@@ -218,18 +227,18 @@
 					},
 					"markdownDescription": "Controls plot appearance for _high contast_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
 				},
-				"vscode-spec-scan.preview.table.hide": {
+				"vscode-spec-data.preview.table.hide": {
 					"type": "boolean",
 					"default": true,
 					"description": "Hides motor-position tables in a preview when a preview is opened."
 				},
-				"vscode-spec-scan.preview.table.columnsPerLine": {
+				"vscode-spec-data.preview.table.columnsPerLine": {
 					"type": "number",
 					"default": 8,
 					"minimum": 1,
 					"description": "Maximum column number of motor-potision tables. Overflowed columns are folded in the next row."
 				},
-				"vscode-spec-scan.preview.table.headerType": {
+				"vscode-spec-data.preview.table.headerType": {
 					"type": "string",
 					"default": "Mnemonic",
 					"enum": [
@@ -247,9 +256,9 @@
 			"supported": "limited",
 			"description": "Preview feature is disabled in untrusted workspaces. Preview feature is built on HTML/JavaScript and protection against content injections has not been comprehensively surveyed.",
 			"restrictedConfigurations": [
-				"vscode-spec-scan.preview.plot.template.light",
-				"vscode-spec-scan.preview.plot.template.dark",
-				"vscode-spec-scan.preview.plot.template.highContrast"
+				"vscode-spec-data.preview.plot.template.light",
+				"vscode-spec-data.preview.plot.template.dark",
+				"vscode-spec-data.preview.plot.template.highContrast"
 			]
 		}
 	},
@@ -260,7 +269,7 @@
 		"pretest": "npm run compile && npm run lint",
 		"lint": "eslint src --ext ts",
 		"test": "node ./out/test/runTest.js",
-		"js-yaml": "js-yaml ./src/specScan.tmLanguage.yaml > ./syntaxes/specScan.tmLanguage.json"
+		"js-yaml": "js-yaml ./src/specData.tmLanguage.yaml > ./syntaxes/specData.tmLanguage.json"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.3",

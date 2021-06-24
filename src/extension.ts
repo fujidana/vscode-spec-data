@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
-import { ScanProvider } from './scanProvider';
+import { DataProvider } from './dataProvider';
 
 export function activate(context: vscode.ExtensionContext) {
-	new ScanProvider(context);
+	new DataProvider(context);
 }
 
 export function deactivate() {
