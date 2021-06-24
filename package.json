@@ -47,6 +47,16 @@
 				"icon": "$(open-preview)"
 			},
 			{
+				"command": "vscode-spec-scan.showLockedPreview",
+				"title": "Open Locked Preview",
+				"category": "spec-scan"
+			},
+			{
+				"command": "vscode-spec-scan.showLockedPreviewToSide",
+				"title": "Open Locked Preview to the Side",
+				"category": "spec-scan"
+			},
+			{
 				"command": "vscode-spec-scan.showSource",
 				"title": "Show Source",
 				"category": "spec-scan",
@@ -71,6 +81,11 @@
 					"command": "vscode-spec-scan.showPreview",
 					"when": "isWorkspaceTrusted && resourceLangId == spec-scan",
 					"group": "navigation"
+				},
+				{
+					"command": "vscode-spec-scan.showLockedPreview",
+					"when": "isWorkspaceTrusted && resourceLangId == spec-scan",
+					"group": "navigation"
 				}
 			],
 			"editor/title": [
@@ -79,6 +94,12 @@
 					"alt": "vscode-spec-scan.showPreview",
 					"when": "isWorkspaceTrusted && editorLangId == spec-scan",
 					"group": "navigation"
+				},
+				{
+					"command": "vscode-spec-scan.showLockedPreviewToSide",
+					"alt": "vscode-spec-scan.showLockedPreview",
+					"when": "isWorkspaceTrusted && editorLangId == spec-scan",
+					"group": "2_specscan"
 				},
 				{
 					"command": "vscode-spec-scan.showSource",
@@ -99,7 +120,7 @@
 			"editor/title/context": [
 				{
 					"command": "vscode-spec-scan.showPreview",
-					"when": "isWorkspaceTrusted && resourceLangId == spec-scan",
+					"when": "isWorkspaceTrusted && editorLangId == spec-scan",
 					"group": "3_preview"
 				}
 			],
@@ -110,6 +131,14 @@
 				},
 				{
 					"command": "vscode-spec-scan.showPreviewToSide",
+					"when": "isWorkspaceTrusted && editorLangId == spec-scan"
+				},
+				{
+					"command": "vscode-spec-scan.showLockedPreview",
+					"when": "isWorkspaceTrusted && editorLangId == spec-scan"
+				},
+				{
+					"command": "vscode-spec-scan.showLockedPreviewToSide",
 					"when": "isWorkspaceTrusted && editorLangId == spec-scan"
 				},
 				{

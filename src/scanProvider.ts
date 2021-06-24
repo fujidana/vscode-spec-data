@@ -9,7 +9,7 @@ type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | S
 interface BaseNode { type: string, lineStart: number, lineEnd: number, occurance?: number }
 interface FileNode extends BaseNode { type: 'file', value: string }
 interface DateNode extends BaseNode { type: 'date', value: string }
-interface CommentNode extends BaseNode  { type: 'comment', value: string }
+interface CommentNode extends BaseNode { type: 'comment', value: string }
 interface NameListNode extends BaseNode { type: 'nameList', kind: string, values: string[], mnemonic: boolean }
 interface ValueListNode extends BaseNode { type: 'valueList', kind: string, values: number[] }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
@@ -31,23 +31,41 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         this.plotlyUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
 
         // callback of 'vscode-spec-scan.showPreview'.
-        const showPreviewCommand = async (...args: unknown[]) => {
-            let [uri, text] = getUriAndText(args);
-            if (uri) {
-                this.showPreview(context, uri, text);
+        const showPreviewCallback = async (...args: unknown[]) => {
+            const files = getTargetFiles(args);
+            if (files.length) {
+                const file = files[files.length - 1];
+                this.showPreview(context, file.uri, file.text);
             }
         };
 
         // callback of 'vscode-spec-scan.showPreviewToSide'.
-        const showPreviewToSideCommand = async (...args: unknown[]) => {
-            let [uri, text] = getUriAndText(args);
-            if (uri) {
-                this.showPreview(context, uri, text, true);
+        const showPreviewToSideCallback = async (...args: unknown[]) => {
+            let files = getTargetFiles(args);
+            if (files.length) {
+                const file = files[files.length - 1];
+                this.showPreview(context, file.uri, file.text, { showToSide: true });
+            }
+        };
+
+        // callback of 'vscode-spec-scan.showPreviewToSide'.
+        const showLockedPreviewCallback = async (...args: unknown[]) => {
+            let files = getTargetFiles(args);
+            for (const file of files) {
+                this.showPreview(context, file.uri, file.text, { lock: true });
+            }
+        };
+
+        // callback of 'vscode-spec-scan.showLockedPreviewToSide'.
+        const showLockedPreviewToSideCallback = async (...args: unknown[]) => {
+            let files = getTargetFiles(args);
+            for (const file of files) {
+                this.showPreview(context, file.uri, file.text, { showToSide: true, lock: true });
             }
         };
 
         // callback of 'vscode-spec-scan.showSource'.
-        const showSourceCommand = (...args: unknown[]) => {
+        const showSourceCallback = (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
                 // const editor = vscode.window.visibleTextEditors.find(editor => editor.document.uri.toString() === activePreview.uri.toString());
@@ -61,7 +79,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         // callback of 'vscode-spec-scan.refreshPreview'.
-        const refreshPreviewCommand = async (...args: unknown[]) => {
+        const refreshPreviewCallback = async (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
                 const editor = vscode.window.visibleTextEditors.find(editor => editor.document.uri.toString() === activePreview.uri.toString());
@@ -73,7 +91,7 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         // callback of 'vscode-spec-scan.togglePreviewLock'.
-        const togglePreviewLockCommand = (...args: unknown[]) => {
+        const togglePreviewLockCallback = (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
                 const activeUriString = activePreview.uri.toString();
@@ -141,11 +159,13 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         // register providers and commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('vscode-spec-scan.showPreview', showPreviewCommand),
-            vscode.commands.registerCommand('vscode-spec-scan.showPreviewToSide', showPreviewToSideCommand),
-            vscode.commands.registerCommand('vscode-spec-scan.showSource', showSourceCommand),
-            vscode.commands.registerCommand('vscode-spec-scan.refreshPreview', refreshPreviewCommand),
-            vscode.commands.registerCommand('vscode-spec-scan.togglePreviewLock', togglePreviewLockCommand),
+            vscode.commands.registerCommand('vscode-spec-scan.showPreview', showPreviewCallback),
+            vscode.commands.registerCommand('vscode-spec-scan.showPreviewToSide', showPreviewToSideCallback),
+            vscode.commands.registerCommand('vscode-spec-scan.showLockedPreview', showLockedPreviewCallback),
+            vscode.commands.registerCommand('vscode-spec-scan.showLockedPreviewToSide', showLockedPreviewToSideCallback),
+            vscode.commands.registerCommand('vscode-spec-scan.showSource', showSourceCallback),
+            vscode.commands.registerCommand('vscode-spec-scan.refreshPreview', refreshPreviewCallback),
+            vscode.commands.registerCommand('vscode-spec-scan.togglePreviewLock', togglePreviewLockCallback),
             vscode.languages.registerFoldingRangeProvider(SCAN_SELECTOR, this),
             vscode.languages.registerDocumentSymbolProvider(SCAN_SELECTOR, this),
             vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditorListner),
@@ -211,14 +231,14 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
         return results;
     }
 
-    private async showPreview(context: vscode.ExtensionContext, sourceUri: vscode.Uri, text: string | undefined, showToSide: boolean = false) {
+    private async showPreview(context: vscode.ExtensionContext, sourceUri: vscode.Uri, text: string | undefined, option?: { showToSide?: boolean, lock?: boolean }) {
         if (!vscode.workspace.isTrusted) {
             vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
             return;
         }
 
-        if (this.livePreview) {
-            // If a live preview panel exists...
+        if (!(option?.lock) && this.livePreview) {
+            // If a live preview panel exists and new panel is not locked...
             if (this.livePreview.uri.toString() !== sourceUri.toString()) {
                 // Update the content if the URLs are different.
                 this.updatePreview(this.livePreview, sourceUri, text);
@@ -233,24 +253,26 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
             const panel = vscode.window.createWebviewPanel(
                 'specScanPreview',
                 'Preview spec scan',
-                showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
+                (option?.showToSide) ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
                 {
                     localResourceRoots: [context.extensionUri],
                     enableScripts: true,
-                    retainContextWhenHidden: retainContextWhenHidden
+                    retainContextWhenHidden: retainContextWhenHidden,
                 }
             );
             const newPreview: Preview = { uri: sourceUri, panel: panel };
             this.previews.push(newPreview);
-            this.livePreview = newPreview;
+            if (!(option?.lock)) {
+                this.livePreview = newPreview;
+            }
 
             panel.onDidDispose(() => {
                 vscode.commands.executeCommand('setContext', 'vscode-spec-scan.previewEditorActive', false);
                 // remove the closed preview from the array.
                 this.previews = this.previews.filter(preview => preview.panel !== panel);
 
-                // clear the live preview reference if the closed panel is the live preview.
-                if (this.livePreview && this.livePreview.panel === panel) {
+                // clear the live preview reference if the closed preview is the live preview.
+                if (!(option?.lock) && this.livePreview && this.livePreview.panel === panel) {
                     this.livePreview = undefined;
                 }
             }, null, context.subscriptions);
@@ -326,24 +348,36 @@ export class ScanProvider implements vscode.FoldingRangeProvider, vscode.Documen
     }
 }
 
-function getUriAndText(args: unknown[]): [vscode.Uri | undefined, string | undefined] {
-    if (args && args.length > 0 && args[0] instanceof vscode.Uri) {
-        // If the URI is provided via the arguments, returns the URI.
-        // If there is an corresponding editor, use its contents.
-        const uri = args[0];
-        const editor = vscode.window.visibleTextEditors.find(editor => editor.document.uri.toString() === uri.toString());
-        return [uri, editor?.document.getText()];
+function getTargetFiles(args: unknown[]): { uri: vscode.Uri, text?: string }[] {
+    const files: { uri: vscode.Uri, text?: string }[] = [];
+
+    if (args && args.length > 0) {
+        // typically, the type of args is [vscode.Uri, vscode.Uri[]]
+        if (args.length >= 2 && Array.isArray(args[1])) {
+            for (const uri of args[1]) {
+                if (uri instanceof vscode.Uri) {
+                    const editor = vscode.window.visibleTextEditors.find(editor => editor.document.uri.toString() === uri.toString());
+                    files.push({ uri: uri, text: editor?.document.getText() });
+                }
+            }
+        } else if (args[0] instanceof vscode.Uri) {
+            const uri = args[0];
+            const editor = vscode.window.visibleTextEditors.find(editor => editor.document.uri.toString() === uri.toString());
+            files.push({ uri: uri, text: editor?.document.getText() });
+        } else {
+            vscode.window.showErrorMessage('Unknown command arguments.');
+        }
     } else {
         // If the URI is not provided via the arguments, returns the URI and contents of the active editor.
         // If there is no active editor, return [unndefined, undefined].
         const editor = vscode.window.activeTextEditor;
         if (editor) {
-            return [editor.document.uri, editor.document.getText()];
+            files.push({ uri: editor.document.uri, text: editor.document.getText() });
         } else {
             vscode.window.showErrorMessage('Active editor is not found.');
-            return [undefined, undefined];
         }
     }
+    return files;
 }
 
 function parseScanFileContent(text: string): Node[] | undefined {
