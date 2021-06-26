@@ -22,13 +22,15 @@ interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
  * Provider class
  */
 export class DataProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider {
-    readonly plotlyUri: vscode.Uri;
+    readonly plotlyJsUri: vscode.Uri;
+    readonly controllerJsUri: vscode.Uri;
     readonly previews: Preview[] = [];
     livePreview: Preview | undefined = undefined;
     onDidChangeTextEditorVisibleRangesDisposable: vscode.Disposable | undefined;
 
     constructor(context: vscode.ExtensionContext) {
-        this.plotlyUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
+        this.plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
+        this.controllerJsUri = vscode.Uri.joinPath(context.extensionUri, 'out', 'previewController.js');
 
         // callback of 'vscode-spec-data.showPreview'.
         const showPreviewCallback = async (...args: unknown[]) => {
@@ -286,10 +288,14 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
             panel.webview.onDidReceiveMessage(message => {
                 // console.log(message);
-                if (message.command === 'requestPlotAxesUpdate') {
-                    this.updatePlotAxes(newPreview, message.occurance, message.indexes, false);
-                } else if (message.command === 'requestNewPlot') {
-                    this.updatePlotAxes(newPreview, message.occurance, message.indexes, true);
+                if (message.command === 'requestPlotData') {
+                    this.replyPlotRequest(newPreview, message.occurance, message.indexes, message.action);
+                } else if (message.command === 'requestTemplate') {
+                    panel.webview.postMessage({
+                        command: 'setTemplate',
+                        template: getPlotlyTemplate(),
+                        action: message.action
+                    });
                 }
             }, undefined, context.subscriptions);
 
@@ -302,7 +308,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     private async updatePreview(preview: Preview, sourceUri: vscode.Uri, text: string | undefined) {
         if (!vscode.workspace.isTrusted) {
             vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
-            return;
+            return false;
         }
 
         // first, parse the document contents. Simultaneously load the contents if the file is not yet opened.
@@ -318,13 +324,12 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.uri = sourceUri;
         preview.tree = tree;
         preview.panel.title = `${label} ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
-        preview.panel.webview.html = getWebviewContent(webview.cspSource, webview.asWebviewUri(this.plotlyUri), tree);
+        preview.panel.webview.html = getWebviewContent(webview.cspSource, webview.asWebviewUri(this.plotlyJsUri), webview.asWebviewUri(this.controllerJsUri), tree);
 
         return true;
     }
 
-    private updatePlotAxes(preview: Preview, occurance: number, indexes: [number, number], createNew: boolean) {
-        // occurance: number, indexes: number[], labels: number[]) {
+    private replyPlotRequest(preview: Preview, occurance: number, indexes: [number, number], action: string) {
         if (preview.tree) {
             const node = preview.tree.find(node => node.occurance === occurance && node.type === 'scanData');
             if (node && node.type === 'scanData') {
@@ -334,11 +339,11 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     const yIndex = (indexes[1] === -1) ? node.headers.length - 1 : indexes[1];
                     if (xIndex >= 0 && xIndex < data.length && yIndex >= 0 && yIndex < data.length) {
                         preview.panel.webview.postMessage({
-                            command: 'updatePlotAxes',
+                            command: 'updatePlot',
                             elementId: `plotly${occurance}`,
                             data: [{ x: data[xIndex], y: data[yIndex] }],
                             labels: [node.headers[xIndex], node.headers[yIndex]],
-                            createNew: createNew
+                            action: action
                         });
                     }
                 }
@@ -531,7 +536,7 @@ function parseScanFileContent(text: string): Node[] | undefined {
     return nodes;
 }
 
-function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node[]): string {
+function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controllerJsJri: vscode.Uri, nodes: Node[]): string {
     let nameLists: { [name: string]: string[] } = {};
     let mnemonicLists: { [name: string]: string[] } = {};
 
@@ -542,125 +547,33 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
     const maximumPlots: number = config.get('plot.maximumNumberOfPlots', 25);
     const plotHeight: number = config.get('plot.height', 400);
 
-    type PlotlyTemplate = { data: object[], layout: object };
-    let systemTemplate: PlotlyTemplate;
-    let userTemplate: PlotlyTemplate | undefined;
 
-    switch (vscode.window.activeColorTheme.kind) {
-        case vscode.ColorThemeKind.Dark:
-            systemTemplate = plotTemplate.dark;
-            userTemplate = config.get('plot.template.dark');
-            break;
-        case vscode.ColorThemeKind.HighContrast:
-            systemTemplate = plotTemplate.highContast;
-            userTemplate = config.get('plot.template.highContrast');
-            break;
-        default:
-            systemTemplate = plotTemplate.light;
-            userTemplate = config.get('plot.template.light');
+    function getSanitizedString(text: string) {
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    const userTemplateIsEmpty = !userTemplate || Object.keys(userTemplate).length === 0 || (userTemplate.data.length === 0 && Object.keys(userTemplate.layout).length === 0);
-    const template = userTemplateIsEmpty ? systemTemplate : merge({}, systemTemplate, userTemplate);
+    function getAttributesForNode(node: Node) {
+        let str = `id="l${node.lineStart}" class="${node.type}"`;
+        if (node.occurance !== undefined) {
+            str += ` data-occurance="${node.occurance}"`;
+        }
+        return str;
+    };
 
     const header = `<!DOCTYPE html>
 <html lang="en">
-<head>
+<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}">
 	<meta charset="UTF-8">
     <!--
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} https:; style-src ${cspSource}; script-src 'unsafe-inline' ${cspSource};">
     -->
     <title>Preview spec scan</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="${plotlyUri}"></script>
-    <script>
-        const vscode = acquireVsCodeApi();
-
-        const template = Plotly.makeTemplate(${JSON.stringify(template)});
-
-        function onDidResizeBody() {
-            const elements = document.body.getElementsByClassName('scanDataPlot');
-            for (const element of elements) {
-                if (element.hidden === false) {
-                    Plotly.relayout(element.id, { width: document.body.clientWidth * 0.9 });
-                }
-            }
-        }
-
-        function onDidClickHideTableCheckbox(elemId, flag) {
-            document.getElementById(elemId).hidden = flag;
-        }
-
-        function onDidClickPlotItButton(occurance) {
-            vscode.postMessage({
-                command: 'requestNewPlot',
-                occurance: occurance,
-                indexes: [0, -1]
-            });
-            document.getElementById('plotAlert' + occurance).hidden = true;
-            document.getElementById('plotCtrl' + occurance).hidden = false;
-        }
-
-        function onDidChangePlotAxisSelection(occurance) {
-            const xAxis = document.getElementById('selectX' + occurance);
-            const yAxis = document.getElementById('selectY' + occurance);
-
-            vscode.postMessage({
-                command: 'requestPlotAxesUpdate',
-                occurance: occurance,
-                indexes: [xAxis.selectedIndex, yAxis.selectedIndex ],
-                labels: [xAxis.value, yAxis.value ],
-            });
-        }
-
-        window.addEventListener('message', event => {
-            const message = event.data;
-
-            if (message.command === 'scrollToElement') {
-                const element = document.getElementById(message.elementId);
-                if (element) {
-                    element.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            } else if (message.command === 'updatePlotAxes') {
-                const element = document.getElementById(message.elementId);
-                if (element) {
-                    if (message.createNew) {
-                        element.hidden = false;
-                        Plotly.newPlot(element, {
-                            data: message.data,
-                            layout: {
-                                template: template,
-                                width: document.body.clientWidth * 0.9,
-                                height: ${plotHeight},
-                                xaxis: { title: message.labels[0] },
-                                yaxis: { title: message.labels[1] },
-                                margin: { t:20, r: 20 }
-                            }
-                        });
-                    } else {
-                        Plotly.react(element, {
-                            data: message.data,
-                            layout: {
-                                template: template,
-                                xaxis: { title: message.labels[0] },
-                                yaxis: { title: message.labels[1] },
-                                margin: { t:20, r: 20 }
-                            }
-                        });
-                    }
-                }
-            }
-        });
-    </script>
+    <script src="${plotlyJsUri}"></script>
+    <script src="${controllerJsJri}"></script>
 </head>
-<body onresize="onDidResizeBody()">
+<body>
 `;
-    const getAttributesForNode = function (node: Node) {
-        return `id="l${node.lineStart}" class="${node.type}"`;
-    };
 
     let body = "";
     for (const node of nodes) {
@@ -681,80 +594,53 @@ function getWebviewContent(cspSource: string, plotlyUri: vscode.Uri, nodes: Node
         } else if (node.type === 'valueList') {
             const valueList = node.values;
             const headerList = (headerType === 'Name') ? nameLists['motor'] : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : undefined;
+            const occurance = node.occurance;
             body += `<div ${getAttributesForNode(node)}>`;
             if (headerList && (headerList.length !== valueList.length)) {
                 body += '<p><em>The number of scan headers and data columns mismatched.</em></p>';
             } else {
                 body += `<p>
-<input type="checkbox" ${hideTable ? ' checked' : ''} id="valueListCheckbox${node.occurance}" onclick="onDidClickHideTableCheckbox('valueListTable${node.occurance}', this.checked)">
-<label for="valueListCheckbox${node.occurance}">Hide Table</label>
+<input type="checkbox" ${hideTable ? '' : ' checked'} id="showValueListInput${occurance}" class="showValueListInput" data-table-id="valueListTable${occurance}">
+<label for="showValueListInput${occurance}">Show Prescan Table</label>
 </p>
-<table ${hideTable ? ' hidden' : ''} id="valueListTable${node.occurance}">
+<table ${hideTable ? ' hidden' : ''} id="valueListTable${occurance}">
 <caption>${getSanitizedString(node.kind)}</caption>
 `;
                 for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
                     if (headerList) {
-                        body += `<tr>`;
-                        for (let col = 0; col < columnsPerLine && row * columnsPerLine + col < valueList.length; col++) {
-                            body += `<td><strong>${headerList[row * columnsPerLine + col]}</<strong></td>`;
-                        }
-                        body += `</tr>`;
+                        const headerListInRow = headerList.slice(row * columnsPerLine, Math.min((row + 1) * columnsPerLine, headerList.length));
+                        body += `<tr>${headerListInRow.map(item => `<td><strong>${item}</td></strong>`).join('')}</tr>`;
                     }
-                    body += `<tr>`;
-                    for (let col = 0; col < columnsPerLine && row * columnsPerLine + col < valueList.length; col++) {
-                        body += `<td>${valueList[row * 8 + col]}</td>`;
-                    }
-                    body += `</tr>`;
+                    const valueListInRow = valueList.slice(row * columnsPerLine, Math.min((row + 1) * columnsPerLine, valueList.length));
+                    body += `<tr>${valueListInRow.map(item => `<td>${item}</td>`).join('')}</tr>`;
                 }
                 body += `</table>`;
             }
             body += `</div>`;
         } else if (node.type === 'scanData') {
             const data: number[][] | undefined = node.data;
-            const rows: number = node.rows;
+            const headers = node.headers;
+            const occurance = node.occurance;
 
             body += `<div ${getAttributesForNode(node)}>`;
             if (data && data.length) {
-                const hiddenFlag = (node.occurance && node.occurance >= maximumPlots);
-                body += `<div id="plotCtrl${node.occurance}"${hiddenFlag ? ' hidden' : ''}>`;
+                body += `<div>
+<input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
+<label for="showPlotInput${occurance}">Show Scan Plot</label>, `;
                 const axes = ['x', 'y'];
                 for (let j = 0; j < axes.length; j++) {
                     const axis = axes[j];
-                    body += `<label for="select${axis.toUpperCase()}${node.occurance}">${axis}:</label>
-    <select id="select${axis.toUpperCase()}${node.occurance}" onchange="onDidChangePlotAxisSelection(${node.occurance})">`;
-                    for (let i = 0; i < node.headers.length; i++) {
-                        const header = getSanitizedString(node.headers[i]);
-                        body += `<option${j === 0 ? (i === 0 ? ' selected' : '') : (i === node.headers.length - 1 ? ' selected' : '')}>${header}</option>`;
-                    }
+                    body += `<label for="axisSelect${axis.toUpperCase()}${occurance}">${axis}:</label>
+    <select id="axisSelect${axis.toUpperCase()}${occurance}" class="axisSelect" data-axis="${axis}">`;
+                    body += headers.map(item => `<option>${getSanitizedString(item)}</option>`).join('');
                     body += `</select>`;
                     if (j !== axes.length - 1) {
-                        body += '  ';
+                        body += ', ';
                     }
                 }
-                body += `</div>`;
-                if (hiddenFlag) {
-                    body += `<div id="plotAlert${node.occurance}"><em>Too many Plots!</em> The plot is ommited for the performance reason.
-<button type="button" onclick="onDidClickPlotItButton(${node.occurance})">Plot It!</button></div>
-<div id="plotly${node.occurance}" class="scanDataPlot" hidden></div>`;
-                } else if (data && data.length) {
-                    body += `<div id="plotly${node.occurance}" class="scanDataPlot"></div>
-<script>
-Plotly.newPlot("plotly${node.occurance}", {
-    data: [{
-        x: ${JSON.stringify(data[0])},
-        y: ${JSON.stringify(data[rows - 1])}
-    }],
-    layout: {
-        template: template,
-        width: document.body.clientWidth * 0.9,
-        height: ${plotHeight},
-        xaxis: { title: "${getSanitizedString(node.headers[0])}" },
-        yaxis: { title: "${getSanitizedString(node.headers[rows - 1])}" },
-        margin: { t:20, r: 20 }
-    }
-})
-</script>`;
-                }
+                body += `</div>
+<div id="plotly${occurance}" class="scanDataPlot"></div>
+`;
             }
             body += `</div>`;
             // } else if (node.type === 'unknown') {
@@ -769,6 +655,28 @@ Plotly.newPlot("plotly${node.occurance}", {
     return header + body;
 }
 
-function getSanitizedString(text: string) {
-    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+type PlotlyTemplate = { data: object[], layout: object };
+
+function getPlotlyTemplate(): PlotlyTemplate {
+    const config = vscode.workspace.getConfiguration('vscode-spec-data.preview.plot.template');
+
+    let systemTemplate: PlotlyTemplate;
+    let userTemplate: PlotlyTemplate | undefined;
+
+    switch (vscode.window.activeColorTheme.kind) {
+        case vscode.ColorThemeKind.Dark:
+            systemTemplate = plotTemplate.dark;
+            userTemplate = config.get('dark');
+            break;
+        case vscode.ColorThemeKind.HighContrast:
+            systemTemplate = plotTemplate.highContast;
+            userTemplate = config.get('highContrast');
+            break;
+        default:
+            systemTemplate = plotTemplate.light;
+            userTemplate = config.get('light');
+    }
+
+    const userTemplateIsEmpty = !userTemplate || Object.keys(userTemplate).length === 0 || (userTemplate.data.length === 0 && Object.keys(userTemplate.layout).length === 0);
+    return userTemplateIsEmpty ? systemTemplate : merge({}, systemTemplate, userTemplate);
 }
