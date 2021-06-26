@@ -75,21 +75,28 @@ const plotAxisSelectChangeHandler = function (event: Event) {
 };
 
 // show all graph
-const showAllGraphs = function () {
+const showAllGraphs = (action: string) => {
     for (const div of document.body.getElementsByClassName('scanDataPlot') as HTMLCollectionOf<HTMLDivElement>) {
         const occuranceString = div.dataset.occurance;
         const showPlotInput = document.getElementById('showPlotInput' + occuranceString) as HTMLInputElement | null;
         const axisSelectX = document.getElementById('axisSelectX' + occuranceString) as HTMLSelectElement | null;
         const axisSelectY = document.getElementById('axisSelectY' + occuranceString) as HTMLSelectElement | null;
+        const plotDiv = document.getElementById('plotly' + occuranceString) as HTMLSelectElement | null;
 
-        if (occuranceString !== undefined && showPlotInput && axisSelectX && axisSelectY) {
+        if (occuranceString !== undefined && showPlotInput && axisSelectX && axisSelectY && plotDiv) {
             if (showPlotInput.checked) {
-                vscode.postMessage({
-                    command: 'requestPlotData',
-                    occurance: parseInt(occuranceString),
-                    indexes: [axisSelectX.selectedIndex, axisSelectY.selectedIndex],
-                    action: 'new'
-                });
+                if (action === 'new') {
+                    vscode.postMessage({
+                        command: 'requestPlotData',
+                        occurance: parseInt(occuranceString),
+                        indexes: [axisSelectX.selectedIndex, axisSelectY.selectedIndex],
+                        action: action
+                    });
+                } else if (action === 'update') {
+                    Plotly.relayout(plotDiv, {
+                        template: template
+                    });
+                }
             }
         }
     }
@@ -148,8 +155,8 @@ window.addEventListener('DOMContentLoaded', event => {
             // create template from an object (dictionary)
             template = Plotly.makeTemplate(message.template);
             vscode.setState({ template });
-            if (message.action === 'new') {
-                showAllGraphs();
+            if (message.action) {
+                showAllGraphs(message.action);
             }
         } else if (message.command === 'scrollToElement') {
             const element = document.getElementById(message.elementId);
@@ -194,7 +201,7 @@ window.addEventListener('DOMContentLoaded', event => {
     if (previousState) {
         template = previousState.template;
         if (template) {
-            showAllGraphs();
+            showAllGraphs('new');
         }
     } else {
         vscode.postMessage({

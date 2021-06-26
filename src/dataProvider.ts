@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
 import * as plotTemplate from './plotTemplate';
 import merge = require('lodash.merge');
+import { activate } from './extension';
 
 const SELECTOR = { scheme: 'file', language: 'spec-data' };
 
@@ -19,18 +20,21 @@ interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: s
 interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
 
 /**
- * Provider class
+ * Provider class for "spec-data" language
  */
 export class DataProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider {
     readonly plotlyJsUri: vscode.Uri;
     readonly controllerJsUri: vscode.Uri;
     readonly previews: Preview[] = [];
     livePreview: Preview | undefined = undefined;
+    colorThemeKind: vscode.ColorThemeKind;
     onDidChangeTextEditorVisibleRangesDisposable: vscode.Disposable | undefined;
 
     constructor(context: vscode.ExtensionContext) {
         this.plotlyJsUri = vscode.Uri.joinPath(context.extensionUri, 'node_modules', 'plotly.js-dist-min', 'plotly.min.js');
         this.controllerJsUri = vscode.Uri.joinPath(context.extensionUri, 'out', 'previewController.js');
+
+        this.colorThemeKind = vscode.window.activeColorTheme.kind;
 
         // callback of 'vscode-spec-data.showPreview'.
         const showPreviewCallback = async (...args: unknown[]) => {
@@ -159,6 +163,24 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
+        const activeColorThemeChangeListener = (colorTheme: vscode.ColorTheme) => {
+            if (this.colorThemeKind !==  colorTheme.kind) {
+                // If the color theme kind is changed, query to change the plot template.
+                for (const preview of this.previews) {
+                    // According to the webview reference manual, the messages are
+                    // only delivered if the webview is live (either visible or in 
+                    // the background with `retainContextWhenHidden`).
+                    // However, it seems invisible webviews also handle the following messages.
+                    preview.panel.webview.postMessage({
+                        command: 'setTemplate',
+                        template: getPlotlyTemplate(colorTheme.kind),
+                        action: "update"
+                    });
+                }
+            }
+            this.colorThemeKind = colorTheme.kind;
+        };
+
         // register providers and commands
         context.subscriptions.push(
             vscode.commands.registerCommand('vscode-spec-data.showPreview', showPreviewCallback),
@@ -171,6 +193,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.languages.registerFoldingRangeProvider(SELECTOR, this),
             vscode.languages.registerDocumentSymbolProvider(SELECTOR, this),
             vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditorListner),
+            vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
             vscode.workspace.onDidChangeConfiguration(onDidChangeConfigurationListner)
         );
 
@@ -657,13 +680,16 @@ function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controlle
 
 type PlotlyTemplate = { data: object[], layout: object };
 
-function getPlotlyTemplate(): PlotlyTemplate {
+function getPlotlyTemplate(kind?: vscode.ColorThemeKind): PlotlyTemplate {
     const config = vscode.workspace.getConfiguration('vscode-spec-data.preview.plot.template');
 
+    if (kind === undefined) {
+        kind = vscode.window.activeColorTheme.kind;
+    }
     let systemTemplate: PlotlyTemplate;
     let userTemplate: PlotlyTemplate | undefined;
 
-    switch (vscode.window.activeColorTheme.kind) {
+    switch (kind) {
         case vscode.ColorThemeKind.Dark:
             systemTemplate = plotTemplate.dark;
             userTemplate = config.get('dark');
