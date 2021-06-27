@@ -1,3 +1,13 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+
+export const light = {
+    "data": [],
+    "layout": {
+        "plot_bgcolor": "rgba(255, 255, 255, 0.0)",
+        "paper_bgcolor": "rgba(255, 255, 255, 0.0)"
+    }
+};
+
 export const dark = {
     "data": [
         {
@@ -10,8 +20,8 @@ export const dark = {
             }
         }
     ], "layout": {
-        "plot_bgcolor": "#1E1E1E",
-        "paper_bgcolor": "#1E1E1E",
+        "plot_bgcolor": "#1E1E1E00",
+        "paper_bgcolor": "#1E1E1E00",
         "font": {
             "color": "#F2F5FA"
         },
@@ -42,8 +52,8 @@ export const highContast = {
             }
         }
     ], "layout": {
-        "plot_bgcolor": "#000",
-        "paper_bgcolor": "#000",
+        "plot_bgcolor": "#0000",
+        "paper_bgcolor": "#0000",
         "font": {
             "color": "#FFF"
         },
@@ -60,9 +70,4 @@ export const highContast = {
             "zerolinewidth": 2
         }
     }
-};
-
-export const light = {
-    "data": [],
-    "layout": {}
 };
