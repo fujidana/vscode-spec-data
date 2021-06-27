@@ -678,31 +678,35 @@ function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controlle
     return header + body;
 }
 
-type PlotlyTemplate = { data: object[], layout: object };
+type PlotlyTemplate = { data?: object[], layout?: object };
+type UserPlotlyTemplate = { all?: PlotlyTemplate, light?: PlotlyTemplate, dark?: PlotlyTemplate, highContrast?: PlotlyTemplate};
 
 function getPlotlyTemplate(kind?: vscode.ColorThemeKind): PlotlyTemplate {
-    const config = vscode.workspace.getConfiguration('vscode-spec-data.preview.plot.template');
-
     if (kind === undefined) {
         kind = vscode.window.activeColorTheme.kind;
     }
+
     let systemTemplate: PlotlyTemplate;
-    let userTemplate: PlotlyTemplate | undefined;
+    let userTemplateForAllThemes: PlotlyTemplate;
+    let userTemplateForTheme: PlotlyTemplate;
+    
+    const userTemplate : UserPlotlyTemplate | undefined = vscode.workspace.getConfiguration('vscode-spec-data.preview').get('plot.template');
+
+    userTemplateForAllThemes = (userTemplate && userTemplate.all) ? userTemplate.all : {};
 
     switch (kind) {
         case vscode.ColorThemeKind.Dark:
             systemTemplate = plotTemplate.dark;
-            userTemplate = config.get('dark');
+            userTemplateForTheme = (userTemplate && userTemplate.dark) ? userTemplate.dark : {};
             break;
         case vscode.ColorThemeKind.HighContrast:
             systemTemplate = plotTemplate.highContast;
-            userTemplate = config.get('highContrast');
+            userTemplateForTheme = (userTemplate && userTemplate.highContrast) ? userTemplate.highContrast : {};
             break;
         default:
             systemTemplate = plotTemplate.light;
-            userTemplate = config.get('light');
+            userTemplateForTheme = (userTemplate && userTemplate.light) ? userTemplate.light : {};
     }
 
-    const userTemplateIsEmpty = !userTemplate || Object.keys(userTemplate).length === 0 || (userTemplate.data.length === 0 && Object.keys(userTemplate.layout).length === 0);
-    return userTemplateIsEmpty ? systemTemplate : merge({}, systemTemplate, userTemplate);
+    return merge({}, systemTemplate, userTemplateForAllThemes, userTemplateForTheme);
 }

@@ -26,9 +26,10 @@
 			{
 				"id": "spec-data",
 				"aliases": [
-					"spec data",
-					"spec standard data format",
-					"spec scan"
+					"spec Data",
+					"spec Standard Data Format",
+					"spec Scan",
+					"spec-data"
 				],
 				"extensions": [
 					".spec"
@@ -184,18 +185,18 @@
 				"vscode-spec-data.preview.scrollPreviewWithEditor": {
 					"type": "boolean",
 					"default": true,
-					"description": "Synchronizes page scroll of preview with that of editor."
+					"description": "Synchronizes page scroll of a preview with that of the corresoinding editor."
 				},
 				"vscode-spec-data.preview.retainContextWhenHidden": {
 					"type": "boolean",
 					"default": false,
-					"description": "Controls whether the preview content remains in memory when the view is hidden. Enabling this option potentially requires high memory overhead. A change in this option does not affect previews already open."
+					"description": "Controls whether preview contents remain in memory when the preview tab is hidden. Enabling this option potentially requires high memory overhead. A change in this option does not affect previews already open."
 				},
 				"vscode-spec-data.preview.plot.maximumNumberOfPlots": {
 					"type": "number",
 					"default": 25,
 					"minimum": 0,
-					"description": "Maximum number of graphs to be drawn. Overflowed graphs are not displayed. Making a preview containing large number of scans requires both long time and vast memory footprint."
+					"description": "Maximum number of graphs to be drawn when a preview is opened. Drawing a large number of plots requires both long time and vast memory footprint."
 				},
 				"vscode-spec-data.preview.plot.height": {
 					"type": "number",
@@ -203,29 +204,15 @@
 					"minimum": 200,
 					"description": "Height of the respective graphs."
 				},
-				"vscode-spec-data.preview.plot.template.light": {
+				"vscode-spec-data.preview.plot.template": {
 					"type": "object",
 					"default": {
-						"data": [],
-						"layout": {}
+						"all": {
+							"data": [],
+							"layout": {}
+						}
 					},
-					"markdownDescription": "Controls plot appearance for _light_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
-				},
-				"vscode-spec-data.preview.plot.template.dark": {
-					"type": "object",
-					"default": {
-						"data": [],
-						"layout": {}
-					},
-					"markdownDescription": "Controls plot appearance for _dark_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
-				},
-				"vscode-spec-data.preview.plot.template.highContrast": {
-					"type": "object",
-					"default": {
-						"data": [],
-						"layout": {}
-					},
-					"markdownDescription": "Controls plot appearance for _high contast_ color theme. The value must be described as a JSON representation of a Plotly.js template object. See the [Plotly.js Figure Reference](https://plotly.com/javascript/reference/index/) for details."
+					"markdownDescription": "Overrides the built-in plot appearance such as line color. The option has at most 4 keys: `\"all\"`, `\"light\"`, `\"dark\"`, and `\"highContrast\"`. The value of each key shall be the JSON represenation of a Plotly.js template. \n\nSee the _Extension Settings_ section in README.md. One can find the cpmlete list of the template attributes in the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) page."
 				},
 				"vscode-spec-data.preview.table.hide": {
 					"type": "boolean",
@@ -254,16 +241,14 @@
 	"capabilities": {
 		"untrustedWorkspaces": {
 			"supported": "limited",
-			"description": "Preview feature is disabled in untrusted workspaces. Preview feature is built on HTML/JavaScript and protection against content injections has not been comprehensively surveyed.",
+			"description": "The preview feature is disabled in untrusted workspaces becauase protection against content injections has not been comprehensively surveyed.",
 			"restrictedConfigurations": [
-				"vscode-spec-data.preview.plot.template.light",
-				"vscode-spec-data.preview.plot.template.dark",
-				"vscode-spec-data.preview.plot.template.highContrast"
+				"vscode-spec-data.preview.plot.template"
 			]
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run compile",
+		"vscode:prepublish": "npm run compile && npm run js-yaml",
 		"compile": "tsc -p ./",
 		"watch": "tsc -watch -p ./",
 		"pretest": "npm run compile && npm run lint",
