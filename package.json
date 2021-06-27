@@ -17,6 +17,15 @@
 		"instrument control",
 		"data acquisition"
 	],
+	"license": "SEE LICENSE IN LICENSE",
+	"bugs": {
+		"url": "https://github.com/fujidana/vscode-spec-data/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/fujidana/vscode-spec-data.git"
+	},
+	"homepage": "https://github.com/fujidana/vscode-spec-data/blob/master/README.md",
 	"activationEvents": [
 		"onLanguage:spec-data"
 	],
