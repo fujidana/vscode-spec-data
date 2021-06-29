@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import { TextDecoder } from 'util';
-import * as plotTemplate from './plotTemplate';
+import plotTemplate from './plotTemplate';
 import merge = require('lodash.merge');
-import { activate } from './extension';
 
 const SELECTOR = { scheme: 'file', language: 'spec-data' };
 
@@ -258,7 +257,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     private async showPreview(context: vscode.ExtensionContext, sourceUri: vscode.Uri, text: string | undefined, option?: { showToSide?: boolean, lock?: boolean }) {
         if (!vscode.workspace.isTrusted) {
-            vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
+            vscode.window.showErrorMessage('Preview feature is disabled in an untrusted workspace.');
             return;
         }
 
@@ -330,7 +329,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     private async updatePreview(preview: Preview, sourceUri: vscode.Uri, text: string | undefined) {
         if (!vscode.workspace.isTrusted) {
-            vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
+            vscode.window.showErrorMessage('Preview feature is disabled in an untrusted workspace.');
             return false;
         }
 
