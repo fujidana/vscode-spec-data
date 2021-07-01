@@ -42,7 +42,7 @@ The default background color of graphs depiced by Plotly.py is white, which does
 While Plotly.py (Python version of Plotly) provides several built-in templates including `"plotly_dark"`, it seems Plotly.js (JavaScript version) does not.
 Therefore, the extension developer manually wrote Plotly.js templates that are apparently in accordance with the built-in _dark_ and _high contrast_ color themes of VS Code.
 
-One can override values in these templates using the `vscode-spec-data.preview.plot.template` configuraiton option.
+One can override values in these templates using the `spec-data.preview.plot.template` configuraiton option.
 The option has at most 4 keys: `"all"`, `"light"`, `"dark"`, and `"highContrast"`.
 The value of the respective key shall be the JSON represenation of a Plotly.js template.
 The `"all"` key is for a template that is independent from the color theme and the others for the respective themes.
@@ -51,7 +51,7 @@ For example, the following code in one's _setting.json_ file makes the line colo
 
 ```json
 {
-    "vscode-spec-data.preview.plot.template": {
+    "spec-data.preview.plot.template": {
         "all": {
             "data": [
                 {"type": "scatter", "line": { "color": "#FF0000" } }

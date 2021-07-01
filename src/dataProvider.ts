@@ -35,7 +35,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         this.colorThemeKind = vscode.window.activeColorTheme.kind;
 
-        // callback of 'vscode-spec-data.showPreview'.
+        // callback of 'spec-data.showPreview'.
         const showPreviewCallback = async (...args: unknown[]) => {
             const files = getTargetFiles(args);
             if (files.length) {
@@ -44,7 +44,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'vscode-spec-data.showPreviewToSide'.
+        // callback of 'spec-data.showPreviewToSide'.
         const showPreviewToSideCallback = async (...args: unknown[]) => {
             let files = getTargetFiles(args);
             if (files.length) {
@@ -53,7 +53,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'vscode-spec-data.showPreviewToSide'.
+        // callback of 'spec-data.showPreviewToSide'.
         const showLockedPreviewCallback = async (...args: unknown[]) => {
             let files = getTargetFiles(args);
             for (const file of files) {
@@ -61,7 +61,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'vscode-spec-data.showLockedPreviewToSide'.
+        // callback of 'spec-data.showLockedPreviewToSide'.
         const showLockedPreviewToSideCallback = async (...args: unknown[]) => {
             let files = getTargetFiles(args);
             for (const file of files) {
@@ -69,7 +69,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'vscode-spec-data.showSource'.
+        // callback of 'spec-data.showSource'.
         const showSourceCallback = (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
@@ -84,7 +84,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'vscode-spec-data.refreshPreview'.
+        // callback of 'spec-data.refreshPreview'.
         const refreshPreviewCallback = async (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
@@ -95,7 +95,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'vscode-spec-data.togglePreviewLock'.
+        // callback of 'spec-data.togglePreviewLock'.
         const togglePreviewLockCallback = (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
@@ -142,8 +142,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         const onDidChangeConfigurationListner = (event: vscode.ConfigurationChangeEvent) => {
-            if (event.affectsConfiguration('vscode-spec-data.preview.scrollPreviewWithEditor')) {
-                const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('vscode-spec-data.preview').get('scrollPreviewWithEditor', true);
+            if (event.affectsConfiguration('spec-data.preview.scrollPreviewWithEditor')) {
+                const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('spec-data.preview').get('scrollPreviewWithEditor', true);
                 if (scrollPreviewWithEditor) {
                     if (!this.onDidChangeTextEditorVisibleRangesDisposable) {
                         this.onDidChangeTextEditorVisibleRangesDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(onDidChangeTextEditorVisibleRangesListener);
@@ -182,13 +182,13 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         // register providers and commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('vscode-spec-data.showPreview', showPreviewCallback),
-            vscode.commands.registerCommand('vscode-spec-data.showPreviewToSide', showPreviewToSideCallback),
-            vscode.commands.registerCommand('vscode-spec-data.showLockedPreview', showLockedPreviewCallback),
-            vscode.commands.registerCommand('vscode-spec-data.showLockedPreviewToSide', showLockedPreviewToSideCallback),
-            vscode.commands.registerCommand('vscode-spec-data.showSource', showSourceCallback),
-            vscode.commands.registerCommand('vscode-spec-data.refreshPreview', refreshPreviewCallback),
-            vscode.commands.registerCommand('vscode-spec-data.togglePreviewLock', togglePreviewLockCallback),
+            vscode.commands.registerCommand('spec-data.showPreview', showPreviewCallback),
+            vscode.commands.registerCommand('spec-data.showPreviewToSide', showPreviewToSideCallback),
+            vscode.commands.registerCommand('spec-data.showLockedPreview', showLockedPreviewCallback),
+            vscode.commands.registerCommand('spec-data.showLockedPreviewToSide', showLockedPreviewToSideCallback),
+            vscode.commands.registerCommand('spec-data.showSource', showSourceCallback),
+            vscode.commands.registerCommand('spec-data.refreshPreview', refreshPreviewCallback),
+            vscode.commands.registerCommand('spec-data.togglePreviewLock', togglePreviewLockCallback),
             vscode.languages.registerFoldingRangeProvider(SELECTOR, this),
             vscode.languages.registerDocumentSymbolProvider(SELECTOR, this),
             vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditorListner),
@@ -196,7 +196,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.workspace.onDidChangeConfiguration(onDidChangeConfigurationListner)
         );
 
-        const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('vscode-spec-data.preview').get('scrollPreviewWithEditor', true);
+        const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('spec-data.preview').get('scrollPreviewWithEditor', true);
         if (scrollPreviewWithEditor) {
             this.onDidChangeTextEditorVisibleRangesDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(onDidChangeTextEditorVisibleRangesListener);
             context.subscriptions.push(this.onDidChangeTextEditorVisibleRangesDisposable);
@@ -270,7 +270,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             this.livePreview.panel.reveal();
             return this.livePreview;
         } else {
-            const config = vscode.workspace.getConfiguration('vscode-spec-data.preview');
+            const config = vscode.workspace.getConfiguration('spec-data.preview');
             const retainContextWhenHidden: boolean = config.get('retainContextWhenHidden', false);
 
             // Else create a new panel as a live panel.
@@ -291,7 +291,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
 
             panel.onDidDispose(() => {
-                vscode.commands.executeCommand('setContext', 'vscode-spec-data.previewEditorActive', false);
+                vscode.commands.executeCommand('setContext', 'spec-data.previewEditorActive', false);
                 // remove the closed preview from the array.
                 const index = this.previews.findIndex(preview => preview.panel === panel);
                 if (index >= 0) {
@@ -305,7 +305,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }, null, context.subscriptions);
 
             panel.onDidChangeViewState((event) => {
-                vscode.commands.executeCommand('setContext', 'vscode-spec-data.previewEditorActive', event.webviewPanel.active);
+                vscode.commands.executeCommand('setContext', 'spec-data.previewEditorActive', event.webviewPanel.active);
             }, null, context.subscriptions);
 
             panel.webview.onDidReceiveMessage(message => {
@@ -562,7 +562,7 @@ function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controlle
     let nameLists: { [name: string]: string[] } = {};
     let mnemonicLists: { [name: string]: string[] } = {};
 
-    const config = vscode.workspace.getConfiguration('vscode-spec-data.preview');
+    const config = vscode.workspace.getConfiguration('spec-data.preview');
     const hideTable: boolean = config.get('table.hide', true);
     const columnsPerLine: number = config.get('table.columnsPerLine', 8);
     const headerType: string = config.get('table.headerType', 'mnemonic');
@@ -587,7 +587,7 @@ function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controlle
 <head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}">
 	<meta charset="UTF-8">
     <!--
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} https:; style-src ${cspSource}; script-src 'unsafe-inline' ${cspSource};">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} https:; style-src ${cspSource} 'unsafe-inline'; script-src ${cspSource} 'unsafe-eval';">
     -->
     <title>Preview spec scan</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -689,7 +689,7 @@ function getPlotlyTemplate(kind?: vscode.ColorThemeKind): PlotlyTemplate {
     let userTemplateForAllThemes: PlotlyTemplate;
     let userTemplateForTheme: PlotlyTemplate;
     
-    const userTemplate : UserPlotlyTemplate | undefined = vscode.workspace.getConfiguration('vscode-spec-data.preview').get('plot.template');
+    const userTemplate : UserPlotlyTemplate | undefined = vscode.workspace.getConfiguration('spec-data.preview').get('plot.template');
 
     userTemplateForAllThemes = (userTemplate && userTemplate.all) ? userTemplate.all : {};
 
