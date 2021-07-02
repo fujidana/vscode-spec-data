@@ -27,6 +27,8 @@ Note that the extention is not the official one developed by Certified Scientifi
   - scan data depicted in a graphical and interactive graph, powered by [Plotly.js](https://plotly.com/javascript/). One can select a pair of columns to be drawn.
   - scroll sync of the editor and preview (Currently only _scroll-preview-from-editor_ functions; _scroll-editor-from-preview_ does not.)
 
+![screenshot](resources/screenshot.png)
+
 ## Requirements
 
 Nothing.
