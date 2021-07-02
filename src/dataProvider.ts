@@ -279,7 +279,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 'Preview spec scan',
                 (option?.showToSide) ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
                 {
-                    localResourceRoots: [context.extensionUri],
+                    // localResourceRoots: [context.extensionUri],
                     enableScripts: true,
                     retainContextWhenHidden: retainContextWhenHidden,
                 }
@@ -568,7 +568,7 @@ function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controlle
     const headerType: string = config.get('table.headerType', 'mnemonic');
     const maximumPlots: number = config.get('plot.maximumNumberOfPlots', 25);
     const plotHeight: number = config.get('plot.height', 400);
-
+    const applyCsp: boolean = config.get('applyContentSecurityPolicy', true);
 
     function getSanitizedString(text: string) {
         return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -582,14 +582,16 @@ function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controlle
         return str;
     };
 
-    const header = `<!DOCTYPE html>
+    let header = `<!DOCTYPE html>
 <html lang="en">
 <head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}">
 	<meta charset="UTF-8">
-    <!--
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} https:; style-src ${cspSource} 'unsafe-inline'; script-src ${cspSource} 'unsafe-eval';">
-    -->
-    <title>Preview spec scan</title>
+`;
+    if (applyCsp) {
+        header += `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} https:; style-src ${cspSource} 'unsafe-inline'; script-src ${cspSource} 'unsafe-eval';">
+`;
+    }
+    header += `<title>Preview spec scan</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="${plotlyJsUri}"></script>
     <script src="${controllerJsJri}"></script>

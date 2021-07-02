@@ -201,6 +201,11 @@
 					"default": false,
 					"description": "Controls whether preview contents remain in memory when the preview tab is hidden. Enabling this option potentially requires high memory overhead. A change in this option does not affect previews already open."
 				},
+				"spec-data.preview.applyContentSecurityPolicy": {
+					"type": "boolean",
+					"default": true,
+					"description": "Applies a content security policy (CSP) to a preview, which enhances security against cross site scripting and data injection attacks caused by malicious source files. One may be able to avoid several Plotly.js errors when the option is disabled. In a future release, a CSP may be always active and this option may be removed."
+				},
 				"spec-data.preview.plot.maximumNumberOfPlots": {
 					"type": "number",
 					"default": 25,
