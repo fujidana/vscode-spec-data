@@ -173,7 +173,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     preview.panel.webview.postMessage({
                         command: 'setTemplate',
                         template: getPlotlyTemplate(colorTheme.kind),
-                        action: "update"
+                        action: 'update'
                     });
                 }
             }
@@ -257,7 +257,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     private async showPreview(context: vscode.ExtensionContext, sourceUri: vscode.Uri, text: string | undefined, option?: { showToSide?: boolean, lock?: boolean }) {
         if (!vscode.workspace.isTrusted) {
-            vscode.window.showErrorMessage('Preview feature is disabled in an untrusted workspace.');
+            vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
             return;
         }
 
@@ -329,7 +329,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     private async updatePreview(preview: Preview, sourceUri: vscode.Uri, text: string | undefined) {
         if (!vscode.workspace.isTrusted) {
-            vscode.window.showErrorMessage('Preview feature is disabled in an untrusted workspace.');
+            vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
             return false;
         }
 
@@ -346,7 +346,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.uri = sourceUri;
         preview.tree = tree;
         preview.panel.title = `${label} ${sourceUri.path.substring(sourceUri.path.lastIndexOf('/') + 1)}`;
-        preview.panel.webview.html = getWebviewContent(webview.cspSource, webview.asWebviewUri(this.plotlyJsUri), webview.asWebviewUri(this.controllerJsUri), tree);
+        preview.panel.webview.html = getWebviewContent(webview.cspSource, sourceUri, webview.asWebviewUri(this.plotlyJsUri), webview.asWebviewUri(this.controllerJsUri), tree);
 
         return true;
     }
@@ -558,7 +558,7 @@ function parseScanFileContent(text: string): Node[] | undefined {
     return nodes;
 }
 
-function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controllerJsJri: vscode.Uri, nodes: Node[]): string {
+function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri: vscode.Uri, controllerJsJri: vscode.Uri, nodes: Node[]): string {
     let nameLists: { [name: string]: string[] } = {};
     let mnemonicLists: { [name: string]: string[] } = {};
 
@@ -584,7 +584,7 @@ function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controlle
 
     let header = `<!DOCTYPE html>
 <html lang="en">
-<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}">
+<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${sourceUri.toString()}">
 	<meta charset="UTF-8">
 `;
     if (applyCsp) {
@@ -624,10 +624,10 @@ function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controlle
                 body += '<p><em>The number of scan headers and data columns mismatched.</em></p>';
             } else {
                 body += `<p>
-<input type="checkbox" ${hideTable ? '' : ' checked'} id="showValueListInput${occurance}" class="showValueListInput" data-table-id="valueListTable${occurance}">
+<input type="checkbox" id="showValueListInput${occurance}" class="showValueListInput">
 <label for="showValueListInput${occurance}">Show Prescan Table</label>
 </p>
-<table ${hideTable ? ' hidden' : ''} id="valueListTable${occurance}">
+<table id="valueListTable${occurance}" class="valueListTable">
 <caption>${getSanitizedString(node.kind)}</caption>
 `;
                 for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
@@ -648,7 +648,7 @@ function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controlle
 
             body += `<div ${getAttributesForNode(node)}>`;
             if (data && data.length) {
-                body += `<div>
+                body += `<p>
 <input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
 <label for="showPlotInput${occurance}">Show Scan Plot</label>, `;
                 const axes = ['x', 'y'];
@@ -662,7 +662,7 @@ function getWebviewContent(cspSource: string, plotlyJsUri: vscode.Uri, controlle
                         body += ', ';
                     }
                 }
-                body += `</div>
+                body += `</p>
 <div id="plotly${occurance}" class="scanDataPlot"></div>
 `;
             }

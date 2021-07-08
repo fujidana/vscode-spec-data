@@ -4,97 +4,119 @@ declare var Plotly: any;
 
 const vscode = acquireVsCodeApi();
 
-let template: any;
+interface ValueListState { [occurance: number]: { hidden: boolean } }
+interface ScanDataState { [occurance: number]: { x: number, y: number, hidden: boolean } }
+interface State { template: any, valueList: ValueListState, scanData: ScanDataState, sourceUri: string }
 
-const maximumPlots = document.head.dataset.maximumPlots !== undefined ? parseInt(document.head.dataset.maximumPlots) : 0;
-const plotHeight = document.head.dataset.plotHeight !== undefined ? parseInt(document.head.dataset.plotHeight) : 0;
+const headDataset = document.head.dataset;
+const maximumPlots = headDataset.maximumPlots !== undefined ? parseInt(headDataset.maximumPlots) : 0;
+const plotHeight = headDataset.plotHeight !== undefined ? parseInt(headDataset.plotHeight) : 0;
+const hideTableGlobal = headDataset.hideTable !== undefined ? Boolean(parseInt(headDataset.hideTable)) : false;
+const sourceUri = headDataset.sourceUri !== undefined ? headDataset.sourceUri : "";
+
+const storedState: State | undefined = vscode.getState();
+const state = storedState ? storedState : { template: undefined, valueList: {}, scanData: {}, sourceUri: sourceUri };
+
+if (storedState && storedState.sourceUri !== sourceUri) {
+    // clear the state if the source file is changed.
+    state.valueList = {};
+    state.scanData = {};
+    state.sourceUri = sourceUri;
+    // vscode.setState(state);
+}
 
 // a handler for a checkbox to control the table visibility
 const showValueListInputChangeHandler = function (event: Event) {
-    if (event.target && event.target instanceof HTMLInputElement) {
+    if (event.target && event.target instanceof HTMLInputElement && event.target.parentElement?.parentElement) {
         const input = event.target;
-        const tableId = input.dataset.tableId;
-        if (tableId) {
-            const table = document.getElementById(tableId);
-            if (table) {
-                // toggle visibility of the motor-position table
-                table.hidden = !input.checked;
-            }
+        const div = event.target.parentElement.parentElement;
+        const occuranceString = div.dataset.occurance;
+        const tables = div.getElementsByClassName('valueListTable') as HTMLCollectionOf<HTMLTableElement>;
+        if (occuranceString && tables && tables.length === 1) {
+            // toggle visibility of the motor-position table
+            tables[0].hidden = !input.checked;
+
+            // save the current state.
+            state.valueList[parseInt(occuranceString)] = { hidden: !input.checked };
+            vscode.setState(state);
         }
     }
 };
 
 // a handler for a checkbox to control the plot visibility
 const showPlotInputChangeHandler = function (event: Event) {
-    if (event.target && event.target instanceof HTMLInputElement) {
+    if (event.target && event.target instanceof HTMLInputElement && event.target.parentElement?.parentElement) {
         const input = event.target;
-        const occuranceString = input.dataset.occurance;
-        if (occuranceString !== undefined) {
-            const axisSelectX = document.getElementById('axisSelectX' + occuranceString);
-            const axisSelectY = document.getElementById('axisSelectY' + occuranceString);
-            if (axisSelectX && axisSelectY && axisSelectX instanceof HTMLSelectElement && axisSelectY instanceof HTMLSelectElement) {
-                if (input.checked) {
-                    vscode.postMessage({
-                        command: 'requestPlotData',
-                        occurance: parseInt(occuranceString),
-                        indexes: [axisSelectX.selectedIndex, axisSelectY.selectedIndex],
-                        action: 'new'
-                    });
-                } else {
-                    Plotly.purge('plotly' + occuranceString);
-                }
-                const axisSelects = input.parentElement?.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement> | null;
-                if (axisSelects) {
-                    for (const select of axisSelects) {
-                        select.disabled = !input.checked;
-                    }
-                }
+        const div = event.target.parentElement.parentElement;
+        const occuranceString = div.dataset.occurance;
+        const selects = div.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        if (occuranceString && selects && selects.length === 2) {
+            // show or hide the graph
+            if (input.checked) {
+                vscode.postMessage({
+                    command: 'requestPlotData',
+                    occurance: parseInt(occuranceString),
+                    indexes: [selects[0].selectedIndex, selects[1].selectedIndex],
+                    action: 'new'
+                });
+            } else {
+                Plotly.purge('plotly' + occuranceString);
             }
+
+            // enable or disable the dropdown axis selectors
+            selects[0].disabled = !input.checked;
+            selects[1].disabled = !input.checked;
+
+            // save the current state
+            state.scanData[parseInt(occuranceString)] = { x: selects[0].selectedIndex, y: selects[1].selectedIndex, hidden: !input.checked };
+            vscode.setState(state);
         }
     }
 };
 
 // a handler for a select (dropdown list) to select columns for X and Y axes.
 const plotAxisSelectChangeHandler = function (event: Event) {
-    if (event.target && event.target instanceof HTMLSelectElement) {
-        const select = event.target;
-        const occuranceString = select.dataset.occurance;
-        if (occuranceString !== undefined) {
-            const axisSelectX = document.getElementById('axisSelectX' + occuranceString);
-            const axisSelectY = document.getElementById('axisSelectY' + occuranceString);
-            if (axisSelectX && axisSelectY && axisSelectX instanceof HTMLSelectElement && axisSelectY instanceof HTMLSelectElement) {
-                vscode.postMessage({
-                    command: 'requestPlotData',
-                    occurance: parseInt(occuranceString),
-                    indexes: [axisSelectX.selectedIndex, axisSelectY.selectedIndex],
-                    action: 'react'
-                });
-            }
+    if (event.target && event.target instanceof HTMLSelectElement && event.target.parentElement?.parentElement) {
+        const div = event.target.parentElement.parentElement;
+        const selects = div.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const inputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
+        const occuranceString = div.dataset.occurance;
+        if (occuranceString && inputs && selects && inputs.length === 1 && selects.length === 2) {
+            const occurance = parseInt(occuranceString);
+            // redraw the graph
+            vscode.postMessage({
+                command: 'requestPlotData',
+                occurance: occurance,
+                indexes: [selects[0].selectedIndex, selects[1].selectedIndex],
+                action: 'react'
+            });
+
+            // save the current state
+            state.scanData[occurance] = { x: selects[0].selectedIndex, y: selects[1].selectedIndex, hidden: !inputs[0].checked };
+            vscode.setState(state);
         }
     }
 };
 
-// show all graph
+// show all graphs
 const showAllGraphs = (action: string) => {
-    for (const div of document.body.getElementsByClassName('scanDataPlot') as HTMLCollectionOf<HTMLDivElement>) {
+    for (const div of document.body.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>) {
+        const selects = div.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const inputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
+        const plotDivs = div.getElementsByClassName('scanDataPlot') as HTMLCollectionOf<HTMLDivElement>;
         const occuranceString = div.dataset.occurance;
-        const showPlotInput = document.getElementById('showPlotInput' + occuranceString) as HTMLInputElement | null;
-        const axisSelectX = document.getElementById('axisSelectX' + occuranceString) as HTMLSelectElement | null;
-        const axisSelectY = document.getElementById('axisSelectY' + occuranceString) as HTMLSelectElement | null;
-        const plotDiv = document.getElementById('plotly' + occuranceString) as HTMLSelectElement | null;
-
-        if (occuranceString !== undefined && showPlotInput && axisSelectX && axisSelectY && plotDiv) {
-            if (showPlotInput.checked) {
+        if (occuranceString && inputs && selects && plotDivs && inputs.length === 1 && selects.length === 2 && plotDivs.length === 1) {
+            if (inputs[0].checked) {
                 if (action === 'new') {
                     vscode.postMessage({
                         command: 'requestPlotData',
                         occurance: parseInt(occuranceString),
-                        indexes: [axisSelectX.selectedIndex, axisSelectY.selectedIndex],
+                        indexes: [selects[0].selectedIndex, selects[1].selectedIndex],
                         action: action
                     });
                 } else if (action === 'update') {
-                    Plotly.relayout(plotDiv, {
-                        template: template
+                    Plotly.relayout(plotDivs[0], {
+                        template: state.template
                     });
                 }
             }
@@ -104,47 +126,63 @@ const showAllGraphs = (action: string) => {
 
 
 window.addEventListener('DOMContentLoaded', event => {
+    // Initialize prescan position elements
+    for (const div of document.getElementsByClassName('valueList') as HTMLCollectionOf<HTMLDivElement>) {
+        const inputs = div.getElementsByClassName('showValueListInput') as HTMLCollectionOf<HTMLInputElement>;
+        const tables = div.getElementsByClassName('valueListTable') as HTMLCollectionOf<HTMLTableElement>;
+        const occuranceString = div.dataset.occurance;
 
-    // "Show Table" checkboxes
-    for (const input of document.getElementsByClassName('showValueListInput') as HTMLCollectionOf<HTMLInputElement>) {
-        // register a handler.
-        input.onchange = showValueListInputChangeHandler;
+        if (occuranceString && inputs && tables && inputs.length === 1 && tables.length === 1) {
+            const occurance = parseInt(occuranceString);
+            const hideTable: boolean = state.valueList[occurance] && state.valueList[occurance].hidden !== undefined ? state.valueList[occurance].hidden : hideTableGlobal;
+
+            // register a handler.
+            inputs[0].onchange = showValueListInputChangeHandler;
+
+            // set the initial state
+            inputs[0].checked = !hideTable;
+            tables[0].hidden = hideTable;
+        }
     }
 
-    // set initial state and also register handlers.
-    for (const scanDataDiv of document.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>) {
-        const occuranceString = scanDataDiv.dataset.occurance;
-        if (occuranceString) {
+    // Initialize scan data elements
+    for (const div of document.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>) {
+        const occuranceString = div.dataset.occurance;
+        const inputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
+        const selects = div.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+
+        if (occuranceString && inputs && selects && inputs.length === 1 && selects.length === 2) {
             const occurance = parseInt(occuranceString);
+            let hideGraph: boolean;
+            let indexX: number;
+            let indexY: number;
+            if (state.scanData[occurance]) {
+                hideGraph = state.scanData[occurance].hidden;
+                indexX = state.scanData[occurance].x;
+                indexY = state.scanData[occurance].y;
+            } else {
+                hideGraph = occurance >= maximumPlots;
+                indexX = 0;
+                indexY = selects[1].length - 1;
+            }
 
             // "Show Plot" checkboxes
-            const showPlotInputs = scanDataDiv.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
-            for (const input of showPlotInputs) {
-                // register a handler
-                input.dataset.occurance = occuranceString;
-                // select the checkbox that corresponds with a plot to be shown by default.
-                input.checked = occurance < maximumPlots;
-                input.onchange = showPlotInputChangeHandler;
-            }
+            // register a handler
+            inputs[0].onchange = showPlotInputChangeHandler;
 
-            // axis selection dropdown menu
-            const axisSelects = scanDataDiv.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-            for (const select of axisSelects) {
-                select.dataset.occurance = occuranceString;
-                // Register a handler
-                select.onchange = plotAxisSelectChangeHandler;
-                // Disable the dropdown list that corresponds with a plot to be not shown by default.
-                select.disabled = !(occurance < maximumPlots);
-                // Select the first and last columns from the dropdown list item for x and y axis, respectively.
-                select.selectedIndex = (select.dataset.axis && select.dataset.axis === 'x') ? 0 : select.length - 1;
-            }
+            // set the initial state.
+            inputs[0].checked = !hideGraph;
 
-            // At the moment the template has not been provided, and thus no commmand is sent to Plotly.
-            // Only assign the occurance value in the metadata.
-            const plotlyDivs = scanDataDiv.getElementsByClassName('scanDataPlot') as HTMLCollectionOf<HTMLDivElement>;
-            for (const div of plotlyDivs) {
-                div.dataset.occurance = occuranceString;
-            }
+            // Axis selectors
+            // register a handler
+            selects[0].onchange = plotAxisSelectChangeHandler;
+            selects[1].onchange = plotAxisSelectChangeHandler;
+            // set the initial state.
+            selects[0].disabled = hideGraph;
+            selects[1].disabled = hideGraph;
+
+            selects[0].selectedIndex = indexX;
+            selects[1].selectedIndex = indexY;
         }
     }
 
@@ -153,8 +191,9 @@ window.addEventListener('DOMContentLoaded', event => {
 
         if (message.command === 'setTemplate') {
             // create template from an object (dictionary)
-            template = Plotly.makeTemplate(message.template);
-            vscode.setState({ template });
+            // template = Plotly.makeTemplate(message.template);
+            state.template = message.template;
+            vscode.setState(state);
             if (message.action) {
                 showAllGraphs(message.action);
             }
@@ -174,7 +213,7 @@ window.addEventListener('DOMContentLoaded', event => {
                     Plotly.newPlot(element,
                         message.data,
                         {
-                            template: template,
+                            template: state.template,
                             height: plotHeight,
                             xaxis: { title: message.labels[0] },
                             yaxis: { title: message.labels[1] },
@@ -186,7 +225,7 @@ window.addEventListener('DOMContentLoaded', event => {
                     Plotly.react(element, {
                         data: message.data,
                         layout: {
-                            template: template,
+                            template: state.template,
                             xaxis: { title: message.labels[0] },
                             yaxis: { title: message.labels[1] },
                             margin: { t: 20, r: 20 }
@@ -196,17 +235,13 @@ window.addEventListener('DOMContentLoaded', event => {
             }
         }
     });
-    // 
-    const previousState = vscode.getState();
-    if (previousState) {
-        template = previousState.template;
-        if (template) {
-            showAllGraphs('new');
-        }
-    } else {
+
+    if (state.template === undefined) {
         vscode.postMessage({
             command: 'requestTemplate',
             action: 'new'
         });
+    } else {
+        showAllGraphs('new');
     }
 });

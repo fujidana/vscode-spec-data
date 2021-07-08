@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- persistence of the preview state such as checkbox and dropdown menu selections
+  - Previously the state was lost when the preview is moved to a background tab.
+  - When one wants to keep the state of graph scaling, enable `spec-data.preview.retainContextWhenHidden` option.
+
 ## [1.0.0] - 2021-07-08
 
 ### Added
