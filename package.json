@@ -26,7 +26,7 @@
 		"type": "git",
 		"url": "https://github.com/fujidana/vscode-spec-data.git"
 	},
-	"homepage": "https://github.com/fujidana/vscode-spec-data/blob/master/README.md",
+	"homepage": "https://github.com/fujidana/vscode-spec-data#readme",
 	"activationEvents": [
 		"onLanguage:spec-data"
 	],
@@ -255,7 +255,7 @@
 	"capabilities": {
 		"untrustedWorkspaces": {
 			"supported": "limited",
-			"description": "The preview feature is disabled in an untrusted workspace becauase protection against content injections has not been comprehensively surveyed.",
+			"description": "The preview feature is disabled in untrusted workspaces becauase protection against content injections has not been comprehensively surveyed.",
 			"restrictedConfigurations": [
 				"spec-data.preview.plot.template"
 			]
