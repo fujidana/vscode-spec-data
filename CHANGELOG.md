@@ -6,11 +6,12 @@
 
 ### Added
 
-- persistence of the preview state such as checkbox and dropdown menu selections
-  - Previously the state was lost when the preview is moved to a background tab.
-  - When one wants to keep the state of graph scaling, enable `spec-data.preview.retainContextWhenHidden` option.
+- persistence of state in a preview, such as checkbox and dropdown menu selections
+  - Restore the state when a preview becomes visible after being moved into the background.
+    - By default the state inside graphs such as scaling is not stored. When one wants to keep this state, enable `spec-data.preview.retainContextWhenHidden` option (but keep it in mind that this increases memory usage).
+  - Restore the state when VS Code restarts.
 
-## [1.0.0] - 2021-07-08
+## [1.0.0] -- 2021-07-08
 
 ### Added
 
@@ -39,7 +40,7 @@
 
 ### Changed
 
-- language ID from `spec-scan` to `spec-data` (since CSS's PDF manual call it _standard data file format_)
+- language ID from `spec-scan` to `spec-data` (since the official PDF manual written by CSS calls it _standard data file format_)
 - preview window handling
   - In the previous version, a new preview is created whenever requested.
   - In this version, at most a single _Live Preview_ (IOW, _Unlocked Preview_) is open and the preview is reused when the active editor opens another __spec__ data file. One can handle multiple previews by _Open Locked Preview_ and other relevant commands.
@@ -51,9 +52,9 @@
 - support _Workspace Trust_:
   - Preview feature is disabled in untrusted workspaces because protection against data injection has not been comprehensively surveyed.
   - The other features are allowed in untrusted workspaces.
-- Apply a content security policy to a preview (this can be disabled by `spec-data.preview.applyContentSecurityPolicy` option)
+- Apply a content security policy to a preview. (This can be disabled by `spec-data.preview.applyContentSecurityPolicy` option)
 
-## [0.1.0] - 2021-06-16
+## [0.1.0] -- 2021-06-16
 
 ### Added
 

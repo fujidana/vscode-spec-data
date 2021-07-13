@@ -2,11 +2,11 @@ declare var acquireVsCodeApi: any;
 // eslint-disable-next-line @typescript-eslint/naming-convention
 declare var Plotly: any;
 
-const vscode = acquireVsCodeApi();
-
 interface ValueListState { [occurance: number]: { hidden: boolean } }
 interface ScanDataState { [occurance: number]: { x: number, y: number, hidden: boolean } }
-interface State { template: any, valueList: ValueListState, scanData: ScanDataState, sourceUri: string }
+interface State { template: any, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
+
+const vscode = acquireVsCodeApi();
 
 const headDataset = document.head.dataset;
 const maximumPlots = headDataset.maximumPlots !== undefined ? parseInt(headDataset.maximumPlots) : 0;
@@ -14,15 +14,10 @@ const plotHeight = headDataset.plotHeight !== undefined ? parseInt(headDataset.p
 const hideTableGlobal = headDataset.hideTable !== undefined ? Boolean(parseInt(headDataset.hideTable)) : false;
 const sourceUri = headDataset.sourceUri !== undefined ? headDataset.sourceUri : "";
 
-const storedState: State | undefined = vscode.getState();
-const state = storedState ? storedState : { template: undefined, valueList: {}, scanData: {}, sourceUri: sourceUri };
-
-if (storedState && storedState.sourceUri !== sourceUri) {
-    // clear the state if the source file is changed.
-    state.valueList = {};
-    state.scanData = {};
-    state.sourceUri = sourceUri;
-    // vscode.setState(state);
+let state: State = vscode.getState();
+if (state === undefined || state.sourceUri !== sourceUri) {
+    state = { template: undefined, valueList: {}, scanData: {}, sourceUri: sourceUri, lockPreview: false };
+    vscode.setState(state);
 }
 
 // a handler for a checkbox to control the table visibility
@@ -124,6 +119,58 @@ const showAllGraphs = (action: string) => {
     }
 };
 
+window.addEventListener('message', event => {
+    const message = event.data;
+
+    if (message.command === 'setTemplate') {
+        // create template from an object (dictionary)
+        // template = Plotly.makeTemplate(message.template);
+        state.template = message.template;
+        vscode.setState(state);
+        if (message.action) {
+            showAllGraphs(message.action);
+        }
+    } else if (message.command === 'scrollToElement') {
+        const element = document.getElementById(message.elementId);
+        if (element) {
+            element.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start'
+            });
+        }
+    } else if (message.command === 'updatePlot') {
+        const element = document.getElementById(message.elementId);
+        if (element) {
+            if (message.action === 'new') {
+                element.hidden = false;
+                Plotly.newPlot(element,
+                    message.data,
+                    {
+                        template: state.template,
+                        height: plotHeight,
+                        xaxis: { title: message.labels[0] },
+                        yaxis: { title: message.labels[1] },
+                        margin: { t: 20, r: 20 }
+                    },
+                    { responsive: true }
+                );
+            } else if (message.action === 'react') {
+                Plotly.react(element, {
+                    data: message.data,
+                    layout: {
+                        template: state.template,
+                        xaxis: { title: message.labels[0] },
+                        yaxis: { title: message.labels[1] },
+                        margin: { t: 20, r: 20 }
+                    }
+                });
+            }
+        }
+    } else if (message.command === 'lockPreview') {
+        state.lockPreview = message.flag;
+        vscode.setState(state);
+    }
+});
 
 window.addEventListener('DOMContentLoaded', event => {
     // Initialize prescan position elements
@@ -186,55 +233,6 @@ window.addEventListener('DOMContentLoaded', event => {
         }
     }
 
-    window.addEventListener('message', event => {
-        const message = event.data;
-
-        if (message.command === 'setTemplate') {
-            // create template from an object (dictionary)
-            // template = Plotly.makeTemplate(message.template);
-            state.template = message.template;
-            vscode.setState(state);
-            if (message.action) {
-                showAllGraphs(message.action);
-            }
-        } else if (message.command === 'scrollToElement') {
-            const element = document.getElementById(message.elementId);
-            if (element) {
-                element.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        } else if (message.command === 'updatePlot') {
-            const element = document.getElementById(message.elementId);
-            if (element) {
-                if (message.action === 'new') {
-                    element.hidden = false;
-                    Plotly.newPlot(element,
-                        message.data,
-                        {
-                            template: state.template,
-                            height: plotHeight,
-                            xaxis: { title: message.labels[0] },
-                            yaxis: { title: message.labels[1] },
-                            margin: { t: 20, r: 20 }
-                        },
-                        { responsive: true }
-                    );
-                } else if (message.action === 'react') {
-                    Plotly.react(element, {
-                        data: message.data,
-                        layout: {
-                            template: state.template,
-                            xaxis: { title: message.labels[0] },
-                            yaxis: { title: message.labels[1] },
-                            margin: { t: 20, r: 20 }
-                        }
-                    });
-                }
-            }
-        }
-    });
 
     if (state.template === undefined) {
         vscode.postMessage({
