@@ -328,7 +328,25 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         panel.webview.onDidReceiveMessage(message => {
             // console.log(message);
             if (message.command === 'requestPlotData') {
-                this.replyPlotRequest(preview, message.occurance, message.indexes, message.action);
+                if (preview.tree) {
+                    const node = preview.tree.find(node => node.occurance === message.occurance && node.type === 'scanData');
+                    if (node && node.type === 'scanData' && node.data.length) {
+                        const headers = node.headers;
+                        const data = node.data;
+                        const xIndex = (message.indexes[0] === -1) ? headers.length - 1 : message.indexes[0];
+                        const yIndex = (message.indexes[1] === -1) ? headers.length - 1 : message.indexes[1];
+                        if (xIndex >= 0 && xIndex < data.length && yIndex >= 0 && yIndex < data.length) {
+                            preview.panel.webview.postMessage({
+                                command: 'updatePlot',
+                                elementId: `plotly${message.occurance}`,
+                                data: [{ x: data[xIndex], y: data[yIndex] }],
+                                labels: [headers[xIndex], headers[yIndex]],
+                                logAxis: message.logAxis,
+                                action: message.action
+                            });
+                        }
+                    }
+                }
             } else if (message.command === 'requestTemplate') {
                 panel.webview.postMessage({
                     command: 'setTemplate',
@@ -377,26 +395,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.panel.webview.html = getWebviewContent(webview.cspSource, preview.uri, plotlyJsUri, controllerJsUri, tree);
 
         return true;
-    }
-
-    private replyPlotRequest(preview: Preview, occurance: number, indexes: [number, number], action: string) {
-        if (preview.tree) {
-            const node = preview.tree.find(node => node.occurance === occurance && node.type === 'scanData');
-            if (node && node.type === 'scanData' && node.data && node.data.length) {
-                const data = node.data;
-                const xIndex = (indexes[0] === -1) ? node.headers.length - 1 : indexes[0];
-                const yIndex = (indexes[1] === -1) ? node.headers.length - 1 : indexes[1];
-                if (xIndex >= 0 && xIndex < data.length && yIndex >= 0 && yIndex < data.length) {
-                    preview.panel.webview.postMessage({
-                        command: 'updatePlot',
-                        elementId: `plotly${occurance}`,
-                        data: [{ x: data[xIndex], y: data[yIndex] }],
-                        labels: [node.headers[xIndex], node.headers[yIndex]],
-                        action: action
-                    });
-                }
-            }
-        }
     }
 
     private getActivePreview(): Preview | undefined {
@@ -700,7 +698,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     let body = "";
     for (const node of nodes) {
         if (node.type === 'file') {
-            body += `<h1 ${getAttributesForNode(node)}>File: ${getSanitizedString(node.value)}</h1>`;
+            body += `<h1 ${getAttributesForNode(node)}>${getSanitizedString(node.value)}</h1>`;
         } else if (node.type === 'date') {
             body += `<p ${getAttributesForNode(node)}>Date: ${getSanitizedString(node.value)}</p>`;
         } else if (node.type === 'comment') {
@@ -748,19 +746,18 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
             if (data && data.length) {
                 body += `<p>
 <input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
-<label for="showPlotInput${occurance}">Show Scan Plot</label>, `;
+<label for="showPlotInput${occurance}">Show Plot</label>, `;
                 const axes = ['x', 'y'];
                 for (let j = 0; j < axes.length; j++) {
                     const axis = axes[j];
                     body += `<label for="axisSelect${axis.toUpperCase()}${occurance}">${axis}:</label>
     <select id="axisSelect${axis.toUpperCase()}${occurance}" class="axisSelect" data-axis="${axis}">`;
                     body += headers.map(item => `<option>${getSanitizedString(item)}</option>`).join('');
-                    body += `</select>`;
-                    if (j !== axes.length - 1) {
-                        body += ', ';
-                    }
+                    body += `</select>, `;
                 }
-                body += `</p>
+                body += `<input type="checkbox" id="logAxisInput${occurance}" class="logAxisInput">
+<label for="logAxisInput${occurance}">Log y-axis</label>
+</p>
 <div id="plotly${occurance}" class="scanDataPlot"></div>
 `;
             }
