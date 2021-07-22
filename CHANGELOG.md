@@ -6,6 +6,7 @@
 
 ### Added
 
+- support for chiplot format (preview feature only)
 - persistence of state in a preview, such as checkbox and dropdown menu selections
   - Restore the state when a preview becomes visible after being moved into the background.
     - By default the state inside graphs such as scaling is not stored. When one wants to keep this state, enable `spec-data.preview.retainContextWhenHidden` option (but keep it in mind that this increases memory usage).

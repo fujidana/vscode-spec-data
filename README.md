@@ -1,10 +1,12 @@
 # __spec__ Data File Extension for Visual Studio Code
 
-The extension enhances user experiences in browsing data files __spec__ software outputs after execution of various built-in scan commands.
-The file is referred to as the _standard data file format_ in the __spec__ PDF mannual.
+The extension enhances user experiences in browsing the following kinds of files:
 
-__spec__ does not specify the filename extension for the data format.
-While this VS Code extension treats `.spec` as the default file extension (language identifier: `spec-data`), VS Code users can change the association by themselves.
+- file format for scan data the __spec__ software outputs, which is referred to as the _standard data file format_ in the __spec__ PDF mannual (language identifier: `spec-data`, default extension: `.spec`).
+- chiplot file format, in which __fit2d__ software imports and exports one-dimensional dataset such as scattering profiles (language identifier: `chiplot`, default extension: `.chi`).
+
+__spec__ does not specify the filename extension for the data format of the former file type.
+While this VS Code extension treats `.spec` as the default file extension, users can change the association by themselves.
 Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs/languages/overview) (official document of VS Code) for further details.
 
 ## What's __spec__?
@@ -19,12 +21,12 @@ Note that the extension is not the official one developed by Certified Scientifi
 
 ## Features
 
-- __Syntax highlighting__
-- __Code navigation__
-  - __Listing symbols in the active editor__: the list shown in the _outline_ view in the _Explorer_ viewlet and breadcrumbs at the top of editor
-- __Code folding__
+- __Syntax highlighting__ (only for `spec-data`)
+- __Code navigation__ (only for `spec-data`)
+  - __Listing symbols in the active editor__: the list shown in the _outline_ view in the _Explorer_ viewlet and breadcrumbs at the top of the editor view
+- __Code folding__ (only for `spec-data`)
 - __Preview__
-  - motor positions just before a scan in a table view
+  - motor positions just before a scan in a table view (only for `spec-data`)
   - scan data depicted in a graphical and interactive graph, powered by [Plotly.js](https://plotly.com/javascript/). Users can select a pair of columns to be drawn.
   - scroll sync of the editor and preview (Currently only _scroll-preview-from-editor_ functions; _scroll-editor-from-preview_ does not.)
 
@@ -78,8 +80,8 @@ Please contact the developer when you find any item that is difficult to read; t
 VS Code provides [Webview API](https://code.visualstudio.com/api/extension-guides/webview#scripts-and-message-passing) for extension developers to implement graphically rich contents.
 In other words, such contents must be built in the world of HTML/CSS/JavaScript.
 This extension employs [Plotly.js](https://plotly.com/javascript/) to plot graphs within this scheme.
-As a consequcense, to render a preview of a scan file that contains a large number of scan dataset cosumues both CPU and memory resources.
-To avoid a performance problem, the maximum number of plots is 25 by default; users can change the this limitation in the _Setting_ window.
+While Plotly.js looks performant as an interactive and nice-looking graph generator, to render a preview consisting of a large number of scan dataset cosumues both CPU and memory resources.
+For this reason, the maximum number of plots is limited to 25 by default; users can change the this limitation in the _Setting_ window.
 
 ### Download button in Plotly.js graph unfunctions
 
@@ -90,7 +92,7 @@ Read [GitHub Issues #1](https://github.com/fujidana/vscode-spec-data/issues/1) f
 
 See `CHANGELOG.md`.
 
-## Tip to automatically set the file extension
+## Tip to make __spec__ automatically set the file extension
 
 _SPECD/standard.mac_ defines `user_filecheck(s)` funciton, which simply returns the input argument `s`.
 Users can override this function in order to insert a macro to massage or test the file name for `newfile`.

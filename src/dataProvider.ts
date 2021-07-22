@@ -3,7 +3,8 @@ import { TextDecoder } from 'util';
 import plotTemplate from './plotTemplate';
 import merge = require('lodash.merge');
 
-const SELECTOR = { scheme: 'file', language: 'spec-data' };
+const SPEC_DATA_SELECTOR = { language: 'spec-data' };
+// const SELECTOR = { scheme: 'file', language: 'spec-data' };
 
 type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
 interface BaseNode { type: string, lineStart: number, lineEnd: number, occurance?: number }
@@ -13,7 +14,7 @@ interface CommentNode extends BaseNode { type: 'comment', value: string }
 interface NameListNode extends BaseNode { type: 'nameList', kind: string, values: string[], mnemonic: boolean }
 interface ValueListNode extends BaseNode { type: 'valueList', kind: string, values: number[] }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
-interface ScanDataNode extends BaseNode { type: 'scanData', rows: number, headers: string[], data?: number[][] }
+interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][] }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
 interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
@@ -117,7 +118,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         const onDidChangeActiveTextEditorListner = (editor: vscode.TextEditor | undefined) => {
-            if (editor && editor.document.languageId === 'spec-data' && editor.document.uri.scheme === 'file') {
+            // if (editor && editor.document.languageId.match(/^(spec-data|chiplot)$/) && editor.document.uri.scheme === 'file') {
+            if (editor && editor.document.languageId.match(/^(spec-data|chiplot)$/)) {
                 if (this.livePreview && this.livePreview.uri.toString() !== editor.document.uri.toString()) {
                     this.livePreview.uri = editor.document.uri;
                     this.updatePreview(this.livePreview, editor.document.getText());
@@ -186,8 +188,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.commands.registerCommand('spec-data.showSource', showSourceCallback),
             vscode.commands.registerCommand('spec-data.refreshPreview', refreshPreviewCallback),
             vscode.commands.registerCommand('spec-data.togglePreviewLock', togglePreviewLockCallback),
-            vscode.languages.registerFoldingRangeProvider(SELECTOR, this),
-            vscode.languages.registerDocumentSymbolProvider(SELECTOR, this),
+            vscode.languages.registerFoldingRangeProvider(SPEC_DATA_SELECTOR, this),
+            vscode.languages.registerDocumentSymbolProvider(SPEC_DATA_SELECTOR, this),
             vscode.window.registerWebviewPanelSerializer('specDataPreview', this),
             vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditorListner),
             vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
@@ -240,11 +242,11 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             if (line.isEmptyOrWhitespace) {
                 if (lineIndex !== prevLineIndex + 1) {
                     const lineAtBlockStart = document.lineAt(prevLineIndex + 1);
-                    let matched: RegExpMatchArray | null;
-                    if ((matched = lineAtBlockStart.text.match(scanLineRegex)) || (matched = lineAtBlockStart.text.match(otherLineRegex))) {
+                    let matches: RegExpMatchArray | null;
+                    if ((matches = lineAtBlockStart.text.match(scanLineRegex)) || (matches = lineAtBlockStart.text.match(otherLineRegex))) {
                         const range = new vscode.Range(prevLineIndex + 1, 0, lineIndex, 0);
-                        const selectedRange = new vscode.Range(prevLineIndex + 1, 0, prevLineIndex + 1, matched[0].length);
-                        results.push(new vscode.DocumentSymbol(matched[1], matched[2], vscode.SymbolKind.Key, range, selectedRange));
+                        const selectedRange = new vscode.Range(prevLineIndex + 1, 0, prevLineIndex + 1, matches[0].length);
+                        results.push(new vscode.DocumentSymbol(matches[1], matches[2], vscode.SymbolKind.Key, range, selectedRange));
                     }
                 }
                 prevLineIndex = lineIndex;
@@ -359,7 +361,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         }
 
         // first, parse the document contents. Simultaneously load the contents if the file is not yet opened.
-        const tree = parseScanFileContent(text);
+        const tree = parseFileContent(text);
         if (!tree) {
             vscode.window.showErrorMessage('Failed in parsing the document.');
             return false;
@@ -424,8 +426,20 @@ function getTargetFileUris(args: unknown[]): vscode.Uri[] {
     return [];
 }
 
-function parseScanFileContent(text: string): Node[] | undefined {
-    const lines = text.split('\n');
+function parseFileContent(text: string): Node[] | undefined {
+    const lines = text.split(/\r\n|\n/);
+    const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
+
+    if (lines.length === 0) {
+        return undefined;
+    } else if (lines[0].match(otherLineRegex)) {
+        return parseSpecDataContent(lines);
+    } else {
+        return parseChiplotContent(lines);
+    }
+}
+
+function parseSpecDataContent(lines: string[]): Node[] | undefined {
     const lineCount = lines.length;
 
     const fileRegex = /^(#F) (.*)$/;
@@ -439,9 +453,9 @@ function parseScanFileContent(text: string): Node[] | undefined {
     const allRegex = /^#([a-zA-Z][0-9]*) (.*)$/;
     const emptyLineRegex = /^\s*$/;
 
-    let matched: RegExpMatchArray | null;
+    let matches: RegExpMatchArray | null;
     let prevNodeIndex = -1;
-    let rowNumber = 0;
+    let columnNumber = 0;
     const nodes: Node[] = [];
 
     let fileOccurance = 0;
@@ -456,39 +470,39 @@ function parseScanFileContent(text: string): Node[] | undefined {
 
     for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
         const lineText = lines[lineIndex];
-        if (matched = lineText.match(fileRegex)) {
-            nodes.push({ type: 'file', lineStart: lineIndex, lineEnd: lineIndex, occurance: fileOccurance, value: matched[2] });
+        if (matches = lineText.match(fileRegex)) {
+            nodes.push({ type: 'file', lineStart: lineIndex, lineEnd: lineIndex, occurance: fileOccurance, value: matches[2] });
             fileOccurance++;
-        } else if (matched = lineText.match(dateRegex)) {
-            nodes.push({ type: 'date', lineStart: lineIndex, lineEnd: lineIndex, occurance: dateOccurance, value: matched[2] });
+        } else if (matches = lineText.match(dateRegex)) {
+            nodes.push({ type: 'date', lineStart: lineIndex, lineEnd: lineIndex, occurance: dateOccurance, value: matches[2] });
             dateOccurance++;
-        } else if (matched = lineText.match(commentRegex)) {
-            nodes.push({ type: 'comment', lineStart: lineIndex, lineEnd: lineIndex, occurance: commentOccurance, value: matched[2] });
+        } else if (matches = lineText.match(commentRegex)) {
+            nodes.push({ type: 'comment', lineStart: lineIndex, lineEnd: lineIndex, occurance: commentOccurance, value: matches[2] });
             commentOccurance++;
-        } else if (matched = lineText.match(nameListRegex)) {
+        } else if (matches = lineText.match(nameListRegex)) {
             let kind, isMnemonic, separator;
-            if (matched[1] === matched[1].toLowerCase()) {
+            if (matches[1] === matches[1].toLowerCase()) {
                 isMnemonic = true;
                 separator = ' ';
             } else {
                 isMnemonic = false;
                 separator = '  ';
             }
-            if (matched[1].toLowerCase() === 'o') {
+            if (matches[1].toLowerCase() === 'o') {
                 kind = 'motor';
-            } else if (matched[1].toLowerCase() === 'j') {
+            } else if (matches[1].toLowerCase() === 'j') {
                 kind = 'counter';
             } else {
-                kind = matched[1];
+                kind = matches[1];
             }
-            const listIndex = parseInt(matched[2]);
+            const listIndex = parseInt(matches[2]);
             const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
             if (prevNode && prevNode.type === 'nameList' && prevNode.kind === kind && prevNode.mnemonic === isMnemonic) {
                 if (prevNodeIndex !== listIndex - 1) {
                     vscode.window.showErrorMessage(`Inconsequent index of the name list: line ${lineIndex + 1}`);
                     return undefined;
                 }
-                prevNode.values.push(...(matched[3].trimEnd().split(separator)));
+                prevNode.values.push(...(matches[3].trimEnd().split(separator)));
                 prevNode.lineEnd = lineIndex;
                 prevNodeIndex = listIndex;
             } else {
@@ -496,24 +510,24 @@ function parseScanFileContent(text: string): Node[] | undefined {
                     vscode.window.showErrorMessage(`The name list not starding with 0: line ${lineIndex + 1}`);
                     return undefined;
                 }
-                nodes.push({ type: 'nameList', lineStart: lineIndex, lineEnd: lineIndex, kind: kind, values: matched[3].trimEnd().split(separator), mnemonic: isMnemonic });
+                nodes.push({ type: 'nameList', lineStart: lineIndex, lineEnd: lineIndex, kind: kind, values: matches[3].trimEnd().split(separator), mnemonic: isMnemonic });
                 prevNodeIndex = 0;
             }
-        } else if (matched = lineText.match(valueListRegex)) {
+        } else if (matches = lineText.match(valueListRegex)) {
             let kind;
-            if (matched[1] === 'P') {
+            if (matches[1] === 'P') {
                 kind = 'motor';
             } else {
-                kind = matched[1];
+                kind = matches[1];
             }
-            const listIndex = parseInt(matched[2]);
+            const listIndex = parseInt(matches[2]);
             const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
             if (prevNode && prevNode.type === 'valueList' && prevNode.kind === kind) {
                 if (prevNodeIndex !== listIndex - 1) {
                     vscode.window.showErrorMessage(`Inconsequent index of the value list: line ${lineIndex + 1}`);
                     return undefined;
                 }
-                prevNode.values.push(...(matched[3].trimEnd().split(' ').map(value => parseFloat(value))));
+                prevNode.values.push(...(matches[3].trimEnd().split(' ').map(value => parseFloat(value))));
                 prevNode.lineEnd = lineIndex;
                 prevNodeIndex = listIndex;
             } else {
@@ -521,27 +535,25 @@ function parseScanFileContent(text: string): Node[] | undefined {
                     vscode.window.showErrorMessage(`The value list not starding with 0: line ${lineIndex + 1}`);
                     return undefined;
                 }
-                nodes.push({ type: 'valueList', lineStart: lineIndex, lineEnd: lineIndex, occurance: valueListOccuracne, kind: kind, values: matched[3].trimEnd().split(' ').map(value => parseFloat(value)) });
+                nodes.push({ type: 'valueList', lineStart: lineIndex, lineEnd: lineIndex, occurance: valueListOccuracne, kind: kind, values: matches[3].trimEnd().split(' ').map(value => parseFloat(value)) });
                 valueListOccuracne++;
                 prevNodeIndex = 0;
             }
-        } else if (matched = lineText.match(scanHeadRegex)) {
-            nodes.push({ type: 'scanHead', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanHeadOccurance, index: parseInt(matched[2]), code: matched[3] });
+        } else if (matches = lineText.match(scanHeadRegex)) {
+            nodes.push({ type: 'scanHead', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanHeadOccurance, index: parseInt(matches[2]), code: matches[3] });
             scanHeadOccurance++;
-        } else if (matched = lineText.match(scanNumberRegex)) {
-            rowNumber = parseInt(matched[2]);
-        } else if (matched = lineText.match(scanDataRegex)) {
+        } else if (matches = lineText.match(scanNumberRegex)) {
+            columnNumber = parseInt(matches[2]);
+        } else if (matches = lineText.match(scanDataRegex)) {
             // The separator between motors and counters are 4 whitespaces.
             // The separator between respective motors and counters are 2 whitespaces.
-            const headersMotCnt = matched[2].split('    ', 2);
+            const headersMotCnt = matches[2].split('    ', 2);
             const headers = headersMotCnt.map(a => a.split('  ')).reduce((a, b) => a.concat(b));
-            if (headers.length !== rowNumber) {
+            if (headers.length !== columnNumber) {
                 vscode.window.showErrorMessage(`Scan number mismatched (header): line ${lineIndex + 1}`);
                 return undefined;
             }
-            const dataNode: ScanDataNode = { type: 'scanData', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanDataOccurance, rows: rowNumber, headers: headers };
-            nodes.push(dataNode);
-            scanDataOccurance++;
+            const lineStart = lineIndex;
 
             // read succeeding lines until EOF or non-data line.
             const data: number[][] = [];
@@ -554,21 +566,91 @@ function parseScanFileContent(text: string): Node[] | undefined {
                 // The separator between respective motors and counters are 1 whitespace.
                 const rowsMotCnt = blockLineText.split('  ', 2);
                 const rows = rowsMotCnt.map(a => a.split(' ')).reduce((a, b) => a.concat(b));
-                if (rows.length !== rowNumber) {
+                if (rows.length !== columnNumber) {
                     vscode.window.showErrorMessage(`Scan number mismatched (data): line ${lineIndex + 2}`);
                     return undefined;
                 }
                 data.push(rows.map(item => parseFloat(item)));
             }
-            // transpose 2D array
-            if (data.length > 0) {
-                dataNode.data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
-            }
-            dataNode.lineEnd = lineIndex;
-        } else if (matched = lineText.match(allRegex)) {
-            nodes.push({ type: 'unknown', lineStart: lineIndex, lineEnd: lineIndex, kind: matched[1], value: matched[2] });
+            // transpose the two-dimensional data array
+            const data2 = data.length > 0 ? data[0].map((_, colIndex) => data.map(row => row[colIndex])) : data;
+
+            nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineIndex, occurance: scanDataOccurance, headers: headers, data: data2 });
+            scanDataOccurance++;
+        } else if (matches = lineText.match(allRegex)) {
+            nodes.push({ type: 'unknown', lineStart: lineIndex, lineEnd: lineIndex, kind: matches[1], value: matches[2] });
         }
     }
+    return nodes;
+}
+
+function parseChiplotContent(lines: string[]): Node[] | undefined {
+    // chiplot format:
+    // 
+    // 1st line: title
+    // 2nd line: x-axis
+    // 3rd line: y-axis
+    // 4th line: number of point per data-set and optionally number of data-set
+    // following lines: data
+    // 
+    // The separator at 4th line and data rows is one or more spaces or a comma.
+    const lineCount = lines.length;
+    if (lineCount < 6) {
+        return undefined;
+    }
+
+    const title = lines[0].trim();
+    const headers = lines[1].trim().split(/\s*,\s*|\s{2,}/).concat(lines[2].trim().split(/\s*,\s*|\s{2,}/));
+    const matches = lines[3].match(/^\s*([0-9]+)((\s*,\s*|\s+)([0-9]+))?/);
+    if (!matches) {
+        return undefined;
+    }
+    const rowNumber = parseInt(matches[1]);
+    if (isNaN(rowNumber) || rowNumber < 1) {
+        return undefined;
+    }
+
+    // const emptyLineRegex = /^\s*$/;
+    const separatorRegex = /\s*,\s*|\s+/;
+
+    const data: number[][] = [];
+    let lineIndex;
+    for (lineIndex = 4; lineIndex < lineCount; lineIndex++) {
+        const lineText = lines[lineIndex];
+        if (lineText.length === 0) {
+            break;
+        }
+        const cells = lineText.trim().split(separatorRegex);
+        data.push(cells.map(cell => parseFloat(cell)));
+    }
+
+    const columnNumber = data[0].length;
+
+    if (data.length !== rowNumber) {
+        // row number mismatch with the header (4th line).
+        return undefined;
+    } else if (data.some(columns => columns.length !== columnNumber)) {
+        // column number not equal with the first data row (5th line)
+        return undefined;
+    }
+    // transpose the two-dimensional data array
+    const data2 = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
+
+    // adjust the number of headers (axis labels) to that of data columns
+    let headers2;
+    if (headers.length < columnNumber) {
+        headers2 = headers;
+        for (let index = headers.length; index < columnNumber; index++) {
+            headers2.push(`[${index.toString()}]`);
+        }
+    } else {
+        headers2 = headers.slice(0, columnNumber);
+    }
+
+    const nodes: Node[] = [];
+    nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, occurance: 0, value: title });
+    nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineIndex, occurance: 0, headers: headers2, data: data2 });
+
     return nodes;
 }
 
