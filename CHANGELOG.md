@@ -4,6 +4,8 @@
 
 ## [Unreleased]
 
+## [1.1.0] -- 2021-07-22
+
 ### Added
 
 - support for chiplot format (preview feature only)
@@ -12,6 +14,10 @@
   - Restore the state when a preview becomes visible after being moved into the background.
     - By default the state inside graphs such as scaling is not stored. When one wants to keep this state, enable `spec-data.preview.retainContextWhenHidden` option (but keep it in mind that this increases memory usage).
   - Restore the state when VS Code restarts.
+
+### Changed
+
+- Bump `plotly.js-dist-min` dependency to 2.2.1
 
 ## [1.0.0] -- 2021-07-08
 
@@ -70,6 +76,7 @@
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fujidana/vscode-spec-data/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/fujidana/vscode-spec-data/releases/tag/v0.1.0
