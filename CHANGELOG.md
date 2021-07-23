@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- axis label being lost when the log-scale checkbox is checked
+
 ## [1.1.0] -- 2021-07-22
 
 ### Added

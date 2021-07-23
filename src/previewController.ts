@@ -126,7 +126,7 @@ const logAxisInputChangeHander = function (event: Event) {
 
             // redraw the graph
             Plotly.relayout(plotDivs[0], {
-                yaxis: { type: (logAxisInput.checked ? 'log' : 'linear') }
+                "yaxis.type": logAxisInput.checked ? 'log' : 'linear'
             });
 
             // save the current state
@@ -202,7 +202,7 @@ window.addEventListener('message', event => {
                         height: plotHeight,
                         xaxis: { title: message.labels[0] },
                         yaxis: {
-                            type: (message.logAxis ? 'log' : 'linear'),
+                            type: message.logAxis ? 'log' : 'linear',
                             title: message.labels[1]
                         },
                         margin: { t: 20, r: 20 }
@@ -216,7 +216,7 @@ window.addEventListener('message', event => {
                         template: state.template,
                         xaxis: { title: message.labels[0] },
                         yaxis: {
-                            type: (message.logAxis ? 'log' : 'linear'),
+                            type: message.logAxis ? 'log' : 'linear',
                             title: message.labels[1]
                         },
                         margin: { t: 20, r: 20 }
