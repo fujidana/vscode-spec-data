@@ -10,6 +10,10 @@
 
 - axis label being lost when the log-scale checkbox is checked
 
+### Security
+
+- Remove `unsafe-eval` from the `script-src` in the Content Security Policy so as to apply a stricter security rule. Now some partial bundles of plotly.js including `basic` have become function-constructor-free, while the full bundle has not been yet. See [Security warning: avoid using function constructor. · Issue #897 · plotly/plotly.js](https://github.com/plotly/plotly.js/issues/897#issuecomment-781422217).
+
 ## [1.1.0] -- 2021-07-22
 
 ### Added

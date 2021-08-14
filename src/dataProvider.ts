@@ -684,7 +684,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 	<meta charset="UTF-8">
 `;
     if (applyCsp) {
-        header += `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} https:; style-src ${cspSource} 'unsafe-inline'; script-src ${cspSource} 'unsafe-eval';">
+        header += `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} https:; style-src ${cspSource} 'unsafe-inline'; script-src ${cspSource};">
 `;
     }
     header += `<title>Preview spec scan</title>
