@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.1.1] -- 2021-08-15
+
 ### Changed
 
 - Migrate the dependency from `plotly.js-dist-min` to `plotly.js-basic-dist-min` (smaller package) and bump the version to 2.3.1
@@ -12,7 +14,7 @@
 
 ### Security
 
-- Remove `unsafe-eval` from the `script-src` in the Content Security Policy so as to apply a stricter security rule. Now some partial bundles of plotly.js including `basic` have become function-constructor-free, while the full bundle has not been yet. See [Security warning: avoid using function constructor. · Issue #897 · plotly/plotly.js](https://github.com/plotly/plotly.js/issues/897#issuecomment-781422217).
+- Remove `unsafe-eval` from the `script-src` in the Content Security Policy so as to apply a stricter security rule. (Some partial bundles of plotly.js including `basic` have been function-constructor-free, while the full bundle has not been yet. See [Security warning: avoid using function constructor. · Issue #897 · plotly/plotly.js](https://github.com/plotly/plotly.js/issues/897#issuecomment-781422217) for details.)
 
 ## [1.1.0] -- 2021-07-22
 
@@ -86,7 +88,8 @@
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fujidana/vscode-spec-data/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/fujidana/vscode-spec-data/releases/tag/v0.1.0
