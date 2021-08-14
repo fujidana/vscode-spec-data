@@ -1,8 +1,10 @@
 # Change Log
 
-<!-- All notable changes to the `vscode-spec-data` extension will be documented in this file. -->
-
 ## [Unreleased]
+
+### Changed
+
+- Migrate the dependency from `plotly.js-dist-min` to `plotly.js-basic-dist-min` (smaller package) and bump the version to 2.3.1
 
 ### Fixed
 
