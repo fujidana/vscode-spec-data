@@ -1,7 +1,3 @@
-declare var acquireVsCodeApi: any;
-// eslint-disable-next-line @typescript-eslint/naming-convention
-declare var Plotly: any;
-
 interface ValueListState { [occurance: number]: { hidden: boolean } }
 interface ScanDataState { [occurance: number]: { x: number, y: number, hidden: boolean, logAxis: boolean } }
 interface State { template: any, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
@@ -12,9 +8,9 @@ const headDataset = document.head.dataset;
 const maximumPlots = headDataset.maximumPlots !== undefined ? parseInt(headDataset.maximumPlots) : 0;
 const plotHeight = headDataset.plotHeight !== undefined ? parseInt(headDataset.plotHeight) : 0;
 const hideTableGlobal = headDataset.hideTable !== undefined ? Boolean(parseInt(headDataset.hideTable)) : false;
-const sourceUri = headDataset.sourceUri !== undefined ? headDataset.sourceUri : "";
+const sourceUri = headDataset.sourceUri !== undefined ? headDataset.sourceUri : '';
 
-let state: State = vscode.getState();
+let state = <State>vscode.getState();
 if (state === undefined || state.sourceUri !== sourceUri) {
     state = { template: undefined, valueList: {}, scanData: {}, sourceUri: sourceUri, lockPreview: false };
     vscode.setState(state);
@@ -126,7 +122,7 @@ const logAxisInputChangeHander = function (event: Event) {
 
             // redraw the graph
             Plotly.relayout(plotDivs[0], {
-                "yaxis.type": logAxisInput.checked ? 'log' : 'linear'
+                'yaxis.type': logAxisInput.checked ? 'log' : 'linear'
             });
 
             // save the current state
@@ -210,9 +206,9 @@ window.addEventListener('message', event => {
                     { responsive: true }
                 );
             } else if (message.action === 'react') {
-                Plotly.react(element, {
-                    data: message.data,
-                    layout: {
+                Plotly.react(element,
+                    message.data,
+                    {
                         template: state.template,
                         xaxis: { title: message.labels[0] },
                         yaxis: {
@@ -221,7 +217,7 @@ window.addEventListener('message', event => {
                         },
                         margin: { t: 20, r: 20 }
                     }
-                });
+                );
             }
         }
     } else if (message.command === 'lockPreview') {
@@ -266,7 +262,7 @@ window.addEventListener('DOMContentLoaded', event => {
                 logAxis: false
             };
 
-            // "Show Plot" checkboxes
+            // Show Plot checkboxes
             // register a handler
             showPlotInputs[0].onchange = showPlotInputChangeHandler;
 
