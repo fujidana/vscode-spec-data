@@ -1,13 +1,13 @@
 # __spec__ Data File Extension for Visual Studio Code
 
-The extension enhances user experiences in browsing the following kinds of files:
-
-- file format for scan data the __spec__ software outputs, which is referred to as the _standard data file format_ in the __spec__ PDF mannual (language identifier: `spec-data`, default extension: `.spec`).
-- chiplot file format, in which __fit2d__ software imports and exports one-dimensional dataset such as scattering profiles (language identifier: `chiplot`, default extension: `.chi`).
+The extension enhances user experiences in browsing __spec__ data files with Visual Studio Code.
+__spec__ data files referred to here are files the __spec__ software outputs during various scan commands; they are referred to as the _standard data file format_ in the __spec__ PDF mannual.
 
 __spec__ does not specify the filename extension for the data format of the former file type.
-While this VS Code extension treats `.spec` as the default file extension, users can change the association by themselves.
+While this VS Code extension treats `.spec` as the default file extension for the files (language identifier: `spec-data`), users can change the association by themselves.
 Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs/languages/overview) (official document of VS Code) for further details.
+
+The extension additionally supports chiplot file format, in which __fit2d__ software imports and exports one-dimensional dataset such as scattering profiles (language identifier: `chiplot`, default extension: `.chi`).
 
 ## What's __spec__?
 
@@ -17,7 +17,7 @@ Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs
 _cited from [CSS - Certified Scientific Software](https://www.certif.com) homepage._
 
 Note that the extension is not the official one developed by Certified Scientific Software.
-<!-- Use [GitHub issues](https://github.com/fujidana/vscode-spec/issues) for bug reports and feature requests about the extension. -->
+Use [GitHub issues](https://github.com/fujidana/vscode-spec-data/issues) for bug reports and feature requests about the extension.
 
 ## Features
 
@@ -46,7 +46,7 @@ Read [Visual Studio Code User and Workspace Settings](https://code.visualstudio.
 The extension internally provides Plotly.js templates that are apparently in accordance with the built-in _dark_ and _high contrast_ color themes of VS Code.
 Users can override these templates via the `spec-data.preview.plot.template` configuraiton option.
 
-The option is a JSON object consisting of at most 4 key-value pairs; the keys are `"all"`, `"light"`, `"dark"`, and `"highContrast"`; the values are Plotly.js template objects.
+The option may be passed as a JSON object consisting of at most 4 key-value pairs; the keys are `"all"`, `"light"`, `"dark"`, and `"highContrast"`, and the values are Plotly.js template objects.
 The `"all"` key is for a template that is independent from the color theme and its value may be overridden by the other for the respective themes.
 For example, the following code in the _setting.json_ file makes the line color green in the _light_ theme and red in the other themes (i.e., _dark_ and _high contrast_).
 
@@ -75,11 +75,11 @@ Please contact the developer when you find any item that is difficult to read; t
 
 ## Known Issues
 
-### Limitation coming from performance
+### Limitation due to rendering resource
 
-VS Code provides [Webview API](https://code.visualstudio.com/api/extension-guides/webview#scripts-and-message-passing) for extension developers to implement graphically rich contents.
-In other words, such contents must be built in the world of HTML/CSS/JavaScript.
-This extension employs [Plotly.js](https://plotly.com/javascript/) to plot graphs within this scheme.
+VS Code allows extension developers to implement graphically rich contents via [Webview API](https://code.visualstudio.com/api/extension-guides/webview).
+To use the API, the contents may be provided as HTML/CSS/JavaScript.
+This extension employs [Plotly.js](https://plotly.com/javascript/) to plot graphs in the HTML body.
 While Plotly.js looks performant as an interactive and nice-looking graph generator, to render a preview consisting of a large number of scan dataset cosumues both CPU and memory resources.
 For this reason, the maximum number of plots is limited to 25 by default; users can change the this limitation in the _Setting_ window.
 
@@ -104,10 +104,10 @@ def user_filecheck(s) '{
     if (s == "null" || s == "/dev/null") {
         return s
     } else if (match(s, "^(.+/)?([^./]+)\$")) {
-        # add ".spec" to filename if a user did not specify the file extension
+        # add ".spec" to filename if a user does not specify the file extension
         return sprintf("%s.spec", s)
     } else {
-        # simply return the provided filename if a user specified the file extension
+        # simply return the provided filename if a user specifies the file extension
         return s
     }
 }'
