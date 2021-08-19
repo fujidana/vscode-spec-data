@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- keyboard shortcuts not working for chiplot files
+
 ## [1.1.1] -- 2021-08-15
 
 ### Changed
