@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.1.3] -- 2021-08-23
+
 ### Changed
 
 - Add validation rules to configuration options.
@@ -103,7 +105,8 @@
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.3...HEAD
+[1.1.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.0.0...v1.1.0

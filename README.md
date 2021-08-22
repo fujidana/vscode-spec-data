@@ -3,7 +3,7 @@
 The extension enhances user experiences in browsing __spec__ data files with Visual Studio Code.
 __spec__ data files referred to here are files the __spec__ software outputs during various scan commands; they are referred to as the _standard data file format_ in the __spec__ PDF mannual.
 
-__spec__ does not specify the filename extension for the data format of the former file type.
+__spec__ does not specify the filename extension for this data format.
 While this VS Code extension treats `.spec` as the default file extension for the files (language identifier: `spec-data`), users can change the association by themselves.
 Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs/languages/overview) (official document of VS Code) for further details.
 
@@ -77,8 +77,8 @@ Please contact the developer when you find any item that is difficult to read; t
 
 ### Limitation due to rendering resource
 
-VS Code allows extension developers to implement graphically rich contents via [Webview API](https://code.visualstudio.com/api/extension-guides/webview).
-To use the API, the contents may be provided as HTML/CSS/JavaScript.
+VS Code provides [Webview API](https://code.visualstudio.com/api/extension-guides/webview) for extension developers to implement graphically rich contents.
+As its name suggests, the content may be prepared as a webpage, i.e., HTML/CSS/JavaScript.
 This extension employs [Plotly.js](https://plotly.com/javascript/) to plot graphs in the HTML body.
 While Plotly.js looks performant as an interactive and nice-looking graph generator, to render a preview consisting of a large number of scan dataset cosumues both CPU and memory resources.
 For this reason, the maximum number of plots is limited to 25 by default; users can change the this limitation in the _Setting_ window.
