@@ -190,13 +190,13 @@
 				"command": "spec-data.showPreview",
 				"key": "ctrl+shift+v",
 				"mac": "cmd+shift+v",
-				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId =~ /^(spec-data|chiplot)"
+				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId =~ /^(spec-data|chiplot)/"
 			},
 			{
 				"command": "spec-data.showPreviewToSide",
 				"key": "ctrl+k v",
 				"mac": "cmd+k v",
-				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId =~ /^(spec-data|chiplot)"
+				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId =~ /^(spec-data|chiplot)/"
 			}
 		],
 		"configuration": {
