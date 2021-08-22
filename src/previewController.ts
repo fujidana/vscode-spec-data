@@ -1,8 +1,11 @@
+// eslint-disable-next-line @typescript-eslint/naming-convention
+declare var Plotly: any;
+
 interface ValueListState { [occurance: number]: { hidden: boolean } }
 interface ScanDataState { [occurance: number]: { x: number, y: number, hidden: boolean, logAxis: boolean } }
 interface State { template: any, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
 
-const vscode = acquireVsCodeApi();
+const vscode = acquireVsCodeApi<State>();
 
 const headDataset = document.head.dataset;
 const maximumPlots = headDataset.maximumPlots !== undefined ? parseInt(headDataset.maximumPlots) : 0;
@@ -10,11 +13,12 @@ const plotHeight = headDataset.plotHeight !== undefined ? parseInt(headDataset.p
 const hideTableGlobal = headDataset.hideTable !== undefined ? Boolean(parseInt(headDataset.hideTable)) : false;
 const sourceUri = headDataset.sourceUri !== undefined ? headDataset.sourceUri : '';
 
-let state = <State>vscode.getState();
-if (state === undefined || state.sourceUri !== sourceUri) {
-    state = { template: undefined, valueList: {}, scanData: {}, sourceUri: sourceUri, lockPreview: false };
-    vscode.setState(state);
+let state0 = vscode.getState();
+if (state0 === undefined || state0.sourceUri !== sourceUri) {
+    state0 = { template: undefined, valueList: {}, scanData: {}, sourceUri: sourceUri, lockPreview: false };
+    vscode.setState(state0);
 }
+const state = state0;
 
 // a handler for a checkbox to control the table visibility
 const showValueListInputChangeHandler = function (event: Event) {
@@ -171,9 +175,7 @@ window.addEventListener('message', event => {
     const message = event.data;
 
     if (message.command === 'setTemplate') {
-        // create template from an object (dictionary)
-        // template = Plotly.makeTemplate(message.template);
-        state.template = message.template;
+        state.template = Plotly.makeTemplate(message.template);
         vscode.setState(state);
         if (message.action) {
             showAllGraphs(message.action);

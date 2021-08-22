@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- adaptation of several graph styles such as line color to the color theme kinds not working
 - keyboard shortcuts not working for either spec data or chiplot files (a bug introduced at v1.1.2)
 
 ## [1.1.2] -- 2021-08-19

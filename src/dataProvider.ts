@@ -350,7 +350,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             } else if (message.command === 'requestTemplate') {
                 panel.webview.postMessage({
                     command: 'setTemplate',
-                    template: getPlotlyTemplate(),
+                    template: getPlotlyTemplate(vscode.window.activeColorTheme.kind),
                     action: message.action
                 });
             }
@@ -777,16 +777,12 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 type PlotlyTemplate = { data?: object[], layout?: object };
 type UserPlotlyTemplate = { all?: PlotlyTemplate, light?: PlotlyTemplate, dark?: PlotlyTemplate, highContrast?: PlotlyTemplate };
 
-function getPlotlyTemplate(kind?: vscode.ColorThemeKind): PlotlyTemplate {
-    if (kind === undefined) {
-        kind = vscode.window.activeColorTheme.kind;
-    }
-
+function getPlotlyTemplate(kind: vscode.ColorThemeKind): PlotlyTemplate {
     let systemTemplate: PlotlyTemplate;
     let userTemplateForAllThemes: PlotlyTemplate;
     let userTemplateForTheme: PlotlyTemplate;
 
-    const userTemplate: UserPlotlyTemplate | undefined = vscode.workspace.getConfiguration('spec-data.preview').get('plot.template');
+    const userTemplate = vscode.workspace.getConfiguration('spec-data.preview.plot').get<UserPlotlyTemplate>('template');
 
     userTemplateForAllThemes = (userTemplate && userTemplate.all) ? userTemplate.all : {};
 
