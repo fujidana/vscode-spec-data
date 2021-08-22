@@ -2,10 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Add validation rules to configuration options.
+
 ### Fixed
 
-- adaptation of several graph styles such as line color to the color theme kinds not working
-- keyboard shortcuts not working for either spec data or chiplot files (a bug introduced at v1.1.2)
+- adaptation of several graph styles such as line color to the color theme kinds not working (a bug introduced in v1.1.0)
+- keyboard shortcuts not working for either spec data or chiplot files (a bug introduced in v1.1.2)
 
 ## [1.1.2] -- 2021-08-19
 
@@ -25,7 +29,7 @@
 
 ### Security
 
-- Remove `unsafe-eval` from the `script-src` in the Content Security Policy so as to apply a stricter security rule. (Some partial bundles of plotly.js including `basic` have been function-constructor-free, while the full bundle has not been yet. See [Security warning: avoid using function constructor. · Issue #897 · plotly/plotly.js](https://github.com/plotly/plotly.js/issues/897#issuecomment-781422217) for details.)
+- Remove `unsafe-eval` from the `script-src` in the Content Security Policy so as to apply a stricter security rule. (Some partial bundles of plotly.js including `basic` have been function-constructor-free, while the main bundle has not been yet. See [Security warning: avoid using function constructor. - Issue #897 - plotly/plotly.js](https://github.com/plotly/plotly.js/issues/897#issuecomment-781422217) for details.)
 
 ## [1.1.0] -- 2021-07-22
 

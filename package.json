@@ -218,7 +218,7 @@
 					"description": "Applies a content security policy (CSP) to a preview, which enhances security against cross site scripting and data injection attacks caused by malicious source files. One may be able to avoid several Plotly.js errors when the option is disabled. In a future release, a CSP may be always active and this option may be removed."
 				},
 				"spec-data.preview.plot.maximumNumberOfPlots": {
-					"type": "number",
+					"type": "integer",
 					"default": 25,
 					"minimum": 0,
 					"description": "Maximum number of graphs to be drawn when a preview is opened. Drawing a large number of plots requires both long time and vast memory footprint."
@@ -231,13 +231,26 @@
 				},
 				"spec-data.preview.plot.template": {
 					"type": "object",
-					"default": {
-						"all": {
-							"data": [],
-							"layout": {}
+					"patternProperties": {
+						"^(all|light|dark|highContrast)$": {
+							"type": "object",
+							"default": {
+								"data": [],
+								"layout": {}
+							},
+							"properties": {
+								"data": {
+									"type": "array"
+								},
+								"layout": {
+									"type": "object"
+								}
+							},
+							"additionalProperties": false
 						}
 					},
-					"markdownDescription": "Overrides the built-in plot appearance such as line color. The option has at most 4 keys: `\"all\"`, `\"light\"`, `\"dark\"`, and `\"highContrast\"`. The value of each key shall be the JSON represenation of a Plotly.js template. \n\nSee the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) page."
+					"markdownDescription": "Overrides the built-in plot appearance such as line color. The key of this setting object is either `\"all\"`, `\"light\"`, `\"dark\"`, or `\"highContrast\"`, and the value is a Plotly.js template object for the color theme the corresponding key represents. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) page.",
+					"additionalProperties": false
 				},
 				"spec-data.preview.table.hide": {
 					"type": "boolean",
