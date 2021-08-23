@@ -23,8 +23,8 @@ interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
  * Provider class for "spec-data" language
  */
 export class DataProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider, vscode.WebviewPanelSerializer {
-    readonly extensionUri: vscode.Uri;
-    readonly subscriptions: { dispose(): any }[];
+    readonly extensionUri;
+    readonly subscriptions;
     readonly previews: Preview[] = [];
 
     livePreview: Preview | undefined = undefined;
@@ -155,7 +155,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                             context.subscriptions.splice(index, 1);
                         }
                         this.onDidChangeTextEditorVisibleRangesDisposable.dispose();
-                    };
+                    }
                     this.onDidChangeTextEditorVisibleRangesDisposable = undefined;
                 }
             }
@@ -215,8 +215,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
             if (document.lineAt(lineIndex).isEmptyOrWhitespace) {
-                if (lineIndex === prevLineIndex + 1) {
-                } else {
+                if (lineIndex !== prevLineIndex + 1) {
                     ranges.push(new vscode.FoldingRange(prevLineIndex + 1, lineIndex));
                 }
                 prevLineIndex = lineIndex;
@@ -258,7 +257,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     /**
      * Required implementation of vscode.WebviewPanelSerializer
      */
-    public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: any) {
+    public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: any): Promise<void> {
         if (state) {
             this.initPreview(panel, vscode.Uri.parse(state.sourceUri), state.lockPreview);
         } else {
@@ -468,16 +467,16 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
 
     for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
         const lineText = lines[lineIndex];
-        if (matches = lineText.match(fileRegex)) {
+        if ((matches = lineText.match(fileRegex)) !== null) {
             nodes.push({ type: 'file', lineStart: lineIndex, lineEnd: lineIndex, occurance: fileOccurance, value: matches[2] });
             fileOccurance++;
-        } else if (matches = lineText.match(dateRegex)) {
+        } else if ((matches = lineText.match(dateRegex)) !== null) {
             nodes.push({ type: 'date', lineStart: lineIndex, lineEnd: lineIndex, occurance: dateOccurance, value: matches[2] });
             dateOccurance++;
-        } else if (matches = lineText.match(commentRegex)) {
+        } else if ((matches = lineText.match(commentRegex)) !== null) {
             nodes.push({ type: 'comment', lineStart: lineIndex, lineEnd: lineIndex, occurance: commentOccurance, value: matches[2] });
             commentOccurance++;
-        } else if (matches = lineText.match(nameListRegex)) {
+        } else if ((matches = lineText.match(nameListRegex)) !== null) {
             let kind, isMnemonic, separator;
             if (matches[1] === matches[1].toLowerCase()) {
                 isMnemonic = true;
@@ -511,7 +510,7 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
                 nodes.push({ type: 'nameList', lineStart: lineIndex, lineEnd: lineIndex, kind: kind, values: matches[3].trimEnd().split(separator), mnemonic: isMnemonic });
                 prevNodeIndex = 0;
             }
-        } else if (matches = lineText.match(valueListRegex)) {
+        } else if ((matches = lineText.match(valueListRegex)) !== null) {
             let kind;
             if (matches[1] === 'P') {
                 kind = 'motor';
@@ -537,12 +536,12 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
                 valueListOccuracne++;
                 prevNodeIndex = 0;
             }
-        } else if (matches = lineText.match(scanHeadRegex)) {
+        } else if ((matches = lineText.match(scanHeadRegex)) !== null) {
             nodes.push({ type: 'scanHead', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanHeadOccurance, index: parseInt(matches[2]), code: matches[3] });
             scanHeadOccurance++;
-        } else if (matches = lineText.match(scanNumberRegex)) {
+        } else if ((matches = lineText.match(scanNumberRegex)) !== null) {
             columnNumber = parseInt(matches[2]);
-        } else if (matches = lineText.match(scanDataRegex)) {
+        } else if ((matches = lineText.match(scanDataRegex)) !== null) {
             // The separator between motors and counters are 4 whitespaces.
             // The separator between respective motors and counters are 2 whitespaces.
             const headersMotCnt = matches[2].split('    ', 2);
@@ -575,7 +574,7 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
 
             nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineIndex, occurance: scanDataOccurance, headers: headers, data: data2 });
             scanDataOccurance++;
-        } else if (matches = lineText.match(allRegex)) {
+        } else if ((matches = lineText.match(allRegex)) !== null) {
             nodes.push({ type: 'unknown', lineStart: lineIndex, lineEnd: lineIndex, kind: matches[1], value: matches[2] });
         }
     }
@@ -653,8 +652,8 @@ function parseChiplotContent(lines: string[]): Node[] | undefined {
 }
 
 function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri: vscode.Uri, controllerJsJri: vscode.Uri, nodes: Node[]): string {
-    let nameLists: { [name: string]: string[] } = {};
-    let mnemonicLists: { [name: string]: string[] } = {};
+    const nameLists: { [name: string]: string[] } = {};
+    const mnemonicLists: { [name: string]: string[] } = {};
 
     const config = vscode.workspace.getConfiguration('spec-data.preview');
     const hideTable: boolean = config.get('table.hide', true);
@@ -676,7 +675,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
             str += ` data-occurance="${node.occurance}"`;
         }
         return str;
-    };
+    }
 
     let header = `<!DOCTYPE html>
 <html lang="en">
@@ -774,17 +773,16 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     return header + body;
 }
 
-type PlotlyTemplate = { data?: object[], layout?: object };
+type PlotlyTemplate = { data?: unknown[], layout?: unknown };
 type UserPlotlyTemplate = { all?: PlotlyTemplate, light?: PlotlyTemplate, dark?: PlotlyTemplate, highContrast?: PlotlyTemplate };
 
 function getPlotlyTemplate(kind: vscode.ColorThemeKind): PlotlyTemplate {
     let systemTemplate: PlotlyTemplate;
-    let userTemplateForAllThemes: PlotlyTemplate;
     let userTemplateForTheme: PlotlyTemplate;
 
     const userTemplate = vscode.workspace.getConfiguration('spec-data.preview.plot').get<UserPlotlyTemplate>('template');
+    const userTemplateForAllThemes = (userTemplate && userTemplate.all) ? userTemplate.all : {};
 
-    userTemplateForAllThemes = (userTemplate && userTemplate.all) ? userTemplate.all : {};
 
     switch (kind) {
         case vscode.ColorThemeKind.Dark:
