@@ -31,7 +31,7 @@
 
 ### Security
 
-- Remove `unsafe-eval` from the `script-src` in the Content Security Policy so as to apply a stricter security rule. (Some partial bundles of plotly.js including `basic` have been function-constructor-free, while the main bundle has not been yet. See [Security warning: avoid using function constructor. - Issue #897 - plotly/plotly.js](https://github.com/plotly/plotly.js/issues/897#issuecomment-781422217) for details.)
+- Remove `unsafe-eval` from the `script-src` in the Content Security Policy so as to apply a stricter security rule. (Several partial bundles of Plotly.js including `basic` have been function-constructor-free, while the main Plotly.js bundle has not been yet. See GitHub Issue plotly/plotly.js#897 "Security warning: avoid using function constructor" issuecomment-781422217 for details.)
 
 ## [1.1.0] -- 2021-07-22
 

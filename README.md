@@ -86,7 +86,7 @@ For this reason, the maximum number of plots is limited to 25 by default; users 
 ### Download button in Plotly.js graph unfunctions
 
 The download button in the Plotly.js mode bar, which appears at the top right corner when the cursor is on the graph, does not function.
-Read [GitHub Issues #1](https://github.com/fujidana/vscode-spec-data/issues/1) for more details.
+Read GitHub Issue #1 for more details.
 
 ## Release Notes
 
