@@ -67,18 +67,18 @@ For example, the following code in the _setting.json_ file makes the line color 
 }
 ```
 
-Users can find the definition of the built-in template objects for the respective color themes in [/src/plotTemplate.js](https://github.com/fujidana/vscode-spec-data/blob/master/src/plotTemplate.ts) in the GitHub repository.
+Users can find the definition of the built-in template objects for the respective color themes in [/src/plotTemplate.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/plotTemplate.ts) in the GitHub repository.
 From this, users may be able to find the name of an attribute they want to change.
 See the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) for the complete list of the Plotly.js template attributes.
 
-Please contact the developer when you find any item that is difficult to read; the current templates the exntention provides may not be suitable.
+Please contact the extension author when you find any item that is difficult to read; the current templates the exntention provides may not be suitable.
 
 ## Known Issues
 
 ### Limitation due to rendering resource
 
-VS Code provides [Webview API](https://code.visualstudio.com/api/extension-guides/webview) for extension developers to implement graphically rich contents.
-As its name suggests, the content may be prepared as a webpage, i.e., HTML/CSS/JavaScript.
+VS Code provides [Webview API](https://code.visualstudio.com/api/extension-guides/webview) for extension authors to implement graphically rich contents.
+As its name suggests, the content may be prepared as a webpage, i.e., an aggregate of HTML/CSS/JavaScript.
 This extension employs [Plotly.js](https://plotly.com/javascript/) to plot graphs in the HTML body.
 While Plotly.js looks performant as an interactive and nice-looking graph generator, to render a preview consisting of a large number of scan dataset cosumues both CPU and memory resources.
 For this reason, the maximum number of plots is limited to 25 by default; users can change the this limitation in the _Setting_ window.
@@ -88,9 +88,16 @@ For this reason, the maximum number of plots is limited to 25 by default; users 
 The download button in the Plotly.js mode bar, which appears at the top right corner when the cursor is on the graph, does not function.
 Read GitHub Issue #1 for more details.
 
+### Unsupported text encodings for not-in-editor documents
+
+When a preview whose source editor has been closed is reloaded, the extension tries to load the file contents using the value for `files.encoding` setting ID as the text encoding.
+The current implementation does not support several text encodings in this situation and defaults to UTF-8 in these cases.
+See GitHub issue fujidana/vscode-spec-command#6 for more details.
+In practical cases a data file rarely contains non-ASCII characters and thus, this problem will not be very serious.
+
 ## Release Notes
 
-See `CHANGELOG.md`.
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## Tip to make __spec__ automatically set the file extension
 

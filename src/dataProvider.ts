@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { TextDecoder } from 'util';
 import plotTemplate from './plotTemplate';
 import merge = require('lodash.merge');
+import { getTextDecoder } from "./textEncoding";
 
 const SPEC_DATA_SELECTOR = { language: 'spec-data' };
 // const SELECTOR = { scheme: 'file', language: 'spec-data' };
@@ -373,7 +373,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             if (document) {
                 text = document.getText();
             } else {
-                text = new TextDecoder('utf-8').decode(await vscode.workspace.fs.readFile(preview.uri));
+                text = getTextDecoder({ languageId: 'spec-data' }).decode(await vscode.workspace.fs.readFile(preview.uri));
             }
         }
 
