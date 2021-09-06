@@ -1,8 +1,7 @@
 out
+dist
 node_modules
 .vscode-test/
 *.vsix
 .DS_Store
-syntaxes/*.tmLanguage.json
-syntaxes/*.apiReference.json
-src/grammar.ts
+syntaxes

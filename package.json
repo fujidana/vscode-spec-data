@@ -32,7 +32,7 @@
 		"onLanguage:chiplot",
 		"onWebviewPanel:specDataPreview"
 	],
-	"main": "./out/extension.js",
+	"main": "./dist/extension.js",
 	"contributes": {
 		"languages": [
 			{
@@ -286,10 +286,15 @@
 		}
 	},
 	"scripts": {
-		"vscode:prepublish": "npm run compile && npm run js-yaml",
-		"compile": "tsc -p ./",
-		"watch": "tsc -watch -p ./",
-		"pretest": "npm run compile && npm run lint",
+		"vscode:prepublish": "npm run package && npm run js-yaml",
+		"compile": "webpack && npm run script-compile",
+		"watch": "webpack --watch & npm run script-watch",
+		"package": "webpack --mode production --devtool hidden-source-map && npm run script-compile",
+		"test-compile": "tsc -p ./",
+		"test-watch": "tsc -watch -p ./",
+		"script-compile": "tsc -p tsconfig2.json",
+		"script-watch": "tsc -watch -p tsconfig2.json",
+		"pretest": "npm run test-compile && npm run lint",
 		"lint": "eslint src --ext ts",
 		"test": "node ./out/test/runTest.js",
 		"js-yaml": "js-yaml ./src/specData.tmLanguage.yaml > ./syntaxes/specData.tmLanguage.json"
@@ -307,7 +312,10 @@
 		"glob": "^7.1.7",
 		"mocha": "^8.4.0",
 		"typescript": "^4.3.2",
-		"vscode-test": "^1.5.2"
+		"vscode-test": "^1.5.2",
+		"ts-loader": "^9.2.2",
+		"webpack": "^5.38.1",
+		"webpack-cli": "^4.7.0"
 	},
 	"dependencies": {
 		"lodash.merge": "^4.6.2",

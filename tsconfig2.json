@@ -1,0 +1,18 @@
+{
+	"compilerOptions": {
+		"module": "commonjs",
+		"target": "es6",
+		"outDir": "dist",
+		"lib": [
+			"es6",
+			"DOM",
+			"DOM.Iterable"
+		],
+		"sourceMap": true,
+		"rootDir": "src",
+		"strict": true
+	},
+	"files": [
+		"src/previewController.ts"
+	]
+}

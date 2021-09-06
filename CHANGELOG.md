@@ -1,5 +1,13 @@
 # Change Log
 
+All notable changes to the __vscode-spec-data__ extension will be documented in this file.
+
+## [Unreleased]
+
+### Changed
+
+- Migrate the extension to use webpack.
+
 ## [Unreleased]
 
 ### Changed

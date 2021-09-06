@@ -1,12 +1,13 @@
 .vscode/**
 .vscode-test/**
-out/test/**
-
+out/**
+node_modules/!(plotly.js-*)/**
 src/**
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
 **/tsconfig.json
+**/tsconfig2.json
 **/.eslintrc.json
 **/*.map
 **/*.ts
