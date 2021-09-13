@@ -231,13 +231,45 @@
 				},
 				"spec-data.preview.plot.template": {
 					"type": "object",
-					"patternProperties": {
-						"^(all|light|dark|highContrast)$": {
+					"properties": {
+						"all": {
 							"type": "object",
-							"default": {
-								"data": [],
-								"layout": {}
+							"properties": {
+								"data": {
+									"type": "array"
+								},
+								"layout": {
+									"type": "object"
+								}
 							},
+							"additionalProperties": false
+						},
+						"light": {
+							"type": "object",
+							"properties": {
+								"data": {
+									"type": "array"
+								},
+								"layout": {
+									"type": "object"
+								}
+							},
+							"additionalProperties": false
+						},
+						"dark": {
+							"type": "object",
+							"properties": {
+								"data": {
+									"type": "array"
+								},
+								"layout": {
+									"type": "object"
+								}
+							},
+							"additionalProperties": false
+						},
+						"highContrast": {
+							"type": "object",
 							"properties": {
 								"data": {
 									"type": "array"
