@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 
-/* 
+/**
 * A Plotly.template object, wrtten in a JSON-compatible format.
 * It seems the color format Plotly.js can accept is the same as that of CSS. 
 */

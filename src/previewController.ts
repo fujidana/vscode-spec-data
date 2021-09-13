@@ -1,9 +1,15 @@
+/*
+ * TypeScript script that is loaded by <script src="..."> in a webview html file.
+ * The script is not directly executed in a main thred of the extension and thus, compiled separately 
+ * from other sources, which are compiled and minified by webpack.
+ */
+
 // eslint-disable-next-line @typescript-eslint/naming-convention
-declare var Plotly: any;
+declare const Plotly: any;
 
 interface ValueListState { [occurance: number]: { hidden: boolean } }
 interface ScanDataState { [occurance: number]: { x: number, y: number, hidden: boolean, logAxis: boolean } }
-interface State { template: any, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
+interface State { template: unknown, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
 
 const vscode = acquireVsCodeApi<State>();
 

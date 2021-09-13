@@ -6,12 +6,8 @@ All notable changes to the __vscode-spec-data__ extension will be documented in 
 
 ### Changed
 
+- Adapt for a web extension.
 - Migrate the extension to use webpack.
-
-## [Unreleased]
-
-### Changed
-
 - Refer to the built-in `files.encoding` setting ID for the text encoding of files not shown in editors. Previously it was fixed to `"utf-8"`.
 
 ## [1.1.3] -- 2021-08-23
