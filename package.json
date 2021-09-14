@@ -30,7 +30,11 @@
 	"activationEvents": [
 		"onLanguage:spec-data",
 		"onLanguage:chiplot",
-		"onWebviewPanel:specDataPreview"
+		"onWebviewPanel:specDataPreview",
+		"onCommand:spec-data.showPreview",
+		"onCommand:spec-data.showPreviewToSide",
+		"onCommand:spec-data.showLockedPreview",
+		"onCommand:spec-data.showLockedPreviewToSide"
 	],
 	"main": "./dist/extension-node.js",
 	"browser": "./dist/extension-web.js",

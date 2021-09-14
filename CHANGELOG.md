@@ -6,9 +6,13 @@ All notable changes to the __vscode-spec-data__ extension will be documented in 
 
 ### Changed
 
-- Adapt for a web extension.
+- Adapt for a web extension. The extension becomes available in Visual Studio Codespaces (VS Code for the Web).
 - Migrate the extension to use webpack.
 - Refer to the built-in `files.encoding` setting ID for the text encoding of files not shown in editors. Previously it was fixed to `"utf-8"`.
+
+### Fixed
+
+- several commands (menu items in the Explorer viewlet) not responding when the extension is not activated beforehand
 
 ## [1.1.3] -- 2021-08-23
 
