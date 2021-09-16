@@ -4,7 +4,6 @@ import merge = require('lodash.merge');
 import { getTextDecoder } from "./textEncoding";
 
 const SPEC_DATA_SELECTOR = { language: 'spec-data' };
-// const SELECTOR = { scheme: 'file', language: 'spec-data' };
 
 type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
 interface BaseNode { type: string, lineStart: number, lineEnd: number, occurance?: number }
@@ -18,6 +17,10 @@ interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], d
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
 interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
+
+interface State { template: unknown, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
+
+type SupportedLanguage = 'spec-data' | 'chiplot';
 
 /**
  * Provider class for "spec-data" language
@@ -48,14 +51,14 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const showPreviewToSideCallback = async (...args: unknown[]) => {
             const uris = getTargetFileUris(args);
             if (uris.length) {
-                this.showPreview(uris[uris.length - 1], true, false);
+                this.showPreview(uris[uris.length - 1], false, true);
             }
         };
 
         // callback of 'spec-data.showPreviewToSide'.
         const showLockedPreviewCallback = async (...args: unknown[]) => {
             for (const uri of getTargetFileUris(args)) {
-                this.showPreview(uri, false, true);
+                this.showPreview(uri, true, false);
             }
         };
 
@@ -85,7 +88,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const refreshPreviewCallback = async (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
-                this.updatePreview(activePreview);
+                this.reloadPreview(activePreview, activePreview.uri);
             } else {
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
             }
@@ -118,11 +121,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         const onDidChangeActiveTextEditorListner = (editor: vscode.TextEditor | undefined) => {
-            // if (editor && editor.document.languageId.match(/^(spec-data|chiplot)$/) && editor.document.uri.scheme === 'file') {
-            if (editor && editor.document.languageId.match(/^(spec-data|chiplot)$/)) {
+            if (editor && (editor.document.languageId === 'spec-data' || editor.document.languageId === 'chiplot')) {
                 if (this.livePreview && this.livePreview.uri.toString() !== editor.document.uri.toString()) {
-                    this.livePreview.uri = editor.document.uri;
-                    this.updatePreview(this.livePreview, editor.document.getText());
+                    this.reloadPreview(this.livePreview, editor.document);
                 }
             }
         };
@@ -257,35 +258,69 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     /**
      * Required implementation of vscode.WebviewPanelSerializer
      */
-    public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: any): Promise<void> {
-        if (state) {
-            this.initPreview(panel, vscode.Uri.parse(state.sourceUri), state.lockPreview);
-        } else {
+    public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: State): Promise<void> {
+        if (!state) {
             const message = 'Unable to restore the preview content because the previous state is not recorded. Probably the content had not been displayed at all in the previous session. The tab will be closed.';
             vscode.window.showErrorMessage(message, 'OK').then(() => panel.dispose());
+            return;
         }
+        this.initPreview(panel, vscode.Uri.parse(state.sourceUri), state.lockPreview);
     }
 
-    private async showPreview(sourceUri: vscode.Uri, showToSide = false, lockPreview = false) {
+    /**
+     * Show a preview. If the live preview exists and new preview is not locked, 
+     * the preexisting panel is reused. Else a new panel is created.
+     * @param uri Source file URI.
+     * @param lockPreview Flag whether the new preview panel is locked.
+     * @param showToSide Flag whether the new preview panel is shown to side (`true`) or in the active editor (`false`).
+     * @returns Preview object or `undefined` if failed to parse a file.
+     */
+    private async showPreview(uri: vscode.Uri, lockPreview: boolean, showToSide: boolean) {
         if (!vscode.workspace.isTrusted) {
             vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
-            return;
+            return undefined;
         }
 
         if (!lockPreview && this.livePreview) {
             // If a live preview panel exists and new panel is not locked...
-            if (this.livePreview.uri.toString() !== sourceUri.toString()) {
-                // Update the content if the URLs are different.
-                this.livePreview.uri = sourceUri;
-                this.updatePreview(this.livePreview);
+            if (this.livePreview.uri.toString() !== uri.toString()) {
+                // Update the content if the URIs are different.
+                if (!(await this.reloadPreview(this.livePreview, uri))) {
+                    return undefined;
+                }
             }
             this.livePreview.panel.reveal();
             return this.livePreview;
         } else {
             // Else create a new panel as a live panel.
-            const config = vscode.workspace.getConfiguration('spec-data.preview');
-            const retainContextWhenHidden: boolean = config.get('retainContextWhenHidden', false);
-            const panel = vscode.window.createWebviewPanel(
+            return await this.initPreview(undefined, uri, lockPreview, showToSide);
+        }
+    }
+
+    /**
+     * Register event handlers and then make a content from source.
+     * Create a webview panel if `panel` parameter is undefined. 
+     * @param panel Webveiw panel or `undefined`.
+     * @param uri Source file URI.
+     * @param showToSide Flag whether the new preview panel is shown to side (`true`) or in the active editor (`false`).
+     * @param lockPreview Flag whether the new preview panel is locked.
+     * @returns Preview object if succeeded in parsing a file or `undefined`.
+     */
+    private async initPreview(panel: vscode.WebviewPanel | undefined, uri: vscode.Uri, lockPreview = false, showToSide = false) {
+        const tree = await parseDocumentContent(uri);
+        if (!tree) {
+            const message = `Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`;
+            vscode.window.showErrorMessage(message);
+            return undefined;
+        }
+
+        // If panel is not provided, create a new panel.
+        let panel2: vscode.WebviewPanel;
+        if (panel) {
+            panel2 = panel;
+        } else {
+            const retainContextWhenHidden: boolean = vscode.workspace.getConfiguration('spec-data.preview').get('retainContextWhenHidden', false);
+            panel2 = vscode.window.createWebviewPanel(
                 'specDataPreview',
                 'Preview spec data',
                 showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
@@ -295,47 +330,47 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     retainContextWhenHidden: retainContextWhenHidden,
                 }
             );
-            return this.initPreview(panel, sourceUri, lockPreview);
         }
-    }
 
-    private async initPreview(panel: vscode.WebviewPanel, uri: vscode.Uri, lockPreview = false) {
-        const preview: Preview = { uri, panel };
+        // 
+        const preview: Preview = { uri, panel: panel2 };
         this.previews.push(preview);
         if (!lockPreview) {
             this.livePreview = preview;
         }
 
-        panel.onDidDispose(() => {
+        panel2.onDidDispose(() => {
             vscode.commands.executeCommand('setContext', 'spec-data.previewEditorActive', false);
+
             // remove the closed preview from the array.
-            const index = this.previews.findIndex(preview => preview.panel === panel);
+            const index = this.previews.findIndex(preview => preview.panel === panel2);
             if (index >= 0) {
                 this.previews.splice(index, 1);
             }
 
             // clear the live preview reference if the closed preview is the live preview.
-            if (this.livePreview && this.livePreview.panel === panel) {
+            if (this.livePreview && this.livePreview.panel === panel2) {
                 this.livePreview = undefined;
             }
         }, null, this.subscriptions);
 
-        panel.onDidChangeViewState((event) => {
+        panel2.onDidChangeViewState((event) => {
             vscode.commands.executeCommand('setContext', 'spec-data.previewEditorActive', event.webviewPanel.active);
         }, null, this.subscriptions);
 
-        panel.webview.onDidReceiveMessage(message => {
+        panel2.webview.onDidReceiveMessage(message => {
             // console.log(message);
             if (message.command === 'requestPlotData') {
-                if (preview.tree) {
-                    const node = preview.tree.find(node => node.occurance === message.occurance && node.type === 'scanData');
+                const tree = this.previews.find(preview => preview.panel === panel2)?.tree;
+                if (tree) {
+                    const node = tree.find(node => node.occurance === message.occurance && node.type === 'scanData');
                     if (node && node.type === 'scanData' && node.data.length) {
                         const headers = node.headers;
                         const data = node.data;
                         const xIndex = (message.indexes[0] === -1) ? headers.length - 1 : message.indexes[0];
                         const yIndex = (message.indexes[1] === -1) ? headers.length - 1 : message.indexes[1];
                         if (xIndex >= 0 && xIndex < data.length && yIndex >= 0 && yIndex < data.length) {
-                            preview.panel.webview.postMessage({
+                            panel2.webview.postMessage({
                                 command: 'updatePlot',
                                 elementId: `plotly${message.occurance}`,
                                 data: [{ x: data[xIndex], y: data[yIndex] }],
@@ -347,7 +382,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     }
                 }
             } else if (message.command === 'requestTemplate') {
-                panel.webview.postMessage({
+                panel2.webview.postMessage({
                     command: 'setTemplate',
                     template: getPlotlyTemplate(vscode.window.activeColorTheme.kind),
                     action: message.action
@@ -355,37 +390,36 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         }, undefined, this.subscriptions);
 
-        this.updatePreview(preview).then(() => {
-            preview.panel.webview.postMessage({ command: 'lockPreview', flag: lockPreview });
-        });
+        this.updatePreviewWithTree(preview, tree);
 
         return preview;
     }
 
-    private async updatePreview(preview: Preview, text?: string) {
-        if (!vscode.workspace.isTrusted) {
-            vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
-            return false;
-        }
+    /**
+     * Reuse the panel in `preview` and update a content from source.
+     * @param preview Preview object
+     * @param source URI or document.
+     * @returns Preview object if succeeded in parsing a file or `undefined`.
+     */
+    private async reloadPreview(preview: Preview, source: vscode.Uri | vscode.TextDocument) {
+        const uri = source instanceof vscode.Uri ? source: source.uri;
 
-        if (!text) {
-            const document = vscode.workspace.textDocuments.find(document => document.uri.toString() === preview.uri.toString());
-            if (document) {
-                text = document.getText();
-            } else {
-                text = getTextDecoder({ languageId: 'spec-data' }).decode(await vscode.workspace.fs.readFile(preview.uri));
-            }
-        }
-
-        // first, parse the document contents. Simultaneously load the contents if the file is not yet opened.
-        const tree = parseFileContent(text);
+        const tree = await parseDocumentContent(source);
         if (!tree) {
-            vscode.window.showErrorMessage('Failed in parsing the document.');
-            return false;
+            const message = `Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`;
+            vscode.window.showErrorMessage(message);
+            return undefined;
         }
 
+        preview.uri = uri;
+        this.updatePreviewWithTree(preview, tree);
+        return preview;
+    }
+
+    private updatePreviewWithTree(preview: Preview, tree: Node[]) {
+        const lockPreview = !(this.livePreview && this.livePreview === preview);
         const webview = preview.panel.webview;
-        const label = (this.livePreview && this.livePreview === preview) ? 'Preview' : '[Preview]';
+        const label = lockPreview ? '[Preview]' : 'Preview';
         const plotlyJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'node_modules', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
         const controllerJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'previewController.js'));
 
@@ -393,7 +427,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.panel.title = `${label} ${preview.uri.path.substring(preview.uri.path.lastIndexOf('/') + 1)}`;
         preview.panel.webview.html = getWebviewContent(webview.cspSource, preview.uri, plotlyJsUri, controllerJsUri, tree);
 
-        return true;
+        preview.panel.webview.postMessage({ command: 'lockPreview', flag: lockPreview });
     }
 
     private getActivePreview(): Preview | undefined {
@@ -423,16 +457,52 @@ function getTargetFileUris(args: unknown[]): vscode.Uri[] {
     return [];
 }
 
-function parseFileContent(text: string): Node[] | undefined {
-    const lines = text.split(/\r\n|\n/);
-    const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
+async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
+    if (!vscode.workspace.isTrusted) {
+        vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
+        return undefined;
+    }
 
+    let uri: vscode.Uri;
+    let document: vscode.TextDocument | undefined;
+
+    if (source instanceof vscode.Uri) {
+        uri = source;
+        document = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === uri.toString());
+    } else {
+        document = source;
+        uri = document.uri;
+    }
+
+    let text: string;
+    let languageId: SupportedLanguage | undefined;
+
+    if (document) {
+        // If `document` is provided or found, use its values.
+        if (document.languageId === 'spec-data' || document.languageId === 'chiplot') {
+            languageId = document.languageId;
+            text = document.getText();
+        } else {
+            return undefined;
+        }
+    } else {
+        // If `document` is not found, read the file content.
+        text = getTextDecoder({ languageId: 'spec-data' }).decode(await vscode.workspace.fs.readFile(uri));
+    }
+
+    // Parse the document contents.
+    const lines = text.split(/\r\n|\n/);
     if (lines.length === 0) {
         return undefined;
-    } else if (lines[0].match(otherLineRegex)) {
+    } else if (languageId === 'spec-data') {
         return parseSpecDataContent(lines);
-    } else {
+    } else if (languageId === 'chiplot') {
         return parseChiplotContent(lines);
+    } else {
+        // Guess the file type from the first line
+        // if language ID is not provided (or not one of SupportedLanguage).
+        const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
+        return lines[0].match(otherLineRegex) ? parseSpecDataContent(lines) : parseChiplotContent(lines);
     }
 }
 
@@ -578,7 +648,7 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
             nodes.push({ type: 'unknown', lineStart: lineIndex, lineEnd: lineIndex, kind: matches[1], value: matches[2] });
         }
     }
-    return nodes;
+    return nodes.length !== 0 ? nodes : undefined;
 }
 
 function parseChiplotContent(lines: string[]): Node[] | undefined {
