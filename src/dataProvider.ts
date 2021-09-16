@@ -132,9 +132,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const onDidChangeTextEditorVisibleRangesListener = (event: vscode.TextEditorVisibleRangesChangeEvent) => {
             if (event.visibleRanges.length) {
                 const line = event.visibleRanges[0].start.line;
-                const preview = this.previews.find(preview => preview.uri.toString() === event.textEditor.document.uri.toString());
-                if (preview && preview.tree) {
-                    const node = preview.tree.find(node => (node.lineEnd >= line));
+                const previews = this.previews.filter(preview => preview.uri.toString() === event.textEditor.document.uri.toString());
+                for (const preview of previews) {
+                    const node = preview.tree?.find(node => (node.lineEnd >= line));
                     if (node) {
                         preview.panel.webview.postMessage({ command: 'scrollToElement', elementId: `l${node.lineStart}` });
                     }
