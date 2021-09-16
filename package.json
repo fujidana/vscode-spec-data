@@ -314,6 +314,7 @@
 		}
 	},
 	"capabilities": {
+		"virtualWorkspaces": true,
 		"untrustedWorkspaces": {
 			"supported": "limited",
 			"description": "The preview feature is disabled in untrusted workspaces becauase protection against content injections has not been comprehensively surveyed.",
@@ -358,6 +359,7 @@
 	},
 	"dependencies": {
 		"lodash.merge": "^4.6.2",
+		"minimatch": "^3.0.4",
 		"plotly.js-basic-dist-min": "^2.3.1"
 	}
 }

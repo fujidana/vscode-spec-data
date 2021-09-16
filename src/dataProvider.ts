@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import plotTemplate from './plotTemplate';
 import merge = require('lodash.merge');
+import minimatch = require('minimatch');
 import { getTextDecoder } from "./textEncoding";
 
 const SPEC_DATA_SELECTOR = { language: 'spec-data' };
@@ -487,7 +488,33 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
         }
     } else {
         // If `document` is not found, read the file content.
-        text = getTextDecoder({ languageId: 'spec-data' }).decode(await vscode.workspace.fs.readFile(uri));
+
+        // Determine the file type (language ID) for a file.
+        // First, compare the filename with a user-defined setting ("files.associations").
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+        const associations = vscode.workspace.getConfiguration('files', workspaceFolder).get<Record<string, string>>('associations');
+        if (associations) {
+            for (const [key, value] of Object.entries(associations)) {
+                if (value === 'spec-data' || value === 'chiplot') {
+                    if (minimatch(uri.path, key, { matchBase: true })) {
+                        languageId = value;
+                        break;
+                    }
+                }
+            }
+        }
+        // If not matched with "files.associations", compare the filename with default file extension patterns.
+        if (languageId === undefined) {
+            if (minimatch(uri.path, '*.spec', { matchBase: true })) {
+                languageId = 'spec-data';
+            } else if (minimatch(uri.path, '*.chi', { matchBase: true })) {
+                languageId = 'chiplot';
+            } else {
+                return undefined;
+            }
+        }
+        // Read the content from a file. Use file encoding for the language ID (if "files.encoding" is set.)
+        text = getTextDecoder({ languageId }).decode(await vscode.workspace.fs.readFile(uri));
     }
 
     // Parse the document contents.
@@ -498,11 +525,13 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
         return parseSpecDataContent(lines);
     } else if (languageId === 'chiplot') {
         return parseChiplotContent(lines);
+    // } else {
+    //     // Guess the file type from the first line
+    //     // if language ID is not provided (or not one of SupportedLanguage).
+    //     const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
+    //     return lines[0].match(otherLineRegex) ? parseSpecDataContent(lines) : parseChiplotContent(lines);
     } else {
-        // Guess the file type from the first line
-        // if language ID is not provided (or not one of SupportedLanguage).
-        const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
-        return lines[0].match(otherLineRegex) ? parseSpecDataContent(lines) : parseChiplotContent(lines);
+        return undefined;
     }
 }
 

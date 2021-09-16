@@ -4,6 +4,11 @@ All notable changes to the __vscode-spec-data__ extension will be documented in 
 
 ## [Unreleased]
 
+### Fixed
+
+- Improve a behavior after a parser fails to analyze the text content.
+- a bug that made `files.encoding` for `spec-data` language ID was referred to even for a `chiplot` file
+
 ## [1.2.0] -- 2021-09-14
 
 ### Changed
