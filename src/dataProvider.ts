@@ -277,11 +277,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      * @returns Preview object or `undefined` if failed to parse a file.
      */
     private async showPreview(uri: vscode.Uri, lockPreview: boolean, showToSide: boolean) {
-        if (!vscode.workspace.isTrusted) {
-            vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
-            return undefined;
-        }
-
         if (!lockPreview && this.livePreview) {
             // If a live preview panel exists and new panel is not locked...
             if (this.livePreview.uri.toString() !== uri.toString()) {
@@ -459,11 +454,6 @@ function getTargetFileUris(args: unknown[]): vscode.Uri[] {
 }
 
 async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
-    if (!vscode.workspace.isTrusted) {
-        vscode.window.showErrorMessage('Preview feature is disabled in untrusted workspaces.');
-        return undefined;
-    }
-
     let uri: vscode.Uri;
     let document: vscode.TextDocument | undefined;
 
@@ -760,8 +750,11 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     const headerType: string = config.get('table.headerType', 'mnemonic');
     const maximumPlots: number = config.get('plot.maximumNumberOfPlots', 25);
     const plotHeight: number = config.get('plot.height', 400);
-    const applyCsp: boolean = config.get('applyContentSecurityPolicy', true);
 
+    // Apply CSP when in untrusted workspaces, even when 
+    // it is disabled not in workspace settings but in user settings.
+    const applyCsp: boolean = vscode.workspace.isTrusted ? config.get('applyContentSecurityPolicy', true) : true;
+    
     function getSanitizedString(text: string) {
         // const charactersReplacedWith = ['&amp;', '&lt;', '&gt;', '&quot;', '&#39;'];
         // return text.replace(/[&<>"']/g, (match) => charactersReplacedWith['&<>"\''.indexOf(match)]);
@@ -881,7 +874,6 @@ function getPlotlyTemplate(kind: vscode.ColorThemeKind): PlotlyTemplate {
 
     const userTemplate = vscode.workspace.getConfiguration('spec-data.preview.plot').get<UserPlotlyTemplate>('template');
     const userTemplateForAllThemes = (userTemplate && userTemplate.all) ? userTemplate.all : {};
-
 
     switch (kind) {
         case vscode.ColorThemeKind.Dark:

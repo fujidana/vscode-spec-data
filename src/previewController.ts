@@ -147,8 +147,6 @@ const logAxisInputChangeHander = function (event: Event) {
     }
 };
 
-
-
 // show all graphs
 const showAllGraphs = (action: string) => {
     for (const div of document.body.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>) {
@@ -294,13 +292,8 @@ window.addEventListener('DOMContentLoaded', event => {
         }
     }
 
-
-    if (state.template === undefined) {
-        vscode.postMessage({
-            command: 'requestTemplate',
-            action: 'new'
-        });
-    } else {
-        showAllGraphs('new');
-    }
+    vscode.postMessage({
+        command: 'requestTemplate',
+        action: 'new'
+    });
 });

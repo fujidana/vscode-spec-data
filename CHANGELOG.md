@@ -4,11 +4,20 @@ All notable changes to the __vscode-spec-data__ extension will be documented in 
 
 ## [Unreleased]
 
-### Fixed
+### Changed
 
 - Improve a behavior after a parser fails to analyze the text content.
-- unresponsive editor-to-preview scroll synchronization when multiple previews are opened for a single file
-- a bug that made `files.encoding` for `spec-data` language ID was referred to even for a `chiplot` file
+
+### Fixed
+
+- Editor-to-preview scroll synchronization not working well when multiple previews were opened for a single file.
+- `files.encoding` setting for `spec-data` language ID scope being referred to for a `chiplot` file.
+
+### Security
+
+- Add `img-src blob:` in the content security policy of the webview to avoid an error when a download button is pressed (still it does not seem a file is downloaded into a local storage).
+- Set the other policies more restrictive.
+- Allow preview feature in untrusted workspaces on a condition that the content security policy is forcibly applied (regardless of the `spec-data.preview.applyContentSecurityPolicy` setting).
 
 ## [1.2.0] -- 2021-09-14
 

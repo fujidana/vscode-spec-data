@@ -3,7 +3,7 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"engines": {
 		"vscode": "^1.59.0"
 	},
@@ -114,12 +114,12 @@
 			"explorer/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "isWorkspaceTrusted && resourceLangId =~ /^(spec-data|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-data|chiplot)$/",
 					"group": "navigation"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "isWorkspaceTrusted && resourceLangId =~ /^(spec-data|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-data|chiplot)$/",
 					"group": "navigation"
 				}
 			],
@@ -127,66 +127,66 @@
 				{
 					"command": "spec-data.showPreviewToSide",
 					"alt": "spec-data.showPreview",
-					"when": "isWorkspaceTrusted && editorLangId =~ /^(spec-data|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-data|chiplot)$/",
 					"group": "navigation"
 				},
 				{
 					"command": "spec-data.showLockedPreviewToSide",
 					"alt": "spec-data.showLockedPreview",
-					"when": "isWorkspaceTrusted && editorLangId =~ /^(spec-data|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-data|chiplot)$/",
 					"group": "2_specdata"
 				},
 				{
 					"command": "spec-data.showSource",
 					"group": "navigation",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
 				},
 				{
 					"command": "spec-data.refreshPreview",
 					"group": "2_specdata",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
 				},
 				{
 					"command": "spec-data.togglePreviewLock",
 					"group": "2_specdata",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
 				}
 			],
 			"editor/title/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "isWorkspaceTrusted && editorLangId =~ /^(spec-data|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-data|chiplot)$/",
 					"group": "3_preview"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "isWorkspaceTrusted && editorLangId =~ /^(spec-data|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-data|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showPreviewToSide",
-					"when": "isWorkspaceTrusted && editorLangId =~ /^(spec-data|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-data|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "isWorkspaceTrusted && editorLangId =~ /^(spec-data|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-data|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreviewToSide",
-					"when": "isWorkspaceTrusted && editorLangId =~ /^(spec-data|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-data|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showSource",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
 				},
 				{
 					"command": "spec-data.refreshPreview",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
 				},
 				{
 					"command": "spec-data.togglePreviewLock",
-					"when": "isWorkspaceTrusted && resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
 				}
 			]
 		},
@@ -195,13 +195,13 @@
 				"command": "spec-data.showPreview",
 				"key": "ctrl+shift+v",
 				"mac": "cmd+shift+v",
-				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId =~ /^(spec-data|chiplot)/"
+				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|chiplot)/"
 			},
 			{
 				"command": "spec-data.showPreviewToSide",
 				"key": "ctrl+k v",
 				"mac": "cmd+k v",
-				"when": "isWorkspaceTrusted && !notebookEditorFocused && editorLangId =~ /^(spec-data|chiplot)/"
+				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|chiplot)/"
 			}
 		],
 		"configuration": {
@@ -317,9 +317,10 @@
 		"virtualWorkspaces": true,
 		"untrustedWorkspaces": {
 			"supported": "limited",
-			"description": "The preview feature is disabled in untrusted workspaces becauase protection against content injections has not been comprehensively surveyed.",
+			"description": "In untrusted workspaces, the content security policy is forcibly applied to the preview and Plotlytemplates in workspace settings are ignored.",
 			"restrictedConfigurations": [
-				"spec-data.preview.plot.template"
+				"spec-data.preview.plot.template",
+				"spec-data.preview.applyContentSecurityPolicy"
 			]
 		}
 	},
