@@ -103,13 +103,13 @@ const nodeConfig = /** @type WebpackConfig */ {
 
 const scriptConfig = /** @type WebpackConfig */ {
   context: __dirname,
-  target: 'web', // extensions run in a node context
+  target: 'web', // extensions run in a web context
   mode: 'none', // this leaves the source code as close as possible to the original (when packaging we set this to 'production')
   entry: './src/previewController.ts',
   output: {
     filename: 'previewController.js',
     path: path.join(__dirname, './dist'),
-    libraryTarget: 'commonjs'
+    libraryTarget: 'window'
   },
   resolve: {
     mainFields: ['module', 'main'],
