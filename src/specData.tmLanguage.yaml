@@ -58,36 +58,48 @@ repository:
           "2": { name: string.other.not-spec-header.spec-data }
   literal-numeric:
     patterns:
+      - include: "#constant-nan"
       # - include: "#literal-numeric-hexagonal"
       # - include: "#literal-numeric-octal"
       - include: "#literal-numeric-decimal"
       - include: "#literal-numeric-fractional"
       # - include: "#literal-numeric-invalid"
-  literal-numeric-hexagonal:
-    match: \b(?<!\.)(0[xX])[0-9a-fA-F]+(?![\.\w])
-    name: constant.numeric.integer.hexadecimal.spec-data
-    captures:
-      "1": { name: keyword.other.integer.hexadecimal.spec-data }
-  literal-numeric-octal:
-    match: \b(?<!\.)(0)[0-7]+(?![\.\w])
-    name: constant.numeric.integer.octal.spec-data
-    captures:
-      "1": { name: keyword.other.integer.otcal.spec-data }
+  constant-nan:
+    match: (?<=^|,|\s)(NaN|nan|NAN)(?=$|,|\s)
+    name: constant.language.nan.spec-data
+  # literal-numeric-hexagonal:
+  #   match: (?<=^|,|\s)(\+|-)?(0[xX])[0-9a-fA-F]+(?=$|,|\s)
+  #   name: constant.numeric.integer.hexadecimal.spec-data
+  #   captures:
+  #     "1": { name: keyword.operator.sign.spec-data }
+  #     "2": { name: keyword.other.integer.hexadecimal.spec-data }
+  # literal-numeric-octal:
+  #   match: (?<=^|,|\s)(\+|-)?(0)[0-7]+(?=$|,|\s)
+  #   name: constant.numeric.integer.octal.spec-data
+  #   captures:
+  #     "1": { name: keyword.operator.sign.spec-data }
+  #     "2": { name: keyword.other.integer.otcal.spec-data }
   literal-numeric-decimal:
-    match: \b(?<!\.)(0|[1-9][0-9]*)(?![\.\w])
+    match: (?<=^|,|\s)(\+|-)?(0|[1-9][0-9]*)(?=$|,|\s)
     name: constant.numeric.integer.decimal.spec-data
+    captures:
+      "1": { name: keyword.operator.sign.spec-data }
   literal-numeric-fractional:
     patterns:
-      - match: \b(?<!\.)[0-9]+(?:\.[0-9]*)?(?:(e|E)[+-]?[0-9]+)?(?![\.\w])
+      - match: (?<=^|,|\s)(\+|-)?[0-9]+(?:\.[0-9]*)?(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s)
         name: constant.numeric.float.spec-data
-        # captures:
-        #   "1": { name: keyword.other.float.scientific-notation.spec-data }
-      - match: (?<!\w)\.[0-9]+(?:(e|E)[+-]?[0-9]+)?(?![\.\w])
+        captures:
+          "1": { name: keyword.operator.sign.spec-data }
+          # "2": { name: keyword.operator.scientific-notation.spec-data }
+          # "3": { name: keyword.operator.sign.spec-data }
+      - match: (?<=^|,|\s)(\+|-)?\.[0-9]+(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s)
         name: constant.numeric.float.spec-data
-        # captures:
-        #   "1": { name: keyword.other.float.scientific-notation.spec-data }
+        captures:
+          "1": { name: keyword.operator.sign.spec-data }
+          # "2": { name: keyword.operator.scientific-notation.spec-data }
+          # "3": { name: keyword.operator.sign.spec-data }
   literal-numeric-invalid:
-    match: \b[0-9][\w.]*
+    match: (?<=^|,|\s)[0-9][\w.]*(?=$|,|\s)
     name: invalid.illegal.numeric.other.spec-data
   name-list:
     match: \b[^ \t].*?(?=$|  |\t)

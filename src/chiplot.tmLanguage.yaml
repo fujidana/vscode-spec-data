@@ -1,0 +1,79 @@
+$schema: https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json
+name: chiplot
+scopeName: source.chiplot
+patterns:
+  - include: "#header"
+  - include: "#body"
+repository:
+  header:
+    patterns:
+      - begin: \A(\s*(.*)\s*)$
+        beginCaptures:
+          "1": { name: markup.heading.chiplot}
+          "2": { name: string.unquoted.chiplot }
+        end: ^\s*(\d+)(?:(?:\s+|\s*,\s*)(\d+))?\s*$
+        endCaptures:
+          "1": { name: constant.numeric.integer.decimal.chiplot }
+          "2": { name: constant.numeric.integer.decimal.chiplot }
+        name: meta.header.chiplot
+        patterns:
+          - match: ^\s*(.*)\s*$
+            captures:
+              "1": { name: string.unquoted.chiplot }
+  body:
+    patterns:
+      - begin: ^
+        end: \z
+        name: meta.body.chiplot
+        patterns:
+          - match: \s*(,)\s*
+            captures:
+              "1": { name: punctuation.separator.column.chiplot }
+          - include: "#literal-numeric"
+  literal-numeric:
+    patterns:
+      - include: "#constant-nan"
+      # - include: "#literal-numeric-hexagonal"
+      # - include: "#literal-numeric-octal"
+      - include: "#literal-numeric-decimal"
+      - include: "#literal-numeric-fractional"
+      - include: "#literal-numeric-invalid"
+      - match: \S+
+        name: invalid.illegal.unknown.chiplot
+  constant-nan:
+    match: (?<=^|,|\s)(NaN|nan|NAN)(?=$|,|\s)
+    name: constant.language.nan.chiplot
+  # literal-numeric-hexagonal:
+  #   match: (?<=^|,|\s)(\+|-)?(0[xX])[0-9a-fA-F]+(?=$|,|\s)
+  #   name: constant.numeric.integer.hexadecimal.chiplot
+  #   captures:
+  #     "1": { name: keyword.operator.sign.chiplot }
+  #     "2": { name: keyword.other.integer.hexadecimal.chiplot }
+  # literal-numeric-octal:
+  #   match: (?<=^|,|\s)(\+|-)?(0)[0-7]+(?=$|,|\s)
+  #   name: constant.numeric.integer.octal.chiplot
+  #   captures:
+  #     "1": { name: keyword.operator.sign.chiplot }
+  #     "2": { name: keyword.other.integer.otcal.chiplot }
+  literal-numeric-decimal:
+    match: (?<=^|,|\s)(\+|-)?(0|[1-9][0-9]*)(?=$|,|\s)
+    name: constant.numeric.integer.decimal.chiplot
+    captures:
+      "1": { name: keyword.operator.sign.chiplot }
+  literal-numeric-fractional:
+    patterns:
+      - match: (?<=^|,|\s)(\+|-)?[0-9]+(?:\.[0-9]*)?(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s)
+        name: constant.numeric.float.chiplot
+        captures:
+          "1": { name: keyword.operator.sign.chiplot }
+          # "2": { name: keyword.operator.scientific-notation.chiplot }
+          # "3": { name: keyword.operator.sign.chiplot }
+      - match: (?<=^|,|\s)(\+|-)?\.[0-9]+(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s)
+        name: constant.numeric.float.chiplot
+        captures:
+          "1": { name: keyword.operator.sign.chiplot }
+          # "2": { name: keyword.operator.scientific-notation.chiplot }
+          # "3": { name: keyword.operator.sign.chiplot }
+  literal-numeric-invalid:
+    match: (?<=^|,|\s)[0-9][\w.]*(?=$|,|\s)
+    name: invalid.illegal.numeric.other.chiplot
