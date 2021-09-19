@@ -536,12 +536,12 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
     const scanHeadRegex = /^(#S) ([0-9]+) (.*)$/;
     const scanNumberRegex = /^(#N) ([0-9]+)$/;
     const scanDataRegex = /^(#L) (.*)$/;
-    const allRegex = /^#([a-zA-Z][0-9]*) (.*)$/;
+    const unknownRegex = /^#(?:([a-zA-Z][0-9]*) (.*)|.*)$/;
     const emptyLineRegex = /^\s*$/;
 
     let matches: RegExpMatchArray | null;
     let prevNodeIndex = -1;
-    let columnNumber = 0;
+    let columnNumber = -1;
     const nodes: Node[] = [];
 
     let fileOccurance = 0;
@@ -631,11 +631,14 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
         } else if ((matches = lineText.match(scanNumberRegex)) !== null) {
             columnNumber = parseInt(matches[2]);
         } else if ((matches = lineText.match(scanDataRegex)) !== null) {
-            // The separator between motors and counters are 4 whitespaces.
+            // The separator between motors and counters are 4 whitespaces (in old spec version only?).
             // The separator between respective motors and counters are 2 whitespaces.
-            const headersMotCnt = matches[2].split('    ', 2);
-            const headers = headersMotCnt.map(a => a.split('  ')).reduce((a, b) => a.concat(b));
-            if (headers.length !== columnNumber) {
+            // const headers = matches[2].split('    ', 2).map(a => a.split('  ')).reduce((a, b) => a.concat(b));
+            const headers = matches[2].trim().split(/ {2,}|\t/);
+            if (columnNumber === -1) {
+                // for lazy format in which "#N" line does not exit.
+                columnNumber = headers.length;
+            } else if (headers.length !== columnNumber) {
                 vscode.window.showErrorMessage(`Scan number mismatched (header): line ${lineIndex + 1}`);
                 return undefined;
             }
@@ -645,13 +648,13 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
             const data: number[][] = [];
             for (; lineIndex + 1 < lineCount; lineIndex++) {
                 const blockLineText = lines[lineIndex + 1];
-                if (blockLineText.match(allRegex) || blockLineText.match(emptyLineRegex)) {
+                if (blockLineText.match(unknownRegex) || blockLineText.match(emptyLineRegex)) {
                     break;
                 }
                 // The separator between motors and counters are 2 whitespaces.
                 // The separator between respective motors and counters are 1 whitespace.
-                const rowsMotCnt = blockLineText.split('  ', 2);
-                const rows = rowsMotCnt.map(a => a.split(' ')).reduce((a, b) => a.concat(b));
+                // const rows = blockLineText.split('  ', 2).map(a => a.split(' ')).reduce((a, b) => a.concat(b));
+                const rows = blockLineText.trim().split(/ {1,}|\t/);
                 if (rows.length !== columnNumber) {
                     vscode.window.showErrorMessage(`Scan number mismatched (data): line ${lineIndex + 2}`);
                     return undefined;
@@ -663,7 +666,8 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
 
             nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineIndex, occurance: scanDataOccurance, headers: headers, data: data2 });
             scanDataOccurance++;
-        } else if ((matches = lineText.match(allRegex)) !== null) {
+            columnNumber = -1;
+        } else if ((matches = lineText.match(unknownRegex)) !== null) {
             nodes.push({ type: 'unknown', lineStart: lineIndex, lineEnd: lineIndex, kind: matches[1], value: matches[2] });
         }
     }
@@ -853,8 +857,8 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 `;
             }
             body += `</div>`;
-            // } else if (node.type === 'unknown') {
-            //     body += `<p> #${node.kind} ${node.value}`;
+        // } else if (node.type === 'unknown') {
+        //     body += `<p> #${node.kind} ${node.value}`;
         }
     }
 

@@ -51,6 +51,11 @@ repository:
           # "1": { name: support.type.information-line.other.spec-data }
           "1": { name: markup.heading.other.spec-data }
           "2": { patterns: [{ include: "#literal-numeric" }] }
+      - match: ^(#)\s*(.*)$
+        name: meta.information-line.not-spec-header.spec-data
+        captures:
+          "1": { name: markup.heading.other.spec-data }
+          "2": { name: string.other.not-spec-header.spec-data }
   literal-numeric:
     patterns:
       # - include: "#literal-numeric-hexagonal"
@@ -85,7 +90,7 @@ repository:
     match: \b[0-9][\w.]*
     name: invalid.illegal.numeric.other.spec-data
   name-list:
-    match: \b[^ ].*?(?=  |$)
+    match: \b[^ \t].*?(?=$|  |\t)
     name: entity.name.other.name.spec-data
     captures:
       "0": { name: markup.underline.spec-data }
