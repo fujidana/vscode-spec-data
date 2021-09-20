@@ -483,13 +483,11 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
         // Determine the file type (language ID) for a file.
         // First, compare the filename with a user-defined setting ("files.associations"), 
         // then with default extension patterns.
-        const associations = Object.assign(
-            {},
+        const associations = Object.entries(
             vscode.workspace.getConfiguration('files', uri).get<Record<string, string>>('associations', {}),
-            <Record<string, string>>{ '*.spec': 'spec-data', '*.chi': 'chiplot' }
-        );
+        ).concat([['*.mac', 'spec-data'], ['*.chi', 'chiplot']]);
 
-        for (const [key, value] of Object.entries(associations)) {
+        for (const [key, value] of associations) {
             if (minimatch(uri.path, key, { matchBase: true })) {
                 languageId = (value === 'spec-data' || value === 'chiplot') ? value : undefined;
                 break;
