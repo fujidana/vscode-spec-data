@@ -173,7 +173,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     // However, it seems invisible webviews also handle the following messages.
                     preview.panel.webview.postMessage({
                         command: 'setTemplate',
-                        template: getPlotlyTemplate(colorTheme.kind),
+                        template: getPlotlyTemplate(colorTheme.kind, preview.uri),
                         action: 'update'
                     });
                 }
@@ -198,7 +198,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.workspace.onDidChangeConfiguration(onDidChangeConfigurationListner)
         );
 
-        const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('spec-data.preview').get('scrollPreviewWithEditor', true);
+        const scrollPreviewWithEditor = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollPreviewWithEditor', true);
         if (scrollPreviewWithEditor) {
             this.onDidChangeTextEditorVisibleRangesDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(onDidChangeTextEditorVisibleRangesListener);
             context.subscriptions.push(this.onDidChangeTextEditorVisibleRangesDisposable);
@@ -315,7 +315,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         if (panel) {
             panel2 = panel;
         } else {
-            const retainContextWhenHidden: boolean = vscode.workspace.getConfiguration('spec-data.preview').get('retainContextWhenHidden', false);
+            const retainContextWhenHidden = vscode.workspace.getConfiguration('spec-data.preview', uri).get<boolean>('retainContextWhenHidden', false);
             panel2 = vscode.window.createWebviewPanel(
                 'specDataPreview',
                 'Preview spec data',
@@ -380,7 +380,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             } else if (message.command === 'requestTemplate') {
                 panel2.webview.postMessage({
                     command: 'setTemplate',
-                    template: getPlotlyTemplate(vscode.window.activeColorTheme.kind),
+                    template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, uri),
                     action: message.action
                 });
             }
@@ -748,16 +748,16 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     const nameLists: { [name: string]: string[] } = {};
     const mnemonicLists: { [name: string]: string[] } = {};
 
-    const config = vscode.workspace.getConfiguration('spec-data.preview');
-    const hideTable: boolean = config.get('table.hide', true);
-    const columnsPerLine: number = config.get('table.columnsPerLine', 8);
-    const headerType: string = config.get('table.headerType', 'mnemonic');
-    const maximumPlots: number = config.get('plot.maximumNumberOfPlots', 25);
-    const plotHeight: number = config.get('plot.height', 400);
+    const config = vscode.workspace.getConfiguration('spec-data.preview', sourceUri);
+    const hideTable = config.get<boolean>('table.hide', true);
+    const columnsPerLine = config.get<number>('table.columnsPerLine', 8);
+    const headerType = config.get<string>('table.headerType', 'mnemonic');
+    const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
+    const plotHeight = config.get<number>('plot.height', 400);
 
     // Apply CSP when in untrusted workspaces, even when 
     // it is disabled not in workspace settings but in user settings.
-    const applyCsp: boolean = vscode.workspace.isTrusted ? config.get('applyContentSecurityPolicy', true) : true;
+    const applyCsp = vscode.workspace.isTrusted ? config.get<boolean>('applyContentSecurityPolicy', true) : true;
     
     function getSanitizedString(text: string) {
         // const charactersReplacedWith = ['&amp;', '&lt;', '&gt;', '&quot;', '&#39;'];
@@ -872,11 +872,11 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 type PlotlyTemplate = { data?: unknown[], layout?: unknown };
 type UserPlotlyTemplate = { all?: PlotlyTemplate, light?: PlotlyTemplate, dark?: PlotlyTemplate, highContrast?: PlotlyTemplate };
 
-function getPlotlyTemplate(kind: vscode.ColorThemeKind): PlotlyTemplate {
+function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope): PlotlyTemplate {
     let systemTemplate: PlotlyTemplate;
     let userTemplateForTheme: PlotlyTemplate;
 
-    const userTemplate = vscode.workspace.getConfiguration('spec-data.preview.plot').get<UserPlotlyTemplate>('template');
+    const userTemplate = vscode.workspace.getConfiguration('spec-data.preview.plot', scope).get<UserPlotlyTemplate>('template');
     const userTemplateForAllThemes = (userTemplate && userTemplate.all) ? userTemplate.all : {};
 
     switch (kind) {
