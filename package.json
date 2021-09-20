@@ -245,19 +245,11 @@
 				},
 				"spec-data.preview.plot.template": {
 					"type": "object",
+					"markdownDeprecationMessage": "**Deprecated**: Please use `#spec-data.preview.plot.templates#` instead."
+				},
+				"spec-data.preview.plot.templates": {
+					"type": "object",
 					"properties": {
-						"all": {
-							"type": "object",
-							"properties": {
-								"data": {
-									"type": "array"
-								},
-								"layout": {
-									"type": "object"
-								}
-							},
-							"additionalProperties": false
-						},
 						"light": {
 							"type": "object",
 							"properties": {
@@ -297,7 +289,7 @@
 					},
 					"additionalProperties": false,
 					"scope": "resource",
-					"markdownDescription": "Overrides the built-in plot appearance such as line color. The key of this setting object is either `\"all\"`, `\"light\"`, `\"dark\"`, or `\"highContrast\"`, and the value is a Plotly.js template object for the color theme the corresponding key represents. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) page."
+					"markdownDescription": "Overrides the built-in plot appearance such as line color. The key of this setting object is either `\"light\"`, `\"dark\"`, or `\"highContrast\"` and the value is a Plotly.js template object for the color theme the corresponding key represents. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) page."
 				},
 				"spec-data.preview.table.hide": {
 					"type": "boolean",
@@ -332,7 +324,7 @@
 			"supported": "limited",
 			"description": "In untrusted workspaces, the content security policy is forcibly applied to the preview and Plotlytemplates in workspace settings are ignored.",
 			"restrictedConfigurations": [
-				"spec-data.preview.plot.template",
+				"spec-data.preview.plot.templates",
 				"spec-data.preview.applyContentSecurityPolicy"
 			]
 		}

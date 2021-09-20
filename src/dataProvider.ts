@@ -867,28 +867,27 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 }
 
 type PlotlyTemplate = { data?: unknown[], layout?: unknown };
-type UserPlotlyTemplate = { all?: PlotlyTemplate, light?: PlotlyTemplate, dark?: PlotlyTemplate, highContrast?: PlotlyTemplate };
+type UserPlotlyTemplates = { light?: PlotlyTemplate, dark?: PlotlyTemplate, highContrast?: PlotlyTemplate };
 
 function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope): PlotlyTemplate {
     let systemTemplate: PlotlyTemplate;
     let userTemplateForTheme: PlotlyTemplate;
 
-    const userTemplate = vscode.workspace.getConfiguration('spec-data.preview.plot', scope).get<UserPlotlyTemplate>('template');
-    const userTemplateForAllThemes = (userTemplate && userTemplate.all) ? userTemplate.all : {};
+    const userTemplates = vscode.workspace.getConfiguration('spec-data.preview.plot', scope).get<UserPlotlyTemplates>('templates');
 
     switch (kind) {
         case vscode.ColorThemeKind.Dark:
             systemTemplate = plotTemplate.dark;
-            userTemplateForTheme = (userTemplate && userTemplate.dark) ? userTemplate.dark : {};
+            userTemplateForTheme = (userTemplates && userTemplates.dark) ? userTemplates.dark : {};
             break;
         case vscode.ColorThemeKind.HighContrast:
             systemTemplate = plotTemplate.highContast;
-            userTemplateForTheme = (userTemplate && userTemplate.highContrast) ? userTemplate.highContrast : {};
+            userTemplateForTheme = (userTemplates && userTemplates.highContrast) ? userTemplates.highContrast : {};
             break;
         default:
             systemTemplate = plotTemplate.light;
-            userTemplateForTheme = (userTemplate && userTemplate.light) ? userTemplate.light : {};
+            userTemplateForTheme = (userTemplates && userTemplates.light) ? userTemplates.light : {};
     }
 
-    return merge({}, systemTemplate, userTemplateForAllThemes, userTemplateForTheme);
+    return merge({}, systemTemplate, userTemplateForTheme);
 }
