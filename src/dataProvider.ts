@@ -33,7 +33,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     livePreview: Preview | undefined = undefined;
     colorThemeKind: vscode.ColorThemeKind;
-    onDidChangeTextEditorVisibleRangesDisposable: vscode.Disposable | undefined;
+    textEditorVisibleRangesChangeDisposable: vscode.Disposable | undefined;
 
     constructor(context: vscode.ExtensionContext) {
         this.extensionUri = context.extensionUri;
@@ -121,7 +121,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        const onDidChangeActiveTextEditorListner = (editor: vscode.TextEditor | undefined) => {
+        const activeTextEditorChangeListener = (editor: vscode.TextEditor | undefined) => {
             if (editor && (editor.document.languageId === 'spec-data' || editor.document.languageId === 'chiplot')) {
                 if (this.livePreview && this.livePreview.uri.toString() !== editor.document.uri.toString()) {
                     this.reloadPreview(this.livePreview, editor.document);
@@ -129,7 +129,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        const onDidChangeTextEditorVisibleRangesListener = (event: vscode.TextEditorVisibleRangesChangeEvent) => {
+        const textEditorVisibleRangesChangeListener = (event: vscode.TextEditorVisibleRangesChangeEvent) => {
             if (event.visibleRanges.length) {
                 const line = event.visibleRanges[0].start.line;
                 const previews = this.previews.filter(preview => preview.uri.toString() === event.textEditor.document.uri.toString());
@@ -142,23 +142,23 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        const onDidChangeConfigurationListner = (event: vscode.ConfigurationChangeEvent) => {
+        const configurationChangeListner = (event: vscode.ConfigurationChangeEvent) => {
             if (event.affectsConfiguration('spec-data.preview.scrollPreviewWithEditor')) {
                 const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('spec-data.preview').get('scrollPreviewWithEditor', true);
                 if (scrollPreviewWithEditor) {
-                    if (!this.onDidChangeTextEditorVisibleRangesDisposable) {
-                        this.onDidChangeTextEditorVisibleRangesDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(onDidChangeTextEditorVisibleRangesListener);
-                        context.subscriptions.push(this.onDidChangeTextEditorVisibleRangesDisposable);
+                    if (!this.textEditorVisibleRangesChangeDisposable) {
+                        this.textEditorVisibleRangesChangeDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(textEditorVisibleRangesChangeListener);
+                        context.subscriptions.push(this.textEditorVisibleRangesChangeDisposable);
                     }
                 } else {
-                    if (this.onDidChangeTextEditorVisibleRangesDisposable) {
-                        const index = context.subscriptions.indexOf(this.onDidChangeTextEditorVisibleRangesDisposable);
+                    if (this.textEditorVisibleRangesChangeDisposable) {
+                        const index = context.subscriptions.indexOf(this.textEditorVisibleRangesChangeDisposable);
                         if (index >= 0) {
                             context.subscriptions.splice(index, 1);
                         }
-                        this.onDidChangeTextEditorVisibleRangesDisposable.dispose();
+                        this.textEditorVisibleRangesChangeDisposable.dispose();
                     }
-                    this.onDidChangeTextEditorVisibleRangesDisposable = undefined;
+                    this.textEditorVisibleRangesChangeDisposable = undefined;
                 }
             }
         };
@@ -193,15 +193,15 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.languages.registerFoldingRangeProvider(SPEC_DATA_SELECTOR, this),
             vscode.languages.registerDocumentSymbolProvider(SPEC_DATA_SELECTOR, this),
             vscode.window.registerWebviewPanelSerializer('specDataPreview', this),
-            vscode.window.onDidChangeActiveTextEditor(onDidChangeActiveTextEditorListner),
+            vscode.window.onDidChangeActiveTextEditor(activeTextEditorChangeListener),
             vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
-            vscode.workspace.onDidChangeConfiguration(onDidChangeConfigurationListner)
+            vscode.workspace.onDidChangeConfiguration(configurationChangeListner)
         );
 
         const scrollPreviewWithEditor = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollPreviewWithEditor', true);
         if (scrollPreviewWithEditor) {
-            this.onDidChangeTextEditorVisibleRangesDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(onDidChangeTextEditorVisibleRangesListener);
-            context.subscriptions.push(this.onDidChangeTextEditorVisibleRangesDisposable);
+            this.textEditorVisibleRangesChangeDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(textEditorVisibleRangesChangeListener);
+            context.subscriptions.push(this.textEditorVisibleRangesChangeDisposable);
         }
     }
 
