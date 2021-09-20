@@ -154,6 +154,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     if (this.textEditorVisibleRangesChangeDisposable) {
                         const index = context.subscriptions.indexOf(this.textEditorVisibleRangesChangeDisposable);
                         if (index >= 0) {
+                            
                             context.subscriptions.splice(index, 1);
                         }
                         this.textEditorVisibleRangesChangeDisposable.dispose();
@@ -480,29 +481,25 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
         // If `document` is not found, read the file content.
 
         // Determine the file type (language ID) for a file.
-        // First, compare the filename with a user-defined setting ("files.associations").
-        const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
-        const associations = vscode.workspace.getConfiguration('files', workspaceFolder).get<Record<string, string>>('associations');
-        if (associations) {
-            for (const [key, value] of Object.entries(associations)) {
-                if (value === 'spec-data' || value === 'chiplot') {
-                    if (minimatch(uri.path, key, { matchBase: true })) {
-                        languageId = value;
-                        break;
-                    }
-                }
+        // First, compare the filename with a user-defined setting ("files.associations"), 
+        // then with default extension patterns.
+        const associations = Object.assign(
+            {},
+            vscode.workspace.getConfiguration('files', uri).get<Record<string, string>>('associations', {}),
+            <Record<string, string>>{ '*.spec': 'spec-data', '*.chi': 'chiplot' }
+        );
+
+        for (const [key, value] of Object.entries(associations)) {
+            if (minimatch(uri.path, key, { matchBase: true })) {
+                languageId = (value === 'spec-data' || value === 'chiplot') ? value : undefined;
+                break;
             }
         }
-        // If not matched with "files.associations", compare the filename with default file extension patterns.
+
         if (languageId === undefined) {
-            if (minimatch(uri.path, '*.spec', { matchBase: true })) {
-                languageId = 'spec-data';
-            } else if (minimatch(uri.path, '*.chi', { matchBase: true })) {
-                languageId = 'chiplot';
-            } else {
-                return undefined;
-            }
+            return undefined;
         }
+
         // Read the content from a file. Use file encoding for the language ID (if "files.encoding" is set.)
         text = getTextDecoder({ languageId, uri }).decode(await vscode.workspace.fs.readFile(uri));
     }
