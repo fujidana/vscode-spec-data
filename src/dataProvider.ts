@@ -504,7 +504,7 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
             }
         }
         // Read the content from a file. Use file encoding for the language ID (if "files.encoding" is set.)
-        text = getTextDecoder({ languageId }).decode(await vscode.workspace.fs.readFile(uri));
+        text = getTextDecoder({ languageId, uri }).decode(await vscode.workspace.fs.readFile(uri));
     }
 
     // Parse the document contents.
