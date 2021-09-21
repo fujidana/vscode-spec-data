@@ -1,12 +1,14 @@
 # Change Log
 
-All notable changes to the __vscode-spec-data__ extension will be documented in this file.
+All notable changes to the `fujidana.spec-data` VS Code extension will be documented in this file.
 
 ## [Unreleased]
 
+## [1.3.0] -- 2021-09-21
+
 ### Added
 
-- highlighting feature for chiplot
+- syntax highlighting feature for chiplot
 
 ### Changed
 
@@ -151,7 +153,8 @@ All notable changes to the __vscode-spec-data__ extension will be documented in 
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.1...v1.1.2
