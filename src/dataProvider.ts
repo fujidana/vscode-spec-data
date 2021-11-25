@@ -154,7 +154,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     if (this.textEditorVisibleRangesChangeDisposable) {
                         const index = context.subscriptions.indexOf(this.textEditorVisibleRangesChangeDisposable);
                         if (index >= 0) {
-                            
                             context.subscriptions.splice(index, 1);
                         }
                         this.textEditorVisibleRangesChangeDisposable.dispose();
@@ -366,12 +365,21 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                         const data = node.data;
                         const xIndex = (message.indexes[0] === -1) ? headers.length - 1 : message.indexes[0];
                         const yIndex = (message.indexes[1] === -1) ? headers.length - 1 : message.indexes[1];
-                        if (xIndex >= 0 && xIndex < data.length && yIndex >= 0 && yIndex < data.length) {
+                        let xData, xLabel;
+                        if (xIndex >= 0 && xIndex < data.length) {
+                            xData = data[xIndex];
+                            xLabel = headers[xIndex];
+                        } else {
+                            xData = Array(data[0].length).fill(0).map((_x, i) => i);
+                            xLabel = 'point';
+                        }
+
+                        if (yIndex >= 0 && yIndex < data.length) {
                             panel2.webview.postMessage({
                                 command: 'updatePlot',
                                 elementId: `plotly${message.occurance}`,
-                                data: [{ x: data[xIndex], y: data[yIndex] }],
-                                labels: [headers[xIndex], headers[yIndex]],
+                                data: [{ x: xData, y: data[yIndex] }],
+                                labels: [xLabel, headers[yIndex]],
                                 logAxis: message.logAxis,
                                 action: message.action
                             });
@@ -843,6 +851,9 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
                     body += `<label for="axisSelect${axis.toUpperCase()}${occurance}">${axis}:</label>
     <select id="axisSelect${axis.toUpperCase()}${occurance}" class="axisSelect" data-axis="${axis}">`;
                     body += headers.map(item => `<option>${getSanitizedString(item)}</option>`).join('');
+                    if (j === 0) {
+                        body += '<option>[point]</option>';
+                    }
                     body += `</select>, `;
                 }
                 body += `<input type="checkbox" id="logAxisInput${occurance}" class="logAxisInput">

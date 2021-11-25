@@ -4,6 +4,10 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Added
+
+- point number (i.e., array index) in the x-axis option.
+
 ### Changed
 
 - Bump `plotly.js-basic-dist-min` dependency to 2.6.3
