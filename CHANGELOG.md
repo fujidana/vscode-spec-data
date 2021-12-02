@@ -6,6 +6,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Added
 
+- support for MCA data format (preview feature only)
 - point number (i.e., array index) in the x-axis option (`spec-data` and `chiplot` only).
 
 ### Changed

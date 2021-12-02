@@ -1,7 +1,7 @@
 /*
  * TypeScript script that is loaded by <script src="..."> in a webview html file.
- * The script is not directly executed in a main thred of the extension and thus, compiled separately 
- * from other sources, which are compiled and minified by webpack.
+ * The script is not directly executed in the main thread of the extension and thus, compiled separately 
+ * from other sources.
  */
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
@@ -61,7 +61,10 @@ const showPlotInputChangeHandler = function (event: Event) {
                 vscode.postMessage({
                     command: 'requestPlotData',
                     occurance: occurance,
-                    indexes: [axisSelects[0].selectedIndex, axisSelects[1].selectedIndex],
+                    indexes: [
+                        axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
+                        axisSelects[1].selectedIndex
+                    ],
                     logAxis: logAxisInputs[0].checked,
                     action: 'new'
                 });
@@ -70,13 +73,14 @@ const showPlotInputChangeHandler = function (event: Event) {
             }
 
             // enable or disable the dropdown axis selectors
-            axisSelects[0].disabled = !showPlotInput.checked;
-            axisSelects[1].disabled = !showPlotInput.checked;
+            for (const axisSelect of axisSelects) {
+                axisSelect.disabled = !showPlotInput.checked;
+            }
             logAxisInputs[0].disabled = !showPlotInput.checked;
 
             // save the current state
             state.scanData[occurance] = {
-                x: axisSelects[0].selectedIndex,
+                x: axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
                 y: axisSelects[1].selectedIndex,
                 hidden: !showPlotInput.checked,
                 logAxis: logAxisInputs[0].checked
@@ -101,14 +105,17 @@ const plotAxisSelectChangeHandler = function (event: Event) {
             vscode.postMessage({
                 command: 'requestPlotData',
                 occurance: occurance,
-                indexes: [axisSelects[0].selectedIndex, axisSelects[1].selectedIndex],
+                indexes: [
+                    axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
+                    axisSelects[1].selectedIndex
+                ],
                 logAxis: logAxisInputs[0].checked,
                 action: 'react'
             });
 
             // save the current state
             state.scanData[occurance] = {
-                x: axisSelects[0].selectedIndex,
+                x: axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
                 y: axisSelects[1].selectedIndex,
                 hidden: !showPlotInputs[0].checked,
                 logAxis: logAxisInputs[0].checked
@@ -137,7 +144,7 @@ const logAxisInputChangeHander = function (event: Event) {
 
             // save the current state
             state.scanData[occurance] = {
-                x: axisSelects[0].selectedIndex,
+                x: axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
                 y: axisSelects[1].selectedIndex,
                 hidden: !showPlotInputs[0].checked,
                 logAxis: logAxisInput.checked
@@ -161,7 +168,10 @@ const showAllGraphs = (action: string) => {
                     vscode.postMessage({
                         command: 'requestPlotData',
                         occurance: parseInt(occuranceString),
-                        indexes: [axisSelects[0].selectedIndex, axisSelects[1].selectedIndex],
+                        indexes: [
+                            axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
+                            axisSelects[1].selectedIndex
+                        ],
                         logAxis: logAxisInputs[0].checked,
                         action: action
                     });

@@ -29,6 +29,7 @@
 	"homepage": "https://github.com/fujidana/vscode-spec-data#readme",
 	"activationEvents": [
 		"onLanguage:spec-data",
+		"onLanguage:spec-mca",
 		"onLanguage:chiplot",
 		"onWebviewPanel:specDataPreview",
 		"onCommand:spec-data.showPreview",
@@ -49,6 +50,16 @@
 				],
 				"extensions": [
 					".spec"
+				]
+			},
+			{
+				"id": "spec-mca",
+				"aliases": [
+					"spec MCA",
+					"spec multichannel analyzers"
+				],
+				"extensions": [
+					".mca"
 				]
 			},
 			{
@@ -119,12 +130,12 @@
 			"explorer/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "resourceLangId =~ /^(spec-data|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-(data|mca)|chiplot)$/",
 					"group": "navigation"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "resourceLangId =~ /^(spec-data|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-(data|mca)|chiplot)$/",
 					"group": "navigation"
 				}
 			],
@@ -132,13 +143,13 @@
 				{
 					"command": "spec-data.showPreviewToSide",
 					"alt": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-data|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/",
 					"group": "navigation"
 				},
 				{
 					"command": "spec-data.showLockedPreviewToSide",
 					"alt": "spec-data.showLockedPreview",
-					"when": "editorLangId =~ /^(spec-data|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/",
 					"group": "2_specdata"
 				},
 				{
@@ -160,26 +171,26 @@
 			"editor/title/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-data|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/",
 					"group": "3_preview"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-data|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showPreviewToSide",
-					"when": "editorLangId =~ /^(spec-data|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "editorLangId =~ /^(spec-data|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreviewToSide",
-					"when": "editorLangId =~ /^(spec-data|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showSource",
@@ -200,13 +211,13 @@
 				"command": "spec-data.showPreview",
 				"key": "ctrl+shift+v",
 				"mac": "cmd+shift+v",
-				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|chiplot)/"
+				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-(data|mca)|chiplot)/"
 			},
 			{
 				"command": "spec-data.showPreviewToSide",
 				"key": "ctrl+k v",
 				"mac": "cmd+k v",
-				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|chiplot)/"
+				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-(data|mca)|chiplot)/"
 			}
 		],
 		"configuration": {

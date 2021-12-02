@@ -14,14 +14,14 @@ interface CommentNode extends BaseNode { type: 'comment', value: string }
 interface NameListNode extends BaseNode { type: 'nameList', kind: string, values: string[], mnemonic: boolean }
 interface ValueListNode extends BaseNode { type: 'valueList', kind: string, values: number[] }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
-interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][] }
+interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], xAxisSelectable: boolean }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
-interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
+interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, language?: SupportedLanguage, tree?: Node[] }
 
 interface State { template: unknown, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
 
-type SupportedLanguage = 'spec-data' | 'chiplot';
+type SupportedLanguage = 'spec-data' | 'spec-mca' | 'chiplot';
 
 /**
  * Provider class for "spec-data" language
@@ -122,9 +122,12 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         const activeTextEditorChangeListener = (editor: vscode.TextEditor | undefined) => {
-            if (editor && (editor.document.languageId === 'spec-data' || editor.document.languageId === 'chiplot')) {
-                if (this.livePreview && this.livePreview.uri.toString() !== editor.document.uri.toString()) {
-                    this.reloadPreview(this.livePreview, editor.document);
+            if (editor) {
+                const document = editor.document;
+                if (document.languageId === 'spec-data' || document.languageId === 'spec-mca' || document.languageId === 'chiplot') {
+                    if (this.livePreview && this.livePreview.uri.toString() !== document.uri.toString()) {
+                        this.reloadPreview(this.livePreview, document);
+                    }
                 }
             }
         };
@@ -363,8 +366,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     if (node && node.type === 'scanData' && node.data.length) {
                         const headers = node.headers;
                         const data = node.data;
-                        const xIndex = (message.indexes[0] === -1) ? headers.length - 1 : message.indexes[0];
-                        const yIndex = (message.indexes[1] === -1) ? headers.length - 1 : message.indexes[1];
+                        const [xIndex, yIndex] = message.indexes;
                         let xData, xLabel;
                         if (xIndex >= 0 && xIndex < data.length) {
                             xData = data[xIndex];
@@ -407,7 +409,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      * @returns Preview object if succeeded in parsing a file or `undefined`.
      */
     private async reloadPreview(preview: Preview, source: vscode.Uri | vscode.TextDocument) {
-        const uri = source instanceof vscode.Uri ? source: source.uri;
+        const uri = source instanceof vscode.Uri ? source : source.uri;
 
         const tree = await parseDocumentContent(source);
         if (!tree) {
@@ -479,25 +481,25 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
 
     if (document) {
         // If `document` is provided or found, use its values.
-        if (document.languageId === 'spec-data' || document.languageId === 'chiplot') {
+        if (document.languageId === 'spec-data' || document.languageId === 'spec-mca' || document.languageId === 'chiplot') {
             languageId = document.languageId;
             text = document.getText();
         } else {
             return undefined;
         }
     } else {
-        // If `document` is not found, read the file content.
+        // If `document` is not found, read contents from the file.
 
         // Determine the file type (language ID) for a file.
         // First, compare the filename with a user-defined setting ("files.associations"), 
         // then with default extension patterns.
         const associations = Object.entries(
             vscode.workspace.getConfiguration('files', uri).get<Record<string, string>>('associations', {}),
-        ).concat([['*.spec', 'spec-data'], ['*.chi', 'chiplot']]);
+        ).concat([['*.spec', 'spec-data'], ['*.mca', 'spec-mca'], ['*.chi', 'chiplot']]);
 
         for (const [key, value] of associations) {
             if (minimatch(uri.path, key, { matchBase: true })) {
-                languageId = (value === 'spec-data' || value === 'chiplot') ? value : undefined;
+                languageId = (value === 'spec-data' || value === 'spec-mca' || value === 'chiplot') ? value : undefined;
                 break;
             }
         }
@@ -516,13 +518,15 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
         return undefined;
     } else if (languageId === 'spec-data') {
         return parseSpecDataContent(lines);
+    } else if (languageId === 'spec-mca') {
+        return parseSpecMcaContent(lines);
     } else if (languageId === 'chiplot') {
         return parseChiplotContent(lines);
-    // } else {
-    //     // Guess the file type from the first line
-    //     // if language ID is not provided (or not one of SupportedLanguage).
-    //     const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
-    //     return lines[0].match(otherLineRegex) ? parseSpecDataContent(lines) : parseChiplotContent(lines);
+        // } else {
+        //     // Guess the file type from the first line
+        //     // if language ID is not provided (or not one of SupportedLanguage).
+        //     const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
+        //     return lines[0].match(otherLineRegex) ? parseSpecDataContent(lines) : parseChiplotContent(lines);
     } else {
         return undefined;
     }
@@ -667,7 +671,7 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
             // transpose the two-dimensional data array
             const data2 = data.length > 0 ? data[0].map((_, colIndex) => data.map(row => row[colIndex])) : data;
 
-            nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineIndex, occurance: scanDataOccurance, headers: headers, data: data2 });
+            nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineIndex, occurance: scanDataOccurance, headers: headers, data: data2, xAxisSelectable: true });
             scanDataOccurance++;
             columnNumber = -1;
         } else if ((matches = lineText.match(unknownRegex)) !== null) {
@@ -675,6 +679,68 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
         }
     }
     return nodes.length !== 0 ? nodes : undefined;
+}
+
+function parseSpecMcaContent(lines: string[]): Node[] | undefined {
+    const lineCount = lines.length;
+    // const emptyLineRegex = /^\s*$/;
+    const separatorRegex = /\s+/;
+
+    const nodes: Node[] = [];
+    let data: number[][] = [];
+    let dataRange: [number, number] = [0, 0];
+    let columnNumber = 0;
+    let dataOccurrance = 0, commentOccurance = 0;
+
+    const registerDataToNode = function () {
+        if (data.length <= 0) {
+            return;
+        }
+        const headers = Array(data.length).fill(0).map((_x, i) => `[${i}]`);
+        // nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, occurance: 0, value: 'title' });
+        nodes.push({ type: 'scanData', lineStart: dataRange[0], lineEnd: dataRange[1], occurance: dataOccurrance, headers: headers, data: [...data], xAxisSelectable: false });
+        dataOccurrance++;
+        data = [];
+    };
+
+    for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+        // concatenate the following line if the current line ends with a backslash.
+        const lineStart = lineIndex;
+        let lineText = lines[lineIndex];
+        while (lineText.endsWith('\\') && lineIndex + 1 < lineCount) {
+            lineText = lineText.slice(0, -1) + ' ' + lines[lineIndex + 1];
+            lineIndex++;
+        }
+
+        if (lineText.startsWith('#')) {
+            registerDataToNode();
+            nodes.push({ type: 'comment', lineStart: lineStart, lineEnd: lineIndex, occurance: commentOccurance, value: lineText.substring(1) });
+            commentOccurance++;
+            continue;
+        } else if (lineText.match(/^\s*$/)) {
+            registerDataToNode();
+            continue;
+        } else {
+            // ESRF's MCA format starts with "@A ". Trim this prefix.
+            if (lineText.match(/^@A\s/)) {
+                lineText = lineText.substring(3);
+            }
+
+            const cells = lineText.trim().split(separatorRegex);
+            if (data.length === 0) {
+                columnNumber = cells.length;
+                dataRange = [lineStart, lineIndex];
+            } else if (cells.length !== columnNumber) {
+                return undefined;
+            } else {
+                dataRange[1] = lineIndex;
+            }
+            data.push(cells.map(cell => parseFloat(cell)));
+        }
+    }
+    registerDataToNode();
+
+    return nodes;
 }
 
 function parseChiplotContent(lines: string[]): Node[] | undefined {
@@ -742,7 +808,7 @@ function parseChiplotContent(lines: string[]): Node[] | undefined {
 
     const nodes: Node[] = [];
     nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, occurance: 0, value: title });
-    nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineIndex, occurance: 0, headers: headers2, data: data2 });
+    nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineIndex, occurance: 0, headers: headers2, data: data2, xAxisSelectable: true });
 
     return nodes;
 }
@@ -761,7 +827,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     // Apply CSP when in untrusted workspaces, even when 
     // it is disabled not in workspace settings but in user settings.
     const applyCsp = vscode.workspace.isTrusted ? config.get<boolean>('applyContentSecurityPolicy', true) : true;
-    
+
     function getSanitizedString(text: string) {
         // const charactersReplacedWith = ['&amp;', '&lt;', '&gt;', '&quot;', '&#39;'];
         // return text.replace(/[&<>"']/g, (match) => charactersReplacedWith['&<>"\''.indexOf(match)]);
@@ -836,25 +902,30 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
             }
             body += `</div>`;
         } else if (node.type === 'scanData') {
-            const data: number[][] | undefined = node.data;
+            const data = node.data;
             const headers = node.headers;
             const occurance = node.occurance;
 
             body += `<div ${getAttributesForNode(node)}>`;
-            if (data && data.length) {
+            if (data.length) {
                 body += `<p>
 <input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
-<label for="showPlotInput${occurance}">Show Plot</label>, `;
+<label for="showPlotInput${occurance}">Show Plot</label>, 
+`;
                 const axes = ['x', 'y'];
                 for (let j = 0; j < axes.length; j++) {
                     const axis = axes[j];
-                    body += `<label for="axisSelect${axis.toUpperCase()}${occurance}">${axis}:</label>
-    <select id="axisSelect${axis.toUpperCase()}${occurance}" class="axisSelect" data-axis="${axis}">`;
+                    const hiddenStr = (j === 0 && node.xAxisSelectable === false) ? 'hidden' : '';
+                    body += `<label for="axisSelect${axis.toUpperCase()}${occurance}" ${hiddenStr}>${axis}:</label>
+<select id="axisSelect${axis.toUpperCase()}${occurance}" class="axisSelect" data-axis="${axis}" ${hiddenStr}>
+`;
                     body += headers.map(item => `<option>${getSanitizedString(item)}</option>`).join('');
                     if (j === 0) {
                         body += '<option>[point]</option>';
                     }
-                    body += `</select>, `;
+                    body += `</select>
+<span ${hiddenStr}>, </span>
+`;
                 }
                 body += `<input type="checkbox" id="logAxisInput${occurance}" class="logAxisInput">
 <label for="logAxisInput${occurance}">Log y-axis</label>
@@ -863,8 +934,8 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 `;
             }
             body += `</div>`;
-        // } else if (node.type === 'unknown') {
-        //     body += `<p> #${node.kind} ${node.value}`;
+            // } else if (node.type === 'unknown') {
+            //     body += `<p> #${node.kind} ${node.value}`;
         }
     }
 
