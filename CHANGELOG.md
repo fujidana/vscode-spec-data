@@ -6,7 +6,9 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Added
 
-- support for MCA data format (preview feature only)
+- support for MCA data format
+  - preview feature
+  - syntax highlighting feature
 - point number (i.e., array index) in the x-axis option (`spec-data` and `chiplot` only).
 
 ### Changed
@@ -147,7 +149,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Security
 
 - Fix a data injection vulnerability, which occured when angle brackets (`<`, `>`) were included in a data file.
-- support _Workspace Trust_:
+- Support _Workspace Trust_:
   - Preview feature is disabled in untrusted workspaces because protection against data injection has not been comprehensively surveyed.
   - The other features are allowed in untrusted workspaces.
 - Apply a content security policy to a preview. (This can be disabled by `spec-data.preview.applyContentSecurityPolicy` option)

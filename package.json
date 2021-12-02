@@ -79,6 +79,11 @@
 				"path": "./syntaxes/specData.tmLanguage.json"
 			},
 			{
+				"language": "spec-mca",
+				"scopeName": "source.spec-mca",
+				"path": "./syntaxes/specMca.tmLanguage.json"
+			},
+			{
 				"language": "chiplot",
 				"scopeName": "source.chiplot",
 				"path": "./syntaxes/chiplot.tmLanguage.json"
@@ -350,7 +355,10 @@
 		"package": "webpack --mode production --devtool hidden-source-map",
 		"lint": "eslint src --ext ts",
 		"run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
-		"js-yaml": "js-yaml ./src/specData.tmLanguage.yaml > ./syntaxes/specData.tmLanguage.json && js-yaml ./src/chiplot.tmLanguage.yaml > ./syntaxes/chiplot.tmLanguage.json"
+		"js-yaml:spec-data": "js-yaml ./src/specData.tmLanguage.yaml > ./syntaxes/specData.tmLanguage.json",
+		"js-yaml:spec-mca": "js-yaml ./src/specMca.tmLanguage.yaml > ./syntaxes/specMca.tmLanguage.json",
+		"js-yaml:chiplot": "js-yaml ./src/chiplot.tmLanguage.yaml > ./syntaxes/chiplot.tmLanguage.json",
+		"js-yaml": "npm run js-yaml:spec-data && npm run js-yaml:spec-mca && npm run js-yaml:chiplot"
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.4",
