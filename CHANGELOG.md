@@ -6,11 +6,15 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Added
 
-- point number (i.e., array index) in the x-axis option.
+- point number (i.e., array index) in the x-axis option (`spec-data` and `chiplot` only).
 
 ### Changed
 
 - Bump `plotly.js-basic-dist-min` dependency to 2.6.3
+
+### Fixed
+
+- failure in restoring a `spec-data` preview when VS Code relaunches
 
 ## [1.3.0] -- 2021-09-21
 
