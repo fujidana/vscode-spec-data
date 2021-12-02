@@ -7,7 +7,10 @@ __spec__ does not specify the filename extension for this data format.
 While this VS Code extension treats `.spec` as the default file extension for the files (language identifier: `spec-data`), a user can change the association by oneself.
 Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs/languages/overview) (official document of VS Code) for further details.
 
-The extension additionally supports chiplot file format, in which __fit2d__ software imports and exports one-dimensional dataset such as scattering profiles (language identifier: `chiplot`, default extension: `.chi`).
+The extension additionally supports the following formats:
+
+- _chiplot file format_ (language identifier: `chiplot`, default extension: `.chi`): a text file format in which __fit2d__ software imports and exports one-dimensional dataset such as scattering profiles.
+- _MCA file format_ (language identifier: `spec-mca`, default extension: `.mca`): a text file format in which each row consists of an array of number and represents a spectrum or profile of some data. The separator may be a tab or whitespace. MCA (multichannel analyzer) data in __spec__ can be easily exported in this format by `array_dump()` function. A MCA files created by ESRF's __spec__ macro, [BLISS / mca.mac](https://www.esrf.fr/blissdb/macros/macdoc.py?macname=mca.mac), are also supported.
 
 ## What's __spec__?
 
@@ -121,6 +124,27 @@ A user can test it by the following procedure:
 2. Select "spec data" as its language mode
 3. Copy the example above and paste it into the editor
 4. Open Preview (Win/Linux: `Ctrl+Shift+V`, Mac: `Cmd+Shift+V`)
+
+If one wants to draw graph from a set of numbers in a row (i.e., line, not a column), make VS code recognize the file as an MCA file.
+
+### Make __spec__ output an MCA file
+
+The following code is an example to output the data of an MCA device in __spec__.
+This assumes an MCA device that has 1024 data points of 32-bit unsigned integer is configured at #0 slot in __spec__.
+
+```
+# create a buffer
+ulong array buffer[1024]
+
+# copy MCA data to the buffer
+mca_sget(0, buffer)
+
+# output data in a row.
+array_op("row_wise", buffer, 1)
+array_dump("output.mca", buffer)
+```
+
+Each time `array_dump()` is executed, a new line consisting of 1024 integers is appended at the end of file.
 
 ### Make __spec__ automatically set the file extension
 

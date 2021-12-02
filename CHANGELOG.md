@@ -4,6 +4,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.4.0] -- 2021-12-02
+
 ### Added
 
 - support for MCA data format
@@ -13,7 +15,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Changed
 
-- Bump `plotly.js-basic-dist-min` dependency to 2.6.3
+- Bump `plotly.js-basic-dist-min` dependency to 2.6.4
 
 ### Fixed
 
@@ -168,7 +170,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.1.2...v1.1.3
