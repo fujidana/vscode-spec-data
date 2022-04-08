@@ -73,5 +73,36 @@ export default {
                 "zerolinewidth": 2
             }
         }
+    },
+    "highContrastLight": {
+        "data": [
+            {
+                "type": "scatter",
+                "marker": {
+                    "color": "#000"
+                },
+                "line": {
+                    "color": "#000"
+                }
+            }
+        ], "layout": {
+            "plot_bgcolor": "#FFF0",
+            "paper_bgcolor": "#FFF0",
+            "font": {
+                "color": "#000"
+            },
+            "xaxis": {
+                "gridcolor": "#F88",
+                "linecolor": "#8F8",
+                "zerolinecolor": "#F88",
+                "zerolinewidth": 2
+            },
+            "yaxis": {
+                "gridcolor": "#F88",
+                "linecolor": "#8F8",
+                "zerolinecolor": "#F88",
+                "zerolinewidth": 2
+            }
+        }
     }
 };

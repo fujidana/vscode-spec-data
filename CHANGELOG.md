@@ -4,6 +4,14 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Added
+
+- _High Contrast Light_ color theme support
+
+### Changed
+
+- Raise the minimum VS Code version to 1.66.0.
+
 ## [1.4.1] -- 2022-03-29
 
 ### Changed

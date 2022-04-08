@@ -947,27 +947,35 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 }
 
 type PlotlyTemplate = { data?: unknown[], layout?: unknown };
-type UserPlotlyTemplates = { light?: PlotlyTemplate, dark?: PlotlyTemplate, highContrast?: PlotlyTemplate };
+type UserPlotlyTemplates = { light?: PlotlyTemplate, dark?: PlotlyTemplate, highContrast?: PlotlyTemplate, highContrastLight?: PlotlyTemplate };
 
 function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope): PlotlyTemplate {
     let systemTemplate: PlotlyTemplate;
-    let userTemplateForTheme: PlotlyTemplate;
+    let userTemplate: PlotlyTemplate | undefined;
 
     const userTemplates = vscode.workspace.getConfiguration('spec-data.preview.plot', scope).get<UserPlotlyTemplates>('templates');
 
     switch (kind) {
         case vscode.ColorThemeKind.Dark:
             systemTemplate = plotTemplate.dark;
-            userTemplateForTheme = (userTemplates && userTemplates.dark) ? userTemplates.dark : {};
+            userTemplate = userTemplates?.dark;
             break;
         case vscode.ColorThemeKind.HighContrast:
             systemTemplate = plotTemplate.highContast;
-            userTemplateForTheme = (userTemplates && userTemplates.highContrast) ? userTemplates.highContrast : {};
+            userTemplate = userTemplates?.highContrast;
+            break;
+        case vscode.ColorThemeKind.HighContrastLight:
+            systemTemplate = plotTemplate.highContrastLight;
+            userTemplate = userTemplates?.highContrastLight;
             break;
         default:
             systemTemplate = plotTemplate.light;
-            userTemplateForTheme = (userTemplates && userTemplates.light) ? userTemplates.light : {};
+            userTemplate = userTemplates?.light;
     }
 
-    return merge({}, systemTemplate, userTemplateForTheme);
+    if (userTemplate) {
+        return merge({}, systemTemplate, userTemplate);
+    } else {
+        return merge({}, systemTemplate);
+    }
 }

@@ -46,12 +46,11 @@ Read [Visual Studio Code User and Workspace Settings](https://code.visualstudio.
 
 ### Plotly.js template
 
-The extension internally provides Plotly.js templates that are apparently in accordance with the color themes of VS Code.
-A user can override these templates via the `spec-data.preview.plot.templates` configuraiton option.
+The extension internally switches Plotly.js templates in order to coordinate the appearance of graphs with the four kinds of VS Code color themes.
+A user can modify the appearance by overriding the templates via the `spec-data.preview.plot.templates` configuraiton option.
 
-The option shall be passed as a JSON object consisting of at most 3 key-value pairs.
-The keys shall be `"light"`, `"dark"`, and `"highContrast"` and values shall be Plotly.js template objects.
-The keys correspond to the color themes in VS codes.
+The option shall be passed as a JSON object consisting of at most 4 key-value pairs.
+The key shall be either `"light"`, `"dark"`, `"highContrast"`, or `"highContrastLight"` and the value shall be a Plotly.js template object for the color theme the corresponding key represents.
 The following example code in the _setting.json_ file makes the line color green in the _light_ theme.
 
 ```json
@@ -67,7 +66,7 @@ The following example code in the _setting.json_ file makes the line color green
 ```
 
 The default template objects for the respective color themes can be found in [/src/plotTemplate.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/plotTemplate.ts) in the GitHub repository.
-From this, a user may be able to find the name of an attribute he/she wants to change.
+This may help a user to find the name of an attribute he/she wants to change.
 See the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) for the complete list of the Plotly.js template attributes.
 
 ## Known Issues
