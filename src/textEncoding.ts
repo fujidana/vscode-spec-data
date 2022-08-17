@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 /**
  * Conversion table from VS Code's "files.encoding" values to TextDecoder's encoding parameters.
- * The table was prrepared for encodings available in VS Code v1.58.0.
+ * The table was prepared for encodings available in VS Code v1.58.0.
  */
 const ENCODING_DICTIONARY: Record<string, string | undefined> = {
     utf8: 'utf-8', // UTF-8
@@ -27,7 +27,7 @@ const ENCODING_DICTIONARY: Record<string, string | undefined> = {
     cp866: 'ibm866', // Cyrillic (CP 866)
     iso88595: 'iso-8859-5', // Cyrillic (ISO 8859-5)
     koi8r: 'koi8-r', // Cyrillic (KOI8-R)
-    koi8u: 'koi8-up', // Cyrillic (KOI8-U)
+    koi8u: 'koi8-u', // Cyrillic (KOI8-U)
     iso885913: 'iso-8859-13', // Estonian (ISO 8859-13)
     windows1253: 'windows-1253', // Greek (Windows 1253)
     iso88597: 'iso-8859-7', // Greek (ISO 8859-7)
@@ -36,7 +36,7 @@ const ENCODING_DICTIONARY: Record<string, string | undefined> = {
     iso885910: 'iso-8859-10', // Nordic (ISO 8859-10)
     iso885916: 'iso-8859-16', // Romanian (ISO 8859-16)
     windows1254: 'windows-1254', // Turkish (Windows 1254)
-    iso88599: 'iso-8859-9', // Turkish (ISO 8859-9)
+    iso88599: 'iso-8859-9', // Turkish (ISO 8859-9), alias of 'windows-1254'?
     windows1258: 'windows-1258', // Vietnamese (Windows 1258)
     gbk: 'gbk', // Simplified Chinese (GBK)
     gb18030: 'gb18030', // Simplified Chinese (GB18030)
@@ -46,8 +46,8 @@ const ENCODING_DICTIONARY: Record<string, string | undefined> = {
     eucjp: 'euc-jp', // Japanese (EUC-JP)
     euckr: 'euc-kr',// Korean (EUC-KR)
     windows874: 'windows-874', // Thai (Windows 874)
-    iso885911: 'iso-8859-11', // Latin/Thai (ISO 8859-11), alias of ''windows-874'?
-    koi8ru: 'koi8-ru', // Cyrillic (KOI8-RU)
+    iso885911: 'iso-8859-11', // Latin/Thai (ISO 8859-11), alias of 'windows-874'?
+    koi8ru: 'koi8-ru', // Cyrillic (KOI8-RU), alias of 'koi8-u'?
     koi8t: undefined, // Tajik (KOI8-T)
     gb2312: 'gb2312', // Simplified Chinese (GB 2312), alias of 'gbk'?
     cp865: undefined, // Nordic DOS (CP 865)

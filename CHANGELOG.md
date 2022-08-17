@@ -10,6 +10,10 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 - Bump `plotly.js-basic-dist-min` dependency to 2.13.3 and update other Node.js packages.
 - Raise the minimum VS Code version to 1.70.0.
 
+### Fixed
+
+- failure in parsing unopened documents in workspace folders when KOI8-U (Cyrillic) is the preferred text encoding.
+
 ## [1.4.2] -- 2022-06-30
 
 ### Added
