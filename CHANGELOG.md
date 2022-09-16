@@ -7,8 +7,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Changed
 
 - Migrate the package manager to `pnpm`.
-- Bump `plotly.js-basic-dist-min` dependency to 2.13.3 and update other Node.js packages.
-- Raise the minimum VS Code version to 1.70.0.
+- Bump `plotly.js-basic-dist-min` dependency to 2.14.0 and update other Node.js packages.
+- Raise the minimum VS Code version to 1.71.0.
 
 ### Fixed
 

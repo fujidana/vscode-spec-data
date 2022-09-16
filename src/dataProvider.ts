@@ -195,7 +195,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.commands.registerCommand('spec-data.togglePreviewLock', togglePreviewLockCallback),
             vscode.languages.registerFoldingRangeProvider(SPEC_DATA_SELECTOR, this),
             vscode.languages.registerDocumentSymbolProvider(SPEC_DATA_SELECTOR, this),
-            vscode.window.registerWebviewPanelSerializer('specDataPreview', this),
+            vscode.window.registerWebviewPanelSerializer('spec-data.preview', this),
             vscode.window.onDidChangeActiveTextEditor(activeTextEditorChangeListener),
             vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
             vscode.workspace.onDidChangeConfiguration(configurationChangeListner)
@@ -320,7 +320,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         } else {
             const retainContextWhenHidden = vscode.workspace.getConfiguration('spec-data.preview', uri).get<boolean>('retainContextWhenHidden', false);
             panel2 = vscode.window.createWebviewPanel(
-                'specDataPreview',
+                'spec-data.preview',
                 'Preview spec data',
                 showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
                 {
@@ -339,8 +339,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         }
 
         panel2.onDidDispose(() => {
-            vscode.commands.executeCommand('setContext', 'spec-data.previewEditorActive', false);
-
             // remove the closed preview from the array.
             const index = this.previews.findIndex(preview => preview.panel === panel2);
             if (index >= 0) {
@@ -351,10 +349,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             if (this.livePreview && this.livePreview.panel === panel2) {
                 this.livePreview = undefined;
             }
-        }, null, this.subscriptions);
-
-        panel2.onDidChangeViewState((event) => {
-            vscode.commands.executeCommand('setContext', 'spec-data.previewEditorActive', event.webviewPanel.active);
         }, null, this.subscriptions);
 
         panel2.webview.onDidReceiveMessage(message => {

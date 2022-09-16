@@ -5,7 +5,7 @@
 	"description": "spec data file support for VS Code",
 	"version": "1.4.3-alpha",
 	"engines": {
-		"vscode": "^1.70.0"
+		"vscode": "^1.71.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -31,7 +31,7 @@
 		"onLanguage:spec-data",
 		"onLanguage:spec-mca",
 		"onLanguage:chiplot",
-		"onWebviewPanel:specDataPreview",
+		"onWebviewPanel:spec-data.preview",
 		"onCommand:spec-data.showPreview",
 		"onCommand:spec-data.showPreviewToSide",
 		"onCommand:spec-data.showLockedPreview",
@@ -160,17 +160,17 @@
 				{
 					"command": "spec-data.showSource",
 					"group": "navigation",
-					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
 					"command": "spec-data.refreshPreview",
 					"group": "2_specdata",
-					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
 					"command": "spec-data.togglePreviewLock",
 					"group": "2_specdata",
-					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				}
 			],
 			"editor/title/context": [
@@ -199,15 +199,15 @@
 				},
 				{
 					"command": "spec-data.showSource",
-					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
 					"command": "spec-data.refreshPreview",
-					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
 					"command": "spec-data.togglePreviewLock",
-					"when": "resourceScheme == webview-panel && spec-data.previewEditorActive"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				}
 			]
 		},
@@ -376,10 +376,10 @@
 	"devDependencies": {
 		"@types/glob": "^7.2.0",
 		"@types/lodash.merge": "^4.6.7",
-		"@types/minimatch": "^3.0.5",
+		"@types/minimatch": "^5.1.2",
 		"@types/mocha": "^9.1.1",
 		"@types/node": "16.x",
-		"@types/vscode": "^1.70.0",
+		"@types/vscode": "^1.71.0",
 		"@types/vscode-webview": "^1.57.0",
 		"@types/webpack-env": "^1.17.0",
 		"@typescript-eslint/eslint-plugin": "^5.33.0",
@@ -400,6 +400,6 @@
 	"dependencies": {
 		"lodash.merge": "^4.6.2",
 		"minimatch": "^5.1.0",
-		"plotly.js-basic-dist-min": "^2.13.3"
+		"plotly.js-basic-dist-min": "^2.14.0"
 	}
 }
