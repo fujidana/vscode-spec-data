@@ -4,6 +4,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.4.3] -- 2022-09-26
+
 ### Changed
 
 - Migrate the package manager to `pnpm`.
@@ -198,7 +200,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.2...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.3...HEAD
+[1.4.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.0...v1.4.1
 [1.4.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.3.0...v1.4.0
