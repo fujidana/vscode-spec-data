@@ -421,7 +421,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const lockPreview = !(this.livePreview && this.livePreview === preview);
         const webview = preview.panel.webview;
         const label = lockPreview ? '[Preview]' : 'Preview';
-        const plotlyJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'node_modules_copied', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
+        const plotlyJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'webview', 'node_modules', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
         const controllerJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'previewController.js'));
 
         preview.tree = tree;

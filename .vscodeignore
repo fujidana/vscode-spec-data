@@ -2,7 +2,7 @@
 .vscode-test/**
 .vscode-test-web/**
 out/**
-node_modules/!(plotly.js-*)/**
+node_modules/**
 src/**
 .gitignore
 .yarnrc
