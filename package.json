@@ -3,7 +3,7 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "1.4.3",
+	"version": "1.4.5",
 	"engines": {
 		"vscode": "^1.71.0"
 	},
@@ -371,7 +371,9 @@
 		"js-yaml:spec-data": "js-yaml ./src/specData.tmLanguage.yaml > ./syntaxes/specData.tmLanguage.json",
 		"js-yaml:spec-mca": "js-yaml ./src/specMca.tmLanguage.yaml > ./syntaxes/specMca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml ./src/chiplot.tmLanguage.yaml > ./syntaxes/chiplot.tmLanguage.json",
-		"js-yaml": "pnpm run js-yaml:spec-data && pnpm run js-yaml:spec-mca && pnpm run js-yaml:chiplot"
+		"js-yaml": "pnpm run js-yaml:spec-data && pnpm run js-yaml:spec-mca && pnpm run js-yaml:chiplot",
+		"cp-plotly": "mkdir -p ./node_modules_copied/plotly.js-basic-dist-min; cp ./node_modules/plotly.js-basic-dist-min/* ./node_modules_copied/plotly.js-basic-dist-min"
+
 	},
 	"devDependencies": {
 		"@types/glob": "^8.0.0",
@@ -400,6 +402,6 @@
 	"dependencies": {
 		"lodash.merge": "^4.6.2",
 		"minimatch": "^5.1.0",
-		"plotly.js-basic-dist-min": "^2.14.0"
+		"plotly.js-basic-dist-min": "^2.15.1"
 	}
 }

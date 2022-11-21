@@ -20,7 +20,7 @@ specifiers:
   lodash.merge: ^4.6.2
   minimatch: ^5.1.0
   mocha: ^10.0.0
-  plotly.js-basic-dist-min: ^2.14.0
+  plotly.js-basic-dist-min: ^2.15.1
   process: ^0.11.10
   ts-loader: ^9.4.1
   typescript: ^4.8.3
@@ -30,7 +30,7 @@ specifiers:
 dependencies:
   lodash.merge: 4.6.2
   minimatch: 5.1.0
-  plotly.js-basic-dist-min: 2.14.0
+  plotly.js-basic-dist-min: 2.15.1
 
 devDependencies:
   '@types/glob': 8.0.0
@@ -2455,8 +2455,8 @@ packages:
       playwright-core: 1.26.0
     dev: true
 
-  /plotly.js-basic-dist-min/2.14.0:
-    resolution: {integrity: sha512-W3PpxHLdRIKFPIkn9ymn+PYjakrGzlDP0hq9UauIOxIkydfyvOg+SGnjOQWkvg9vNmI+nDjUqV+8jTcRqSmyzw==}
+  /plotly.js-basic-dist-min/2.15.1:
+    resolution: {integrity: sha512-vdqOYJKA6/35WAFVUxS/wuC8yQHoH4gQM0AXpVePms28eMkX03B+82gC+hxUuscxcoNyF8/gKlXl/3g6SPfDcw==}
     dev: false
 
   /prelude-ls/1.2.1:

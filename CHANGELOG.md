@@ -4,6 +4,12 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.4.5] -- 2022-10-12
+
+### Fixed
+
+- graphs not being drawn at all because Plotly.js was not bundled (a bug introduced since v1.4.3)
+
 ## [1.4.3] -- 2022-09-26
 
 ### Changed
@@ -200,7 +206,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.3...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.5...HEAD
+[1.4.5]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.3...v1.4.5
 [1.4.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.1...v1.4.2
 [1.4.1]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.0...v1.4.1
