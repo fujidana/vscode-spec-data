@@ -4,6 +4,14 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Added
+
+- support for DppMCA spectra data file format (`.mca`). DppMCA is a DP5 Digital Pulse Prosessor Display & Acquisition Software for Multichannel Analyzers, developed by Amptek.
+  - preview feature
+  - syntax highlighting feature
+  - code navigation feature
+  - code folding feature
+
 ## [1.4.5] -- 2022-10-12
 
 ### Fixed
@@ -197,9 +205,9 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Added
 
 - syntax highlighting features
-- code navigation features
-- code folding features
-- preview features
+- code navigation feature
+- code folding feature
+- preview feature
   - showing motor positions before scan in table
   - showing scan data in graphical view, powered by [Plotly.js](https://plotly.com/javascript/) v2.0.0
 - commands accessible from file explorer and editor

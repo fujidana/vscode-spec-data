@@ -3,7 +3,7 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "1.4.5",
+	"version": "1.5.0-alpha.1",
 	"engines": {
 		"vscode": "^1.71.0"
 	},
@@ -30,6 +30,7 @@
 	"activationEvents": [
 		"onLanguage:spec-data",
 		"onLanguage:spec-mca",
+		"onLanguage:dppmca",
 		"onLanguage:chiplot",
 		"onWebviewPanel:spec-data.preview",
 		"onCommand:spec-data.showPreview",
@@ -59,6 +60,16 @@
 					"spec multichannel analyzers"
 				],
 				"extensions": [
+					".mca2d"
+				]
+			},
+			{
+				"id": "dppmca",
+				"aliases": [
+					"Amptek MCA",
+					"DP5 Digital Pulse Processor Multichannel Analyzers"
+				],
+				"extensions": [
 					".mca"
 				]
 			},
@@ -82,6 +93,11 @@
 				"language": "spec-mca",
 				"scopeName": "source.spec-mca",
 				"path": "./syntaxes/specMca.tmLanguage.json"
+			},
+			{
+				"language": "dppmca",
+				"scopeName": "source.dppmca",
+				"path": "./syntaxes/dppmca.tmLanguage.json"
 			},
 			{
 				"language": "chiplot",
@@ -135,12 +151,12 @@
 			"explorer/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "resourceLangId =~ /^(spec-(data|mca)|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/",
 					"group": "navigation"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "resourceLangId =~ /^(spec-(data|mca)|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/",
 					"group": "navigation"
 				}
 			],
@@ -148,13 +164,13 @@
 				{
 					"command": "spec-data.showPreviewToSide",
 					"alt": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/",
 					"group": "navigation"
 				},
 				{
 					"command": "spec-data.showLockedPreviewToSide",
 					"alt": "spec-data.showLockedPreview",
-					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/",
 					"group": "2_specdata"
 				},
 				{
@@ -176,26 +192,26 @@
 			"editor/title/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/",
 					"group": "3_preview"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showPreviewToSide",
-					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreviewToSide",
-					"when": "editorLangId =~ /^(spec-(data|mca)|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showSource",
@@ -216,13 +232,13 @@
 				"command": "spec-data.showPreview",
 				"key": "ctrl+shift+v",
 				"mac": "cmd+shift+v",
-				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-(data|mca)|chiplot)/"
+				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)/"
 			},
 			{
 				"command": "spec-data.showPreviewToSide",
 				"key": "ctrl+k v",
 				"mac": "cmd+k v",
-				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-(data|mca)|chiplot)/"
+				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)/"
 			}
 		],
 		"configuration": {
@@ -344,6 +360,11 @@
 					"description": "Header type of data cells of motor-potision tables."
 				}
 			}
+		},
+		"configurationDefaults": {
+			"[dppmca]": {
+				"files.encoding": "windows1252"
+			}
 		}
 	},
 	"capabilities": {
@@ -370,8 +391,9 @@
 		"run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
 		"js-yaml:spec-data": "js-yaml ./src/specData.tmLanguage.yaml > ./syntaxes/specData.tmLanguage.json",
 		"js-yaml:spec-mca": "js-yaml ./src/specMca.tmLanguage.yaml > ./syntaxes/specMca.tmLanguage.json",
+		"js-yaml:dppmca": "js-yaml ./src/dppmca.tmLanguage.yaml > ./syntaxes/dppmca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml ./src/chiplot.tmLanguage.yaml > ./syntaxes/chiplot.tmLanguage.json",
-		"js-yaml": "pnpm run js-yaml:spec-data && pnpm run js-yaml:spec-mca && pnpm run js-yaml:chiplot",
+		"js-yaml": "pnpm run js-yaml:spec-data && pnpm run js-yaml:spec-mca && pnpm run js-yaml:dppmca && pnpm run js-yaml:chiplot",
 		"bundle-plotly": "npm install --prefix ./webview --no-save plotly.js-basic-dist-min"
 	},
 	"devDependencies": {

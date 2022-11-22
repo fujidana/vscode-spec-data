@@ -2,9 +2,12 @@ import * as vscode from 'vscode';
 import plotTemplate from './plotTemplate';
 import merge = require('lodash.merge');
 import minimatch = require('minimatch');
-import { getTextDecoder } from "./textEncoding";
+import { getTextDecoder } from './textEncoding';
 
 const SPEC_DATA_SELECTOR = { language: 'spec-data' };
+const DPPMCA_SELECTOR = { language: 'dppmca' };
+
+const DPPMCA_BLOCK_REGEXP = /^<<([a-zA-Z0-9_ ]+)>>$/;
 
 type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
 interface BaseNode { type: string, lineStart: number, lineEnd: number, occurance?: number }
@@ -21,7 +24,7 @@ interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, language?: Supp
 
 interface State { template: unknown, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
 
-type SupportedLanguage = 'spec-data' | 'spec-mca' | 'chiplot';
+type SupportedLanguage = 'spec-data' | 'spec-mca' | 'dppmca' | 'chiplot';
 
 /**
  * Provider class for "spec-data" language
@@ -124,7 +127,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const activeTextEditorChangeListener = (editor: vscode.TextEditor | undefined) => {
             if (editor) {
                 const document = editor.document;
-                if (document.languageId === 'spec-data' || document.languageId === 'spec-mca' || document.languageId === 'chiplot') {
+                if (document.languageId === 'spec-data' || document.languageId === 'spec-mca' || document.languageId === 'dppmca' || document.languageId === 'chiplot') {
                     if (this.livePreview && this.livePreview.uri.toString() !== document.uri.toString()) {
                         this.reloadPreview(this.livePreview, document);
                     }
@@ -193,8 +196,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.commands.registerCommand('spec-data.showSource', showSourceCallback),
             vscode.commands.registerCommand('spec-data.refreshPreview', refreshPreviewCallback),
             vscode.commands.registerCommand('spec-data.togglePreviewLock', togglePreviewLockCallback),
-            vscode.languages.registerFoldingRangeProvider(SPEC_DATA_SELECTOR, this),
-            vscode.languages.registerDocumentSymbolProvider(SPEC_DATA_SELECTOR, this),
+            vscode.languages.registerFoldingRangeProvider([SPEC_DATA_SELECTOR, DPPMCA_SELECTOR], this),
+            vscode.languages.registerDocumentSymbolProvider([SPEC_DATA_SELECTOR, DPPMCA_SELECTOR], this),
             vscode.window.registerWebviewPanelSerializer('spec-data.preview', this),
             vscode.window.onDidChangeActiveTextEditor(activeTextEditorChangeListener),
             vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
@@ -214,16 +217,40 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     public provideFoldingRanges(document: vscode.TextDocument, context: vscode.FoldingContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
         if (token.isCancellationRequested) { return; }
 
-        const lineCount = document.lineCount;
         const ranges: vscode.FoldingRange[] = [];
-        let prevLineIndex = -1;
 
-        for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-            if (document.lineAt(lineIndex).isEmptyOrWhitespace) {
-                if (lineIndex !== prevLineIndex + 1) {
-                    ranges.push(new vscode.FoldingRange(prevLineIndex + 1, lineIndex));
+        if (vscode.languages.match(SPEC_DATA_SELECTOR, document)) {
+            const lineCount = document.lineCount;
+            let prevLineIndex = -1;
+
+            for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+                if (document.lineAt(lineIndex).isEmptyOrWhitespace) {
+                    if (lineIndex !== prevLineIndex + 1) {
+                        ranges.push(new vscode.FoldingRange(prevLineIndex + 1, lineIndex));
+                    }
+                    prevLineIndex = lineIndex;
                 }
-                prevLineIndex = lineIndex;
+            }
+        } else if (vscode.languages.match(DPPMCA_SELECTOR, document)) {
+            const lineCount = document.lineCount;
+            let prevLineIndex = -1;
+
+            for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+                const lineText = document.lineAt(lineIndex).text;
+                if (DPPMCA_BLOCK_REGEXP.test(lineText)) {
+                    // console.log(lineText, prevLineIndex + 1, lineIndex);
+                    if (lineText.endsWith('END>>')) {
+                        if (prevLineIndex !== -1) {
+                            ranges.push(new vscode.FoldingRange(prevLineIndex, lineIndex));
+                        }
+                        prevLineIndex = -1;
+                    } else {
+                        if (prevLineIndex !== -1) {
+                            ranges.push(new vscode.FoldingRange(prevLineIndex, lineIndex - 1));
+                        }
+                        prevLineIndex = lineIndex;
+                    }
+                }
             }
         }
         return ranges;
@@ -235,28 +262,54 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     public provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.SymbolInformation[] | vscode.DocumentSymbol[]> {
         if (token.isCancellationRequested) { return; }
 
-        const lineCount = document.lineCount;
-        const results: vscode.DocumentSymbol[] = [];
-        const scanLineRegex = /^(#S [0-9]+)\s*(\S.*)?$/;
-        const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
-        let prevLineIndex = -1;
+        const symbols: vscode.DocumentSymbol[] = [];
 
-        for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-            const line = document.lineAt(lineIndex);
-            if (line.isEmptyOrWhitespace) {
-                if (lineIndex !== prevLineIndex + 1) {
-                    const lineAtBlockStart = document.lineAt(prevLineIndex + 1);
-                    let matches: RegExpMatchArray | null;
-                    if ((matches = lineAtBlockStart.text.match(scanLineRegex)) || (matches = lineAtBlockStart.text.match(otherLineRegex))) {
-                        const range = new vscode.Range(prevLineIndex + 1, 0, lineIndex, 0);
-                        const selectedRange = new vscode.Range(prevLineIndex + 1, 0, prevLineIndex + 1, matches[0].length);
-                        results.push(new vscode.DocumentSymbol(matches[1], matches[2], vscode.SymbolKind.Key, range, selectedRange));
+        if (vscode.languages.match(SPEC_DATA_SELECTOR, document)) {
+            const lineCount = document.lineCount;
+            const scanLineRegex = /^(#S [0-9]+)\s*(\S.*)?$/;
+            const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
+            let prevLineIndex = -1;
+
+            for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+                if (document.lineAt(lineIndex).isEmptyOrWhitespace) {
+                    if (lineIndex !== prevLineIndex + 1) {
+                        const lineTextAtBlockStart = document.lineAt(prevLineIndex + 1).text;
+                        let matches: RegExpMatchArray | null;
+                        if ((matches = lineTextAtBlockStart.match(scanLineRegex)) || (matches = lineTextAtBlockStart.match(otherLineRegex))) {
+                            const range = new vscode.Range(prevLineIndex + 1, 0, lineIndex, 0);
+                            const selectedRange = new vscode.Range(prevLineIndex + 1, 0, prevLineIndex + 1, matches[0].length);
+                            symbols.push(new vscode.DocumentSymbol(matches[1], matches[2], vscode.SymbolKind.Key, range, selectedRange));
+                        }
+                    }
+                    prevLineIndex = lineIndex;
+                }
+            }
+        } else if (vscode.languages.match(DPPMCA_SELECTOR, document)) {
+            const lineCount = document.lineCount;
+            let prevBlock: [string, vscode.Range] | undefined;
+
+            for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+                const line = document.lineAt(lineIndex);
+                let matches: RegExpMatchArray | null;
+
+                if (matches = line.text.match(DPPMCA_BLOCK_REGEXP)) {
+                    if (matches[1].endsWith('END')) {
+                        if (prevBlock) {
+                            const range = new vscode.Range(prevBlock[1].start, line.range.end);
+                            symbols.push(new vscode.DocumentSymbol(prevBlock[0], '', vscode.SymbolKind.Object, range, prevBlock[1]));
+                        }
+                        prevBlock = undefined;
+                    } else {
+                        if (prevBlock) {
+                            const range = new vscode.Range(prevBlock[1].start, document.lineAt(lineIndex - 1).range.end);
+                            symbols.push(new vscode.DocumentSymbol(prevBlock[0], '', vscode.SymbolKind.Object, range, prevBlock[1]));
+                        }
+                        prevBlock = [matches[1], line.range];
                     }
                 }
-                prevLineIndex = lineIndex;
             }
         }
-        return results;
+        return symbols;
     }
 
     /**
@@ -475,7 +528,7 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
 
     if (document) {
         // If `document` is provided or found, use its values.
-        if (document.languageId === 'spec-data' || document.languageId === 'spec-mca' || document.languageId === 'chiplot') {
+        if (document.languageId === 'spec-data' || document.languageId === 'spec-mca' || document.languageId === 'dppmca' || document.languageId === 'chiplot') {
             languageId = document.languageId;
             text = document.getText();
         } else {
@@ -489,11 +542,11 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
         // then with default extension patterns.
         const associations = Object.entries(
             vscode.workspace.getConfiguration('files', uri).get<Record<string, string>>('associations', {}),
-        ).concat([['*.spec', 'spec-data'], ['*.mca', 'spec-mca'], ['*.chi', 'chiplot']]);
+        ).concat([['*.spec', 'spec-data'], ['*.mca2', 'spec-mca'], ['*.mca', 'dppmca'], ['*.chi', 'chiplot']]);
 
         for (const [key, value] of associations) {
             if (minimatch(uri.path, key, { matchBase: true })) {
-                languageId = (value === 'spec-data' || value === 'spec-mca' || value === 'chiplot') ? value : undefined;
+                languageId = (value === 'spec-data' || value === 'spec-mca' || value === 'dppmca' || value === 'chiplot') ? value : undefined;
                 break;
             }
         }
@@ -514,6 +567,8 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
         return parseSpecDataContent(lines);
     } else if (languageId === 'spec-mca') {
         return parseSpecMcaContent(lines);
+    } else if (languageId === 'dppmca') {
+        return parseDppmcaContent(lines);
     } else if (languageId === 'chiplot') {
         return parseChiplotContent(lines);
         // } else {
@@ -733,6 +788,40 @@ function parseSpecMcaContent(lines: string[]): Node[] | undefined {
         }
     }
     registerDataToNode();
+
+    return nodes;
+}
+
+function parseDppmcaContent(lines: string[]): Node[] | undefined {
+    type Block = { label: string, items: string[], lineStart: number, lineEnd: number };
+    let prevBlock: Block | undefined;
+    const blocks: Block[] = [];
+    const lineCount = lines.length;
+
+    // serparate lines by block headers (e.g., "<<PMCA SPECTRUM>>")
+    for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
+        const lineText = lines[lineIndex];
+        let matches: RegExpMatchArray | null;
+
+        if (matches = lineText.match(DPPMCA_BLOCK_REGEXP)) {
+            prevBlock = { label: matches[1], items: [], lineStart: lineIndex + 1, lineEnd: lineIndex + 1 };
+            blocks.push(prevBlock);
+        } else if (prevBlock) {
+            prevBlock.lineEnd = lineIndex;
+            prevBlock.items.push(lineText);
+        }
+    }
+
+    // use data in "<<DATA>>" block for a graph.
+    const nodes: Node[] = [];
+    let occurance = 0;
+    for (const block of blocks) {
+        if (block.label === 'DATA') {
+            const data1d = block.items.map(lineText => parseInt(lineText));
+            nodes.push({ type: 'scanData', lineStart: block.lineStart, lineEnd: block.lineEnd, occurance: occurance, headers: ['count'], data: [data1d], xAxisSelectable: false });
+            occurance++;
+        }
+    }
 
     return nodes;
 }

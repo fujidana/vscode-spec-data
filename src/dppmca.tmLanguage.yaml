@@ -1,0 +1,56 @@
+$schema: https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json
+name: dppmca
+scopeName: source.dppmca
+patterns:
+  - match: ^(<<)([_A-Za-z0-9 ]+)(>>)$
+    name: markup.heading.1.dppmca
+    captures:
+      "1": { name: punctuation.block.start.dppmca }
+      "3": { name: punctuation.block.end.dppmca }
+  - include: "#literal-numeric"
+repository:
+  literal-numeric:
+    patterns:
+      # - include: "#constant-nan"
+      # - include: "#literal-numeric-hexagonal"
+      # - include: "#literal-numeric-octal"
+      - include: "#literal-numeric-decimal"
+      - include: "#literal-numeric-fractional"
+      - include: "#literal-numeric-invalid"
+  # constant-nan:
+  #   match: (?<=^|,|\s)(NaN|nan|NAN)(?=$|,|\s|\\$)
+  #   name: constant.language.nan.dppmca
+  # literal-numeric-hexagonal:
+  #   match: (?<=^|,|\s)(\+|-)?(0[xX])[0-9a-fA-F]+(?=$|,|\s|\\$)
+  #   name: constant.numeric.integer.hexadecimal.dppmca
+  #   captures:
+  #     "1": { name: keyword.operator.sign.dppmca }
+  #     "2": { name: keyword.other.integer.hexadecimal.dppmca }
+  # literal-numeric-octal:
+  #   match: (?<=^|,|\s)(\+|-)?(0)[0-7]+(?=$|,|\s|\\$)
+  #   name: constant.numeric.integer.octal.dppmca
+  #   captures:
+  #     "1": { name: keyword.operator.sign.dppmca }
+  #     "2": { name: keyword.other.integer.otcal.dppmca }
+  literal-numeric-decimal:
+    match: (?<=^|,|\s)(\+|-)?(0|[1-9][0-9]*)(?=$|,|\s|\\$)
+    name: constant.numeric.integer.decimal.dppmca
+    captures:
+      "1": { name: keyword.operator.sign.dppmca }
+  literal-numeric-fractional:
+    patterns:
+      - match: (?<=^|,|\s)(\+|-)?[0-9]+(?:\.[0-9]*)?(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s|\\$)
+        name: constant.numeric.float.dppmca
+        captures:
+          "1": { name: keyword.operator.sign.dppmca }
+          # "2": { name: keyword.operator.scientific-notation.dppmca }
+          # "3": { name: keyword.operator.sign.dppmca }
+      - match: (?<=^|,|\s)(\+|-)?\.[0-9]+(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s|\\$)
+        name: constant.numeric.float.dppmca
+        captures:
+          "1": { name: keyword.operator.sign.dppmca }
+          # "2": { name: keyword.operator.scientific-notation.dppmca }
+          # "3": { name: keyword.operator.sign.dppmca }
+  # literal-numeric-invalid:
+  #   match: (?<=^|,|\s)[0-9][\w.]*(?=$|,|\s|\\$)
+  #   name: invalid.illegal.numeric.other.dppmca
