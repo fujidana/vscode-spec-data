@@ -6,17 +6,30 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Added
 
-- support for DppMCA spectra data file format (`.mca`). DppMCA is a DP5 Digital Pulse Prosessor Display & Acquisition Software for Multichannel Analyzers, developed by Amptek.
+- support for general CSV format consisting of numeric values only. The delmiter can be either a whitespace, tab, or comma and is auto-detected. To allow a user to select in which diretion (row-wise or column-wise) an array is extracted from a table for a graph, two language IDs, `csv-row` and `csv-column`, are provided. The following features are supported:
+  - preview feature
+  - syntax highlighting feature
+- support for DppMCA spectra data file format (language ID: `dppmca`, file extension: `.mca`). DppMCA is a DP5 Digital Pulse Prosessor Display & Acquisition Software for Multichannel Analyzers, developed by Amptek. The following features are supported:
   - preview feature
   - syntax highlighting feature
   - code navigation feature
   - code folding feature
 
+### Changed
+
+- Remove `spec-mca` language ID and migrate the support for ESRF's spec MCA format into `csv-row`.
+- Assign `.mca` file extension for `dppmca` (previously for `spec-mca`).
+- Bump `plotly.js-basic-dist-min` dependency to 2.16.3.
+
 ## [1.4.5] -- 2022-10-12
 
 ### Fixed
 
-- graphs not being drawn at all because Plotly.js was not bundled (a bug introduced since v1.4.3)
+- graphs not being drawn at all because Plotly.js was not bundled (a bug introduced in v1.4.3)
+
+### Changed
+
+- Bump `plotly.js-basic-dist-min` dependency to 2.15.1.
 
 ## [1.4.3] -- 2022-09-26
 
@@ -52,7 +65,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Added
 
-- support for MCA data format
+- support for MCA data format (language ID: `spec-mca`, file extension: `.mca`)
   - preview feature
   - syntax highlighting feature
 - point number (i.e., array index) in the x-axis option (`spec-data` and `chiplot` only).

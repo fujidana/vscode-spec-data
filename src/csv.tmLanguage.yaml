@@ -1,0 +1,87 @@
+$schema: https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json
+name: csv
+scopeName: source.csv
+patterns:
+  - begin: ^(#)(@\w+\b)?
+    beginCaptures:
+      "1": { name: pupunctuation.comment.line.csv }
+      "2": { name: keyword.other.bliss-mca-data-line.csv }
+    end: $
+    name: comment.line.number-sign.csv
+  - begin: ^(@A)\s
+    beginCaptures:
+      "1": { name: keyword.other.bliss-mca-data-line.csv }
+    end: (?<!\\)\b$
+    name: meta.bliss-mca-data-line.csv
+    patterns:
+      - match: \s+
+      - include: "#literal-numeric-decimal"
+      - include: "#literal-numeric-fractional"
+      - match: \\$
+        name: keyword.other.line-continuation.csv
+      - include: "#literal-numeric-invalid"
+      - include: "#invalid-illegal-unknown"
+  - begin: ^
+    end: $
+    name: meta.csv-data-line.csv
+    patterns:
+      - include: "#literal-numeric-decimal"
+      - include: "#literal-numeric-fractional"
+      - begin: \"
+        end: \"
+        name: string.double.csv
+        patterns:
+          - match: \"\"
+            name: constant.character.escape.double-quotation.csv
+      - match: ','
+        name: punctuation.separator.comma.csv
+      - match: \s+
+repository:
+  # literal-numeric:
+  #   patterns:
+  #     - include: "#constant-nan"
+  #     # - include: "#literal-numeric-hexagonal"
+  #     # - include: "#literal-numeric-octal"
+  #     - include: "#literal-numeric-decimal"
+  #     - include: "#literal-numeric-fractional"
+  #     - include: "#invalid-illegal-unknown"
+  constant-nan:
+    match: (?<=^|,|\s)(NaN|nan|NAN)(?=$|,|\s|\\$)
+    name: constant.language.nan.csv
+  # literal-numeric-hexagonal:
+  #   match: (?<=^|,|\s)(\+|-)?(0[xX])[0-9a-fA-F]+(?=$|,|\s|\\$)
+  #   name: constant.numeric.integer.hexadecimal.csv
+  #   captures:
+  #     "1": { name: keyword.operator.sign.csv }
+  #     "2": { name: keyword.other.integer.hexadecimal.csv }
+  # literal-numeric-octal:
+  #   match: (?<=^|,|\s)(\+|-)?(0)[0-7]+(?=$|,|\s|\\$)
+  #   name: constant.numeric.integer.octal.csv
+  #   captures:
+  #     "1": { name: keyword.operator.sign.csv }
+  #     "2": { name: keyword.other.integer.otcal.csv }
+  literal-numeric-decimal:
+    match: (?<=^|,|\s)(\+|-)?(0|[1-9][0-9]*)(?=$|,|\s|\\$)
+    name: constant.numeric.integer.decimal.csv
+    captures:
+      "1": { name: keyword.operator.sign.csv }
+  literal-numeric-fractional:
+    patterns:
+      - match: (?<=^|,|\s)(\+|-)?[0-9]+(?:\.[0-9]*)?(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s|\\$)
+        name: constant.numeric.float.csv
+        captures:
+          "1": { name: keyword.operator.sign.csv }
+          # "2": { name: keyword.operator.scientific-notation.csv }
+          # "3": { name: keyword.operator.sign.csv }
+      - match: (?<=^|,|\s)(\+|-)?\.[0-9]+(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s|\\$)
+        name: constant.numeric.float.csv
+        captures:
+          "1": { name: keyword.operator.sign.csv }
+          # "2": { name: keyword.operator.scientific-notation.csv }
+          # "3": { name: keyword.operator.sign.csv }
+  literal-numeric-invalid:
+    match: (?<=^|,|\s)[0-9][\w.]*(?=$|,|\s|\\$)
+    name: invalid.illegal.numeric.other.csv
+  invalid-illegal-unknown:
+    match: \S+
+    name: invalid.illegal.unknown.csv

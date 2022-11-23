@@ -4,8 +4,12 @@ import merge = require('lodash.merge');
 import minimatch = require('minimatch');
 import { getTextDecoder } from './textEncoding';
 
-const SPEC_DATA_SELECTOR = { language: 'spec-data' };
-const DPPMCA_SELECTOR = { language: 'dppmca' };
+const SPEC_DATA_FILTER = { language: 'spec-data' };
+const CSV_COLUMNS_FILTER = { language: 'csv-column' };
+const CSV_ROWS_FILTER = { language: 'csv-row' };
+const DPPMCA_FILTER = { language: 'dppmca' };
+const CHIPLOT_FILTER = { language: 'chiplot' };
+const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER];
 
 const DPPMCA_BLOCK_REGEXP = /^<<([a-zA-Z0-9_ ]+)>>$/;
 
@@ -20,11 +24,9 @@ interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code:
 interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], xAxisSelectable: boolean }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
-interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, language?: SupportedLanguage, tree?: Node[] }
+interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
 
 interface State { template: unknown, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
-
-type SupportedLanguage = 'spec-data' | 'spec-mca' | 'dppmca' | 'chiplot';
 
 /**
  * Provider class for "spec-data" language
@@ -127,7 +129,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const activeTextEditorChangeListener = (editor: vscode.TextEditor | undefined) => {
             if (editor) {
                 const document = editor.document;
-                if (document.languageId === 'spec-data' || document.languageId === 'spec-mca' || document.languageId === 'dppmca' || document.languageId === 'chiplot') {
+                if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
                     if (this.livePreview && this.livePreview.uri.toString() !== document.uri.toString()) {
                         this.reloadPreview(this.livePreview, document);
                     }
@@ -196,8 +198,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.commands.registerCommand('spec-data.showSource', showSourceCallback),
             vscode.commands.registerCommand('spec-data.refreshPreview', refreshPreviewCallback),
             vscode.commands.registerCommand('spec-data.togglePreviewLock', togglePreviewLockCallback),
-            vscode.languages.registerFoldingRangeProvider([SPEC_DATA_SELECTOR, DPPMCA_SELECTOR], this),
-            vscode.languages.registerDocumentSymbolProvider([SPEC_DATA_SELECTOR, DPPMCA_SELECTOR], this),
+            vscode.languages.registerFoldingRangeProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
+            vscode.languages.registerDocumentSymbolProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.window.registerWebviewPanelSerializer('spec-data.preview', this),
             vscode.window.onDidChangeActiveTextEditor(activeTextEditorChangeListener),
             vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
@@ -219,7 +221,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         const ranges: vscode.FoldingRange[] = [];
 
-        if (vscode.languages.match(SPEC_DATA_SELECTOR, document)) {
+        if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
             const lineCount = document.lineCount;
             let prevLineIndex = -1;
 
@@ -231,7 +233,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     prevLineIndex = lineIndex;
                 }
             }
-        } else if (vscode.languages.match(DPPMCA_SELECTOR, document)) {
+        } else if (vscode.languages.match(DPPMCA_FILTER, document)) {
             const lineCount = document.lineCount;
             let prevLineIndex = -1;
 
@@ -264,7 +266,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         const symbols: vscode.DocumentSymbol[] = [];
 
-        if (vscode.languages.match(SPEC_DATA_SELECTOR, document)) {
+        if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
             const lineCount = document.lineCount;
             const scanLineRegex = /^(#S [0-9]+)\s*(\S.*)?$/;
             const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
@@ -284,7 +286,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     prevLineIndex = lineIndex;
                 }
             }
-        } else if (vscode.languages.match(DPPMCA_SELECTOR, document)) {
+        } else if (vscode.languages.match(DPPMCA_FILTER, document)) {
             const lineCount = document.lineCount;
             let prevBlock: [string, vscode.Range] | undefined;
 
@@ -524,11 +526,11 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
     }
 
     let text: string;
-    let languageId: SupportedLanguage | undefined;
+    let languageId: string | undefined;
 
     if (document) {
         // If `document` is provided or found, use its values.
-        if (document.languageId === 'spec-data' || document.languageId === 'spec-mca' || document.languageId === 'dppmca' || document.languageId === 'chiplot') {
+        if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
             languageId = document.languageId;
             text = document.getText();
         } else {
@@ -542,11 +544,11 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
         // then with default extension patterns.
         const associations = Object.entries(
             vscode.workspace.getConfiguration('files', uri).get<Record<string, string>>('associations', {}),
-        ).concat([['*.spec', 'spec-data'], ['*.mca2', 'spec-mca'], ['*.mca', 'dppmca'], ['*.chi', 'chiplot']]);
+        ).concat([['*.spec', 'spec-data'], ['*.mca', 'dppmca'], ['*.chi', 'chiplot']]);
 
         for (const [key, value] of associations) {
             if (minimatch(uri.path, key, { matchBase: true })) {
-                languageId = (value === 'spec-data' || value === 'spec-mca' || value === 'dppmca' || value === 'chiplot') ? value : undefined;
+                languageId = DOCUMENT_SELECTOR.map(filter => filter.language).includes(value) ? value : undefined;
                 break;
             }
         }
@@ -563,13 +565,15 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
     const lines = text.split(/\r\n|\n/);
     if (lines.length === 0) {
         return undefined;
-    } else if (languageId === 'spec-data') {
+    } else if (languageId === SPEC_DATA_FILTER.language) {
         return parseSpecDataContent(lines);
-    } else if (languageId === 'spec-mca') {
-        return parseSpecMcaContent(lines);
-    } else if (languageId === 'dppmca') {
+    } else if (languageId === CSV_COLUMNS_FILTER.language) {
+        return parseCsvContent(lines, true);
+    } else if (languageId === CSV_ROWS_FILTER.language) {
+        return parseCsvContent(lines, false);
+    } else if (languageId === DPPMCA_FILTER.language) {
         return parseDppmcaContent(lines);
-    } else if (languageId === 'chiplot') {
+    } else if (languageId === CHIPLOT_FILTER.language) {
         return parseChiplotContent(lines);
         // } else {
         //     // Guess the file type from the first line
@@ -730,66 +734,133 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
     return nodes.length !== 0 ? nodes : undefined;
 }
 
-function parseSpecMcaContent(lines: string[]): Node[] | undefined {
+// character-separated values. The delimiter is auto-detected from a horizontal tab, a whitespace, or a comma. 
+function parseCsvContent(lines: string[], columnWise: boolean): Node[] | undefined {
+    
     const lineCount = lines.length;
-    // const emptyLineRegex = /^\s*$/;
-    const separatorRegex = /\s+/;
-
     const nodes: Node[] = [];
-    let data: number[][] = [];
-    let dataRange: [number, number] = [0, 0];
-    let columnNumber = 0;
     let dataOccurrance = 0, commentOccurance = 0;
 
-    const registerDataToNode = function () {
-        if (data.length <= 0) {
-            return;
-        }
-        const headers = Array(data.length).fill(0).map((_x, i) => `[${i}]`);
-        // nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, occurance: 0, value: 'title' });
-        nodes.push({ type: 'scanData', lineStart: dataRange[0], lineEnd: dataRange[1], occurance: dataOccurrance, headers: headers, data: [...data], xAxisSelectable: false });
-        dataOccurrance++;
-        data = [];
-    };
-
     for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-        // concatenate the following line if the current line ends with a backslash.
-        const lineStart = lineIndex;
-        let lineText = lines[lineIndex];
-        while (lineText.endsWith('\\') && lineIndex + 1 < lineCount) {
-            lineText = lineText.slice(0, -1) + ' ' + lines[lineIndex + 1];
-            lineIndex++;
-        }
+        let delimRegexp: RegExp | undefined;
+        let rowNumber = 0;
+        let headers: string[] | undefined;
+        let data: number[][] = [];
+        let dataStartIndex = 0;
+        let isEsrfMca = false;
+        // let columnNumber = 0;
 
-        if (lineText.startsWith('#')) {
-            registerDataToNode();
-            nodes.push({ type: 'comment', lineStart: lineStart, lineEnd: lineIndex, occurance: commentOccurance, value: lineText.substring(1) });
-            commentOccurance++;
-            continue;
-        } else if (lineText.match(/^\s*$/)) {
-            registerDataToNode();
-            continue;
-        } else {
-            // ESRF's MCA format starts with "@A ". Trim this prefix.
-            if (lineText.match(/^@A\s/)) {
-                lineText = lineText.substring(3);
-            }
+        // skip lines until data array.
+        for (; lineIndex < lineCount; lineIndex++) {
+            const lineText = lines[lineIndex];
 
-            const cells = lineText.trim().split(separatorRegex);
-            if (data.length === 0) {
-                columnNumber = cells.length;
-                dataRange = [lineStart, lineIndex];
-            } else if (cells.length !== columnNumber) {
-                return undefined;
+            if (lineText.trim().length === 0) {
+                // Skip an empty line.
+                continue;
+            } else if (lineText.startsWith('#')) {
+                // Skip a comment line after appending the text to the nodes.
+                nodes.push({ type: 'comment', lineStart: lineIndex, lineEnd: lineIndex, occurance: commentOccurance, value: lineText.substring(1) });
+                commentOccurance++;
+                continue;
+            } else if (!columnWise && lineText.startsWith('@A ')) {
+                // If the line starts with "@A", it is data in ESRF's MCA format.
+                // Trim the prefix: "@A ".
+                isEsrfMca = true;
+                
+                // Concatenate the lines that ends with a backslash.
+                let lineText2 = lineText.substring(3);
+                while (lineText2.endsWith('\\') && lineIndex + 1 < lineCount) {
+                    lineText2 = lineText2.slice(0, -1) + lines[lineIndex + 1];
+                    lineIndex++;
+                }
+                const firstRowCells = lineText2.trim().split(/\s+/);
+                delimRegexp = new RegExp(/\s+/);
+                rowNumber = firstRowCells.length;
+                data.push(firstRowCells.map(cell => parseFloat(cell)));
+                dataStartIndex = lineIndex;
+                lineIndex++;
+                break;                
             } else {
-                dataRange[1] = lineIndex;
-            }
-            data.push(cells.map(cell => parseFloat(cell)));
-        }
-    }
-    registerDataToNode();
+                let firstCell: string;
+                let delimMatch: RegExpExecArray | null;
+                if ((delimMatch = /[\t, ]/.exec(lineText)) !== null) {
+                // If the first cell delimited by a delimiter (a tab, comma, or whitespace) is a number, go to the next step.
+                    firstCell = lineText.slice(0, delimMatch.index);
+                    if (delimMatch[0] === ' ') {
+                        delimRegexp = / +/;
+                    } else {
+                        delimRegexp = new RegExp(delimMatch[0]);
+                    }
+                } else {
+                    firstCell = lineText;
+                    delimRegexp = /[\t, ]/;
+                }
 
-    return nodes;
+                if (firstCell.toLowerCase() === 'nan' || !isNaN(Number(firstCell))) {
+                    const firstRowCells = lineText.split(delimRegexp);
+                    rowNumber = firstRowCells.length;
+                    data.push(firstRowCells.map(cell => parseFloat(cell)));
+
+                    // if the previous line has the same number of cells, treat it as a column header.
+                    if (lineIndex > 0) {
+                        const prevLineText = lines[lineIndex - 1];
+                        const prevLineText2 = prevLineText.startsWith('#') ? prevLineText.substring(1).trimStart() : prevLineText;
+                        const colLabels = prevLineText2.split(delimRegexp);
+                        if (colLabels.length === rowNumber) {
+                            headers = colLabels;
+                        }
+                    }
+
+                    dataStartIndex = lineIndex;
+                    lineIndex++;
+                    break;
+                }
+            }
+        }
+
+        // If no numeric cell is found, exit.
+        if (data.length === 0 || !delimRegexp) {
+            break;
+        }
+
+        // Read the rest of lines and append numeric cells to `data`.
+        for (; lineIndex < lineCount; lineIndex++) {
+            const lineText = lines[lineIndex];
+            if (lineText.length === 0) {
+                break;
+            } else if (lineText.startsWith('#')) {
+                lineIndex--;
+                break;
+            } else if (isEsrfMca) {
+                lineIndex--;
+                break;
+            } else {
+                const currentRowCells = lineText.split(delimRegexp);
+                if (currentRowCells.length !== rowNumber) {
+                    // mismatch of column number
+                    return undefined;
+                }
+                data.push(currentRowCells.map(cell => parseFloat(cell)));
+            }
+        }
+        
+        // Add the read data to the nodes.
+        if (columnWise) {
+            data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
+            if (!headers) {
+                headers = Array(data.length).fill(0).map((_x, i) => `column ${i}`);
+            }
+        } else {
+            headers = Array(data.length).fill(0).map((_x, i) => `row ${i}`);
+        }
+        nodes.push({ type: 'scanData', lineStart: dataStartIndex, lineEnd: lineIndex - 1, occurance: dataOccurrance, headers: headers, data: data, xAxisSelectable: columnWise });
+        dataOccurrance++;
+    }
+
+    
+    if (nodes.some(node => node.type === 'scanData')) {
+        return nodes;
+    }
 }
 
 function parseDppmcaContent(lines: string[]): Node[] | undefined {

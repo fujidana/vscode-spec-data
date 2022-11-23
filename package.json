@@ -3,7 +3,7 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "1.5.0-alpha.1",
+	"version": "1.5.0-alpha.2",
 	"engines": {
 		"vscode": "^1.71.0"
 	},
@@ -29,7 +29,8 @@
 	"homepage": "https://github.com/fujidana/vscode-spec-data#readme",
 	"activationEvents": [
 		"onLanguage:spec-data",
-		"onLanguage:spec-mca",
+		"onLanguage:csv-column",
+		"onLanguage:csv-row",
 		"onLanguage:dppmca",
 		"onLanguage:chiplot",
 		"onWebviewPanel:spec-data.preview",
@@ -54,13 +55,15 @@
 				]
 			},
 			{
-				"id": "spec-mca",
+				"id": "csv-column",
 				"aliases": [
-					"spec MCA",
-					"spec multichannel analyzers"
-				],
-				"extensions": [
-					".mca2d"
+					"CSV (numeric columns)"
+				]
+			},
+			{
+				"id": "csv-row",
+				"aliases": [
+					"CSV (numeric rows)"
 				]
 			},
 			{
@@ -90,9 +93,14 @@
 				"path": "./syntaxes/specData.tmLanguage.json"
 			},
 			{
-				"language": "spec-mca",
-				"scopeName": "source.spec-mca",
-				"path": "./syntaxes/specMca.tmLanguage.json"
+				"language": "csv-column",
+				"scopeName": "source.csv",
+				"path": "./syntaxes/csv.tmLanguage.json"
+			},
+			{
+				"language": "csv-row",
+				"scopeName": "source.csv",
+				"path": "./syntaxes/csv.tmLanguage.json"
 			},
 			{
 				"language": "dppmca",
@@ -151,12 +159,12 @@
 			"explorer/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "resourceLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
 					"group": "navigation"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "resourceLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
 					"group": "navigation"
 				}
 			],
@@ -164,13 +172,13 @@
 				{
 					"command": "spec-data.showPreviewToSide",
 					"alt": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
 					"group": "navigation"
 				},
 				{
 					"command": "spec-data.showLockedPreviewToSide",
 					"alt": "spec-data.showLockedPreview",
-					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
 					"group": "2_specdata"
 				},
 				{
@@ -192,26 +200,26 @@
 			"editor/title/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
 					"group": "3_preview"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showPreviewToSide",
-					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreviewToSide",
-					"when": "editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)$/"
+					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showSource",
@@ -232,13 +240,13 @@
 				"command": "spec-data.showPreview",
 				"key": "ctrl+shift+v",
 				"mac": "cmd+shift+v",
-				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)/"
+				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 			},
 			{
 				"command": "spec-data.showPreviewToSide",
 				"key": "ctrl+k v",
 				"mac": "cmd+k v",
-				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-(data|mca)|dppmca|chiplot)/"
+				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)/"
 			}
 		],
 		"configuration": {
@@ -362,6 +370,12 @@
 			}
 		},
 		"configurationDefaults": {
+			"[csv-row]": {
+				"editor.insertSpaces": false
+			},
+			"[csv-column]": {
+				"editor.insertSpaces": false
+			},
 			"[dppmca]": {
 				"files.encoding": "windows1252"
 			}
@@ -390,11 +404,11 @@
 		"lint": "eslint src --ext ts",
 		"run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
 		"js-yaml:spec-data": "js-yaml ./src/specData.tmLanguage.yaml > ./syntaxes/specData.tmLanguage.json",
-		"js-yaml:spec-mca": "js-yaml ./src/specMca.tmLanguage.yaml > ./syntaxes/specMca.tmLanguage.json",
+		"js-yaml:csv": "js-yaml ./src/csv.tmLanguage.yaml > ./syntaxes/csv.tmLanguage.json",
 		"js-yaml:dppmca": "js-yaml ./src/dppmca.tmLanguage.yaml > ./syntaxes/dppmca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml ./src/chiplot.tmLanguage.yaml > ./syntaxes/chiplot.tmLanguage.json",
-		"js-yaml": "pnpm run js-yaml:spec-data && pnpm run js-yaml:spec-mca && pnpm run js-yaml:dppmca && pnpm run js-yaml:chiplot",
-		"bundle-plotly": "npm install --prefix ./webview --no-save plotly.js-basic-dist-min"
+		"js-yaml": "pnpm run js-yaml:spec-data && pnpm run js-yaml:csv && pnpm run js-yaml:dppmca && pnpm run js-yaml:chiplot",
+		"bundle-plotly": "npm install --prefix ./webview --no-save plotly.js-basic-dist-min@2.16.3"
 	},
 	"devDependencies": {
 		"@types/glob": "^8.0.0",

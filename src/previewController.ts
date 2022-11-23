@@ -273,7 +273,7 @@ window.addEventListener('DOMContentLoaded', event => {
             const occurance = parseInt(occuranceString);
             const scanDataState = occurance in state.scanData ? state.scanData[occurance] : {
                 hidden: occurance >= maximumPlots,
-                x: 0,
+                x: axisSelects[0].length > 2 ? 0 : 1,
                 y: axisSelects[1].length - 1,
                 logAxis: false
             };

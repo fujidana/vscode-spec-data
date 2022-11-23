@@ -9,7 +9,7 @@ repository:
     patterns:
       - begin: \A(\s*(.*)\s*)$
         beginCaptures:
-          "1": { name: markup.heading.chiplot}
+          "1": { name: markup.heading.chiplot }
           "2": { name: string.unquoted.chiplot }
         end: ^\s*(\d+)(?:(?:\s+|\s*,\s*)(\d+))?\s*$
         endCaptures:
