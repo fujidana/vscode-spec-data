@@ -4,6 +4,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.5.0] -- 2022-11-23
+
 ### Added
 
 - support for general CSV format consisting of numeric values only. The delmiter can be either a whitespace, tab, or comma and is auto-detected. To allow a user to select in which diretion (row-wise or column-wise) an array is extracted from a table for a graph, two language IDs, `csv-row` and `csv-column`, are provided. The following features are supported:
@@ -227,7 +229,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.5...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.5...v1.5.0
 [1.4.5]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.3...v1.4.5
 [1.4.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.2...v1.4.3
 [1.4.2]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.1...v1.4.2
