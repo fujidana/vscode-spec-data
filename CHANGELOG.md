@@ -4,6 +4,13 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.5.1] -- 2022-12-28
+
+### Changed
+
+- Bump `plotly.js-basic-dist-min` dependency to 2.17.0 and  `minimatch` dependency to 5.1.2
+- Raise the minimum VS Code version to 1.74.0.
+
 ### Fixed
 
 - minor syntax highlighting problem in CSV files
@@ -233,7 +240,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.1...HEAD
+[1.5.1]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.0...v1.5.1
 [1.5.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.5...v1.5.0
 [1.4.5]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.3...v1.4.5
 [1.4.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.4.2...v1.4.3

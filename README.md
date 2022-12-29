@@ -6,21 +6,18 @@ For example, _spec data:Open Preview_ command (Win/Linux: `Ctrl+Shift+V`, Mac: `
 
 The data file formats the exension supports are as follows:
 
-- __CSV file__ (ID: `csv-column`, `csv-row`): Character-Separated Values.
-  - Two language identifiers, `csv-column`, `csv-row`, are for data composed of column-wise arrays and row-wise arrays, respectively.
-  - A delimiter is auto-detected from either a whitespace, tab, or comma.
-  - A file extension is not assigned by default.
+- __CSV file__ (ID: `csv-column`, `csv-row`): CSV (character-separated values) files.
+  - A pair of columns in a `csv-column` file and that of rows in a `csv-row` file can be graphically plotted.
+  - All cells must be numeric; string may appear only in a header line that starts with a hash character (`#`).
+  - A delimiter may be either a whitespace, tab, or comma, and is auto-detected.
+  - The IDs are not associated with any file extensions by default because it can not be determined from a file extension which direction (column-wise or row-wise) an array should be extracted from a table.
   - A data file exported by ESRF's __spec__ macro, [BLISS / mca.mac](https://www.esrf.fr/blissdb/macros/macdoc.py?macname=mca.mac), is also covered in `csv-row`.
 - __spec standard data file__ (ID: `spec-data`, extension: `.spec`): files the __spec__ software outputs during various scan commands.
 - __fit2d chiplot file format__ (ID: `chiplot`, extension: `.chi`): a text file format in which __fit2d__ software imports and exports one-dimensional dataset such as scattering profiles.
-- __DppMCA spectra data file format__ (ID: `spec-mca`, extension: `.mca`): . DppMCA is a DP5 Digital Pulse Prosessor Display & Acquisition Software for Multichannel Analyzers, developed by Amptek.
+- __DppMCA spectra data file format__ (ID: `dppmca`, extension: `.mca`): DppMCA is DP5 Digital Pulse Prosessor Display & Acquisition Software for Multichannel Analyzers, developed by Amptek.
 
-While the extension by default treats a file with `.spec` file extension as `spec-data` data file, __spec__ does not specify the filename extension for the data format.
-Also, a file extension such as `.csv`, `tsv`, or `dat` is not assigned for the CSV data format by the following reasons:
-
-- The extension only support a table composed of numeric cells only.
-- The extension can not determine which direction (column-wise or row-wise) an array should be extracted from a table for a graph.
-
+While the extension associates `spec-data` file with `.spec` file by default, __spec__ does not specify a file extension for the data format.
+Also, the extension does not associate `csv-row` or `csv-column` file with any file extensions commonly used for CSV files (`.csv`, `tsv`, or `dat`).
 However, a user can set and modify the association between a language identifier and file extensions (or blob pattern) by oneself.
 Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs/languages/overview) (official document of VS Code) for further details.
 
