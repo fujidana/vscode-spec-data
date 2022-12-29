@@ -4,6 +4,10 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Fixed
+
+- minor syntax highlighting problem in CSV files
+
 ## [1.5.0] -- 2022-11-23
 
 ### Added

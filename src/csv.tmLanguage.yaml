@@ -21,27 +21,32 @@ patterns:
         name: keyword.other.line-continuation.csv
       - include: "#literal-numeric-invalid"
       - include: "#invalid-illegal-unknown"
-  - begin: ^
+  - begin: ^(?!$)
     end: $
     name: meta.csv-data-line.csv
     patterns:
-      - include: "#literal-numeric-decimal"
-      - include: "#literal-numeric-fractional"
-      - begin: \"
-        end: \"
+      - match: ','
+        name: punctuation.separator.comma.csv
+      - match: \s+
+      - begin: (?<!\")\"
+        beginCaptures:
+          "0": { name: punctuation.string.begin.csv }
+        end: \"(?!\")
+        endCaptures:
+          "0": { name: punctuation.string.end.csv }
         name: string.double.csv
         patterns:
           - match: \"\"
             name: constant.character.escape.double-quotation.csv
-      - match: ','
-        name: punctuation.separator.comma.csv
-      - match: \s+
+      - include: "#constant-nan"
+      - include: "#literal-numeric-decimal"
+      - include: "#literal-numeric-fractional"
 repository:
   # literal-numeric:
   #   patterns:
   #     - include: "#constant-nan"
-  #     # - include: "#literal-numeric-hexagonal"
-  #     # - include: "#literal-numeric-octal"
+  #     - include: "#literal-numeric-hexagonal"
+  #     - include: "#literal-numeric-octal"
   #     - include: "#literal-numeric-decimal"
   #     - include: "#literal-numeric-fractional"
   #     - include: "#invalid-illegal-unknown"
