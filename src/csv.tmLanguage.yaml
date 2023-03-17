@@ -15,7 +15,7 @@ patterns:
     name: meta.bliss-mca-data-line.csv
     patterns:
       - match: \s+
-      - include: "#literal-numeric-decimal"
+      - include: "#literal-numeric-integer"
       - include: "#literal-numeric-fractional"
       - match: \\$
         name: keyword.other.line-continuation.csv
@@ -28,6 +28,9 @@ patterns:
       - match: ','
         name: punctuation.separator.comma.csv
       - match: \s+
+      - include: "#literal-numeric-integer"
+      - include: "#literal-numeric-fractional"
+      - include: "#constant-nan"
       - begin: (?<!\")\"
         beginCaptures:
           "0": { name: punctuation.string.begin.csv }
@@ -38,9 +41,6 @@ patterns:
         patterns:
           - match: \"\"
             name: constant.character.escape.double-quotation.csv
-      - include: "#constant-nan"
-      - include: "#literal-numeric-decimal"
-      - include: "#literal-numeric-fractional"
 repository:
   # literal-numeric:
   #   patterns:
@@ -65,25 +65,23 @@ repository:
   #   captures:
   #     "1": { name: keyword.operator.sign.csv }
   #     "2": { name: keyword.other.integer.otcal.csv }
-  literal-numeric-decimal:
-    match: (?<=^|,|\s)(\+|-)?(0|[1-9][0-9]*)(?=$|,|\s|\\$)
-    name: constant.numeric.integer.decimal.csv
+  # literal-numeric-decimal:
+  #   match: (?<=^|,|\s)(\+|-)?(0|[1-9][0-9]*)(?=$|,|\s|\\$)
+  #   name: constant.numeric.integer.decimal.csv
+  #   captures:
+  #     "1": { name: keyword.operator.sign.csv }
+  literal-numeric-integer:
+    match: (?<=^|,|\s)(\+|-)?([0-9]+)(?=$|,|\s|\\$)
+    name: constant.numeric.integer.csv
     captures:
       "1": { name: keyword.operator.sign.csv }
   literal-numeric-fractional:
-    patterns:
-      - match: (?<=^|,|\s)(\+|-)?[0-9]+(?:\.[0-9]*)?(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s|\\$)
-        name: constant.numeric.float.csv
-        captures:
-          "1": { name: keyword.operator.sign.csv }
-          # "2": { name: keyword.operator.scientific-notation.csv }
-          # "3": { name: keyword.operator.sign.csv }
-      - match: (?<=^|,|\s)(\+|-)?\.[0-9]+(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s|\\$)
-        name: constant.numeric.float.csv
-        captures:
-          "1": { name: keyword.operator.sign.csv }
-          # "2": { name: keyword.operator.scientific-notation.csv }
-          # "3": { name: keyword.operator.sign.csv }
+    match: (?<=^|,|\s)(\+|-)?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s|\\$)
+    name: constant.numeric.float.csv
+    captures:
+      "1": { name: keyword.operator.sign.csv }
+      # "2": { name: keyword.operator.scientific-notation.csv }
+      # "3": { name: keyword.operator.sign.csv }
   literal-numeric-invalid:
     match: (?<=^|,|\s)[0-9][\w.]*(?=$|,|\s|\\$)
     name: invalid.illegal.numeric.other.csv
