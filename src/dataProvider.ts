@@ -26,6 +26,8 @@ interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: s
 
 interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
 
+interface ValueListState { [occurance: number]: { hidden: boolean } }
+interface ScanDataState { [occurance: number]: { x: number, y: number, hidden: boolean, logAxis: boolean } }
 interface State { template: unknown, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
 
 /**
@@ -476,8 +478,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const lockPreview = !(this.livePreview && this.livePreview === preview);
         const webview = preview.panel.webview;
         const label = lockPreview ? '[Preview]' : 'Preview';
-        const plotlyJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'webview', 'node_modules', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
-        const controllerJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'previewController.js'));
+        const plotlyJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
+        const controllerJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewController.js'));
 
         preview.tree = tree;
         preview.panel.title = `${label} ${preview.uri.path.substring(preview.uri.path.lastIndexOf('/') + 1)}`;
