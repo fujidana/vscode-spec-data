@@ -27,7 +27,14 @@
 		"url": "https://github.com/fujidana/vscode-spec-data.git"
 	},
 	"homepage": "https://github.com/fujidana/vscode-spec-data#readme",
-	"activationEvents": [],
+	"activationEvents": [
+		"onLanguage:spec-data",
+		"onLanguage:csv-column",
+		"onLanguage:csv-row",
+		"onLanguage:dppmca",
+		"onLanguage:chiplot",
+		"onWebviewPanel:spec-data.preview"
+	],
 	"main": "./dist/node/extension.js",
 	"browser": "./dist/web/extension.js",
 	"contributes": {
