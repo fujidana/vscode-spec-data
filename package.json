@@ -5,7 +5,7 @@
 	"description": "spec data file support for VS Code",
 	"version": "1.5.3",
 	"engines": {
-		"vscode": "^1.76.0"
+		"vscode": "^1.78.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -381,7 +381,7 @@
 		"virtualWorkspaces": true,
 		"untrustedWorkspaces": {
 			"supported": "limited",
-			"description": "In untrusted workspaces, the content security policy is forcibly applied to the preview and Plotlytemplates in workspace settings are ignored.",
+			"description": "In untrusted workspaces, the content security policy is forcibly applied to the preview and Plotly templates in workspace settings are ignored.",
 			"restrictedConfigurations": [
 				"spec-data.preview.plot.templates",
 				"spec-data.preview.applyContentSecurityPolicy"
@@ -406,34 +406,34 @@
 		"js-yaml:dppmca": "js-yaml ./src/dppmca.tmLanguage.yaml > ./syntaxes/dppmca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml ./src/chiplot.tmLanguage.yaml > ./syntaxes/chiplot.tmLanguage.json",
 		"js-yaml": "pnpm run js-yaml:spec-data && pnpm run js-yaml:csv && pnpm run js-yaml:dppmca && pnpm run js-yaml:chiplot",
-		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@2.20.0"
+		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@2.25.2"
 	},
 	"devDependencies": {
 		"@types/glob": "^8.1.0",
 		"@types/lodash.merge": "^4.6.7",
 		"@types/minimatch": "^5.1.2",
 		"@types/mocha": "^10.0.1",
-		"@types/node": "16.x",
-		"@types/vscode": "^1.76.0",
+		"@types/node": "20.2.5",
+		"@types/vscode": "^1.78.0",
 		"@types/vscode-webview": "^1.57.1",
-		"@types/webpack-env": "^1.18.0",
-		"@typescript-eslint/eslint-plugin": "^5.53.0",
-		"@typescript-eslint/parser": "^5.53.0",
-		"@vscode/test-electron": "^2.2.3",
-		"@vscode/test-web": "^0.0.35",
+		"@types/webpack-env": "^1.18.1",
+		"@typescript-eslint/eslint-plugin": "^5.59.8",
+		"@typescript-eslint/parser": "^5.59.8",
+		"@vscode/test-electron": "^2.3.2",
+		"@vscode/test-web": "^0.0.44",
 		"assert": "^2.0.0",
-		"eslint": "^8.34.0",
+		"eslint": "^8.41.0",
 		"glob": "^8.1.0",
 		"js-yaml": "^4.1.0",
 		"mocha": "^10.2.0",
 		"process": "^0.11.10",
-		"ts-loader": "^9.4.2",
-		"typescript": "^4.9.5",
-		"webpack": "^5.75.0",
-		"webpack-cli": "^5.0.1"
+		"ts-loader": "^9.4.3",
+		"typescript": "^5.1.3",
+		"webpack": "^5.85.0",
+		"webpack-cli": "^5.1.1"
 	},
 	"dependencies": {
 		"lodash.merge": "^4.6.2",
-		"minimatch": "^5.1.2"
+		"minimatch": "^9.0.3"
 	}
 }

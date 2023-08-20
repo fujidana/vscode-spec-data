@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import plotTemplate from './plotTemplate';
 import merge = require('lodash.merge');
-import minimatch = require('minimatch');
+import { minimatch } from 'minimatch';
 import { getTextDecoder } from './textEncoding';
 
 const SPEC_DATA_FILTER = { language: 'spec-data' };
