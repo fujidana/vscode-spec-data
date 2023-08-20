@@ -4,6 +4,15 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.5.4] -- 2023-08-20
+
+### Changed
+
+- Let VS Code know first line patterns for `spec-data` and `chiplot`. VS Code judges the file association by the first line if its file extension is unknown.
+- Bump `plotly.js-basic-dist-min` dependency to 2.25.2 and `minimatch` dependency to 9.0.3.
+- Update other Node.js packages, including a vulnerable dependency.
+- Raise the minimum VS Code version to 1.78.0.
+
 ## [1.5.3] -- 2023-05-22
 
 ### Fixed
@@ -254,7 +263,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.3...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.4...HEAD
+[1.5.4]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.3...v1.5.4
 [1.5.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.2...v1.5.3
 [1.5.2]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.1...v1.5.2
 [1.5.1]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.0...v1.5.1
