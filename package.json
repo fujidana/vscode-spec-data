@@ -48,7 +48,8 @@
 				],
 				"extensions": [
 					".spec"
-				]
+				],
+				"firstLine": "^#F\\s+\\S.*$"
 			},
 			{
 				"id": "csv-column",
@@ -79,7 +80,8 @@
 				],
 				"extensions": [
 					".chi"
-				]
+				],
+				"firstLine": "^\\S+: (2-theta|Q-Space) Scan$"
 			}
 		],
 		"grammars": [
