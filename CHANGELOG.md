@@ -4,6 +4,10 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+- Bump `plotly.js-basic-dist-min` dependency to 2.27.1.
+- Update other Node.js packages, including a vulnerable dependency.
+- Raise the minimum VS Code version to 1.85.0.
+
 ## [1.5.4] -- 2023-08-20
 
 ### Changed
