@@ -603,7 +603,8 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
 
     let matches: RegExpMatchArray | null;
     let prevNodeIndex = -1;
-    let columnNumber = -1;
+    let columnNumberInHeader = -1;
+    let columnNumberInBody = -1;
     const nodes: Node[] = [];
 
     let fileOccurance = 0;
@@ -691,17 +692,17 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
             nodes.push({ type: 'scanHead', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanHeadOccurance, index: parseInt(matches[2]), code: matches[3] });
             scanHeadOccurance++;
         } else if ((matches = lineText.match(scanNumberRegex)) !== null) {
-            columnNumber = parseInt(matches[2]);
+            columnNumberInHeader = parseInt(matches[2]);
         } else if ((matches = lineText.match(scanDataRegex)) !== null) {
             // The separator between motors and counters are 4 whitespaces (in old spec version only?).
             // The separator between respective motors and counters are 2 whitespaces.
             // const headers = matches[2].split('    ', 2).map(a => a.split('  ')).reduce((a, b) => a.concat(b));
             const headers = matches[2].trim().split(/ {2,}|\t/);
-            if (columnNumber === -1) {
+            if (columnNumberInHeader === -1) {
                 // for lazy format in which "#N" line does not exit.
-                columnNumber = headers.length;
-            } else if (headers.length !== columnNumber) {
-                vscode.window.showErrorMessage(`Scan number mismatched (header): line ${lineIndex + 1}`);
+                columnNumberInHeader = headers.length;
+            } else if (headers.length !== columnNumberInHeader) {
+                vscode.window.showErrorMessage(`mismatch in the number of columns. (line ${lineIndex + 1}). #N: ${columnNumberInHeader}, #L: ${headers.length}`);
                 return undefined;
             }
             const lineStart = lineIndex;
@@ -717,8 +718,17 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
                 // The separator between respective motors and counters are 1 whitespace.
                 // const rows = blockLineText.split('  ', 2).map(a => a.split(' ')).reduce((a, b) => a.concat(b));
                 const rows = blockLineText.trim().split(/ {1,}|\t/);
-                if (rows.length !== columnNumber) {
-                    vscode.window.showErrorMessage(`Scan number mismatched (data): line ${lineIndex + 2}`);
+                if (columnNumberInBody === -1) {
+                    // In case the first line of the scan body, compare the line number of the header part.
+                    // This mismatch can happen owing to spec's bug around `roisetup` and `disable` commands.
+                    // So in this case, just show a message and do not stop parsing.
+                    if (rows.length !== columnNumberInHeader) {
+                        vscode.window.showWarningMessage(`mismatch in the number of columns (line ${lineIndex + 2}). header: ${columnNumberInHeader}), body: ${rows.length}.`);
+                    }
+                    columnNumberInBody = rows.length;
+                } else if (rows.length !== columnNumberInBody) {
+                    // In case the second or any later lines, compare with the first line.
+                    vscode.window.showErrorMessage(`mismatch in the number of columns (line ${lineIndex + 2}). expected: ${columnNumberInBody},  ${rows.length}.`);
                     return undefined;
                 }
                 data.push(rows.map(item => parseFloat(item)));
@@ -728,7 +738,8 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
 
             nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineIndex, occurance: scanDataOccurance, headers: headers, data: data2, xAxisSelectable: true });
             scanDataOccurance++;
-            columnNumber = -1;
+            columnNumberInHeader = -1;
+            columnNumberInBody = -1;
         } else if ((matches = lineText.match(unknownRegex)) !== null) {
             nodes.push({ type: 'unknown', lineStart: lineIndex, lineEnd: lineIndex, kind: matches[1], value: matches[2] });
         }
