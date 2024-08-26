@@ -5,8 +5,8 @@ patterns:
   - match: ^(<<)([_A-Za-z0-9 ]+)(>>)$
     name: markup.heading.1.dppmca
     captures:
-      "1": { name: punctuation.block.start.dppmca }
-      "3": { name: punctuation.block.end.dppmca }
+      "1": { name: punctuation.definition.heading.begin.dppmca }
+      "3": { name: punctuation.definition.heading.end.dppmca }
   - include: "#literal-numeric"
 repository:
   literal-numeric:

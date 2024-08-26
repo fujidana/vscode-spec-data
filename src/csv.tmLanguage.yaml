@@ -33,10 +33,10 @@ patterns:
       - include: "#constant-nan"
       - begin: (?<!\")\"
         beginCaptures:
-          "0": { name: punctuation.string.begin.csv }
+          "0": { name: punctuation.definition.string.begin.csv }
         end: \"(?!\")
         endCaptures:
-          "0": { name: punctuation.string.end.csv }
+          "0": { name: punctuation.definition.string.end.csv }
         name: string.double.csv
         patterns:
           - match: \"\"
@@ -73,15 +73,15 @@ repository:
   literal-numeric-integer:
     match: (?<=^|,|\s)(\+|-)?([0-9]+)(?=$|,|\s|\\$)
     name: constant.numeric.integer.csv
-    captures:
-      "1": { name: keyword.operator.sign.csv }
+    # captures:
+    #   "1": { name: keyword.operator.sign.csv }
   literal-numeric-fractional:
     match: (?<=^|,|\s)(\+|-)?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s|\\$)
     name: constant.numeric.float.csv
-    captures:
-      "1": { name: keyword.operator.sign.csv }
-      # "2": { name: keyword.operator.scientific-notation.csv }
-      # "3": { name: keyword.operator.sign.csv }
+    # captures:
+    #   "1": { name: keyword.operator.sign.csv }
+    #   "2": { name: keyword.operator.scientific-notation.csv }
+    #   "3": { name: keyword.operator.sign.csv }
   literal-numeric-invalid:
     match: (?<=^|,|\s)[0-9][\w.]*(?=$|,|\s|\\$)
     name: invalid.illegal.numeric.other.csv

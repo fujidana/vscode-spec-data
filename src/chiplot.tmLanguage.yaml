@@ -58,22 +58,22 @@ repository:
   literal-numeric-decimal:
     match: (?<=^|,|\s)(\+|-)?(0|[1-9][0-9]*)(?=$|,|\s)
     name: constant.numeric.integer.decimal.chiplot
-    captures:
-      "1": { name: keyword.operator.sign.chiplot }
+    # captures:
+    #   "1": { name: keyword.operator.sign.chiplot }
   literal-numeric-fractional:
     patterns:
       - match: (?<=^|,|\s)(\+|-)?[0-9]+(?:\.[0-9]*)?(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s)
         name: constant.numeric.float.chiplot
-        captures:
-          "1": { name: keyword.operator.sign.chiplot }
-          # "2": { name: keyword.operator.scientific-notation.chiplot }
-          # "3": { name: keyword.operator.sign.chiplot }
+        # captures:
+        #   "1": { name: keyword.operator.sign.chiplot }
+        #   "2": { name: keyword.operator.scientific-notation.chiplot }
+        #   "3": { name: keyword.operator.sign.chiplot }
       - match: (?<=^|,|\s)(\+|-)?\.[0-9]+(?:(e|E)(\+|-)?[0-9]+)?(?=$|,|\s)
         name: constant.numeric.float.chiplot
-        captures:
-          "1": { name: keyword.operator.sign.chiplot }
-          # "2": { name: keyword.operator.scientific-notation.chiplot }
-          # "3": { name: keyword.operator.sign.chiplot }
+        # captures:
+        #   "1": { name: keyword.operator.sign.chiplot }
+        #   "2": { name: keyword.operator.scientific-notation.chiplot }
+        #   "3": { name: keyword.operator.sign.chiplot }
   literal-numeric-invalid:
     match: (?<=^|,|\s)[0-9][\w.]*(?=$|,|\s)
     name: invalid.illegal.numeric.other.chiplot
