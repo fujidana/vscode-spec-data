@@ -147,6 +147,12 @@
 				"icon": "$(refresh)"
 			},
 			{
+				"command": "spec-data.toggleMultipleSelection",
+				"title": "Toggle Multiple Selection",
+				"category": "spec data",
+				"icon": "$(list-selection)"
+			},
+			{
 				"command": "spec-data.togglePreviewLock",
 				"title": "Toggle Preview Locking",
 				"category": "spec data",
@@ -190,6 +196,11 @@
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
+					"command": "spec-data.toggleMultipleSelection",
+					"group": "2_specdata",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+				},
+				{
 					"command": "spec-data.togglePreviewLock",
 					"group": "2_specdata",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
@@ -225,6 +236,10 @@
 				},
 				{
 					"command": "spec-data.refreshPreview",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+				},
+				{
+					"command": "spec-data.toggleMultipleSelection",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
