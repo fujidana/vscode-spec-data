@@ -4,6 +4,10 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Added
+
+- Enable to select multiple data arrays in a graph. The feature is experimental and by default disabled. To enable it, set `#spec-data.preview.plot.experimental.enableMulitpleSelection` in the Settings window.
+
 ## [1.5.5] -- 2023-12-30
 
 ### Changed

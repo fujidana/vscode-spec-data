@@ -1,8 +1,13 @@
 export interface ValueListState { [occurance: number]: { hidden: boolean } }
-export interface ScanDataState { [occurance: number]: { x: number, y: number, hidden: boolean, logAxis: boolean } }
-export interface State { template: unknown, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
+export interface ScanDataState { [occurance: number]: { x: number, y: number[], hidden: boolean, logAxis: boolean } }
 
-export interface EventMessage { command: string, action: string, elementId: string, template: any, data: any, labels: string[], logAxis: boolean, flag: boolean }
+export interface State {
+    template: unknown,
+    valueList: ValueListState,
+    scanData: ScanDataState,
+    sourceUri: string,
+    lockPreview: boolean
+}
 
 export type MessageToWebview =
     LockPreviewMessage
@@ -33,8 +38,8 @@ interface SetTemplateMessage extends BaseMessage {
 interface UpdatePlotMessage extends BaseMessage {
     type: 'updatePlot';
     elementId: string;
-    data: [{ x: number[], y: number[] }];
-    labels: string[];
+    x: { label: string, array: number[] };
+    y: { label: string, array: number[] }[];
     logAxis: boolean;
     action: ActionType;
 }
@@ -46,7 +51,10 @@ export type MessageFromWebview =
 interface requestPlotDataMessage extends BaseMessage {
     type: 'requestPlotData';
     occurance: number;
-    indexes: [number, number];
+    indexes: {
+        x: number,
+        y: number[]
+    };
     logAxis: boolean;
     action: ActionType;
 }

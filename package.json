@@ -341,6 +341,11 @@
 					"scope": "resource",
 					"markdownDescription": "Overrides the built-in plot appearance such as line color. The key of this setting object is either `\"light\"`, `\"dark\"`, `\"highContrast\"`, or `\"highContrastLight\"` and the value is a Plotly.js template object for the color theme the corresponding key represents. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) page."
 				},
+				"spec-data.preview.plot.experimental.enableMulitpleSelection": {
+					"type": "boolean",
+					"default": false,
+					"description": "Enable to select multiple data arrays in a graph. The configuration key may be removed or renamed in a future release."
+				},
 				"spec-data.preview.table.hide": {
 					"type": "boolean",
 					"default": true,

@@ -415,24 +415,24 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 if (tree) {
                     const node = tree.find(node => node.occurance === messageIn.occurance && node.type === 'scanData');
                     if (node && node.type === 'scanData' && node.data.length) {
-                        const headers = node.headers;
-                        const data = node.data;
-                        const [xIndex, yIndex] = messageIn.indexes;
-                        let xData, xLabel;
-                        if (xIndex >= 0 && xIndex < data.length) {
-                            xData = data[xIndex];
-                            xLabel = headers[xIndex];
+                        const { x: xIndex, y: yIndexes } = messageIn.indexes;
+                        let xArray: number[], xLabel: string;
+                        if (xIndex >= 0 && xIndex < node.data.length) {
+                            xArray = node.data[xIndex];
+                            xLabel = node.headers[xIndex];
                         } else {
-                            xData = Array(data[0].length).fill(0).map((_x, i) => i);
+                            xArray = Array(node.data[0].length).fill(0).map((_x, i) => i);
                             xLabel = 'point';
                         }
+                        if (yIndexes.length > 0) {
+                            
+                            const yData = yIndexes.map(yIndex => { return { label: node.headers[yIndex], array: node.data[yIndex]}; });
 
-                        if (yIndex >= 0 && yIndex < data.length) {
                             const messageOut: MessageToWebview = {
                                 type: 'updatePlot',
                                 elementId: `plotly${messageIn.occurance}`,
-                                data: [{ x: xData, y: data[yIndex] }],
-                                labels: [xLabel, headers[yIndex]],
+                                x: { label: xLabel, array: xArray },
+                                y: yData,
                                 logAxis: messageIn.logAxis,
                                 action: messageIn.action
                             };
@@ -991,6 +991,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     const headerType = config.get<string>('table.headerType', 'mnemonic');
     const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
     const plotHeight = config.get<number>('plot.height', 400);
+    const enableMultipleSelecton = config.get<boolean>('plot.experimental.enableMulitpleSelection', false);
 
     // Apply CSP when in untrusted workspaces, even when 
     // it is disabled not in workspace settings but in user settings.
@@ -1010,15 +1011,16 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
         return str;
     }
 
-    function getAxisSelectAndOptions(axis: string, occurance: number | undefined, headers: string[], hidden: boolean) {
-        const hiddenStr = hidden ? 'hidden' : '';
+    function getAxisSelectAndOptions(axis: string, occurance: number | undefined, headers: string[], hidden: boolean = false, isMultiple = false) {
+        const hiddenStr = hidden ? ' hidden' : '';
+        const isMultipleStr = isMultiple ? ' multiple' : '';
         let tmpStr;
-        tmpStr = `<label for="axisSelect${axis.toUpperCase()}${occurance}" ${hiddenStr}>${axis}:</label>
-        <select id="axisSelect${axis.toUpperCase()}${occurance}" class="axisSelect" data-axis="${axis}" ${hiddenStr}>
+        tmpStr = `<label for="axisSelect${axis.toUpperCase()}${occurance}"${hiddenStr}>${axis}:</label>
+        <select id="axisSelect${axis.toUpperCase()}${occurance}" class="axisSelect" data-axis="${axis}"${isMultipleStr}${hiddenStr}>
         `;
         tmpStr += headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('');
         tmpStr += `</select>
-        <span ${hiddenStr}>, </span>
+        <span${hiddenStr}>, </span>
         `;
         return tmpStr;
     }
@@ -1093,8 +1095,9 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 <input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
 <label for="showPlotInput${occurance}">Show Plot</label>, 
 `;
+                const isMultiple = enableMultipleSelecton && ((node.xAxisSelectable && data.length >= 3) || data.length >= 2);
                 body += getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], !node.xAxisSelectable);
-                body += getAxisSelectAndOptions('y', occurance, headers, false);
+                body += getAxisSelectAndOptions('y', occurance, headers, false, isMultiple);
                 body += `<input type="checkbox" id="logAxisInput${occurance}" class="logAxisInput">
 <label for="logAxisInput${occurance}">Log y-axis</label>
 </p>

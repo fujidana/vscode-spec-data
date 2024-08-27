@@ -62,15 +62,15 @@ const showPlotInputChangeHandler = function (event: Event) {
         if (occuranceString && axisSelects.length === 2 && logAxisInputs.length === 1) {
             const occurance = parseInt(occuranceString);
 
+            const xIndex = axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex;
+            const yIndexes = [...axisSelects[1].selectedOptions].map(option => option.index);
+
             // show or hide the graph
             if (showPlotInput.checked) {
                 const messageOut: MessageFromWebview = {
                     type: 'requestPlotData',
                     occurance: occurance,
-                    indexes: [
-                        axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
-                        axisSelects[1].selectedIndex
-                    ],
+                    indexes: { x: xIndex, y: yIndexes },
                     logAxis: logAxisInputs[0].checked,
                     action: 'new'
                 };
@@ -87,8 +87,8 @@ const showPlotInputChangeHandler = function (event: Event) {
 
             // save the current state
             state.scanData[occurance] = {
-                x: axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
-                y: axisSelects[1].selectedIndex,
+                x: xIndex,
+                y: yIndexes,
                 hidden: !showPlotInput.checked,
                 logAxis: logAxisInputs[0].checked
             };
@@ -108,14 +108,14 @@ const plotAxisSelectChangeHandler = function (event: Event) {
         if (occuranceString && showPlotInputs.length === 1 && axisSelects.length === 2 && logAxisInputs.length === 1) {
             const occurance = parseInt(occuranceString);
 
+            const xIndex = axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex;
+            const yIndexes = [...axisSelects[1].selectedOptions].map(option => option.index);
+
             // redraw the graph
             const messageOut: MessageFromWebview = {
                 type: 'requestPlotData',
                 occurance: occurance,
-                indexes: [
-                    axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
-                    axisSelects[1].selectedIndex
-                ],
+                indexes: { x: xIndex, y: yIndexes },
                 logAxis: logAxisInputs[0].checked,
                 action: 'react'
             };
@@ -123,8 +123,8 @@ const plotAxisSelectChangeHandler = function (event: Event) {
 
             // save the current state
             state.scanData[occurance] = {
-                x: axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
-                y: axisSelects[1].selectedIndex,
+                x: xIndex,
+                y: yIndexes,
                 hidden: !showPlotInputs[0].checked,
                 logAxis: logAxisInputs[0].checked
             };
@@ -150,10 +150,13 @@ const logAxisInputChangeHander = function (event: Event) {
                 'yaxis.type': logAxisInput.checked ? 'log' : 'linear'
             });
 
+            const xIndex = axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex;
+            const yIndexes = [...axisSelects[1].selectedOptions].map(option => option.index);
+
             // save the current state
             state.scanData[occurance] = {
-                x: axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
-                y: axisSelects[1].selectedIndex,
+                x: xIndex,
+                y: yIndexes,
                 hidden: !showPlotInputs[0].checked,
                 logAxis: logAxisInput.checked
             };
@@ -173,13 +176,14 @@ const showAllGraphs = (action: ActionType) => {
         if (occuranceString && showPlotInputs && axisSelects && logAxisInputs && plotDivs && showPlotInputs.length === 1 && axisSelects.length === 2 && logAxisInputs.length === 1 && plotDivs.length === 1) {
             if (showPlotInputs[0].checked) {
                 if (action === 'new') {
+                    const xIndex = axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex;
+                    const yIndexes = [...axisSelects[1].selectedOptions].map(option => option.index);
+
+                    // redraw the graph
                     const messageOut: MessageFromWebview = {
                         type: 'requestPlotData',
                         occurance: parseInt(occuranceString),
-                        indexes: [
-                            axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
-                            axisSelects[1].selectedIndex
-                        ],
+                        indexes: { x: xIndex, y: yIndexes },
                         logAxis: logAxisInputs[0].checked,
                         action: action
                     };
@@ -214,22 +218,36 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
     } else if (messageIn.type === 'updatePlot') {
         const element = document.getElementById(messageIn.elementId);
         if (element) {
+            const data = messageIn.y.map(y_i => {
+                return {
+                    x: messageIn.x.array, y: y_i.array, type: 'scatter', name: y_i.label
+                };
+            });
+            let yLabel: string;
+            if (messageIn.y.length > 2) {
+                yLabel = `${messageIn.y[0].label}, ${messageIn.y[1].label}, ...`;
+            } else if (messageIn.y.length === 2) {
+                yLabel = `${messageIn.y[0].label}, ${messageIn.y[1].label}`;
+            } else {
+                yLabel = messageIn.y[0].label;
+            }
+
             const layout = {
                 template: state.template,
                 height: plotHeight,
-                xaxis: { title: messageIn.labels[0] },
+                xaxis: { title: messageIn.x.label },
                 yaxis: {
                     type: messageIn.logAxis ? 'log' : 'linear',
-                    title: messageIn.labels[1]
+                    title: yLabel
                 },
                 margin: { t: 20, r: 20 }
             };
 
             if (messageIn.action === 'new') {
                 element.hidden = false;
-                Plotly.newPlot(element, messageIn.data, layout, { responsive: true });
+                Plotly.newPlot(element, data, layout, { responsive: true });
             } else if (messageIn.action === 'react') {
-                Plotly.react(element, messageIn.data, layout);
+                Plotly.react(element, data, layout);
             }
         }
     } else if (messageIn.type === 'lockPreview') {
@@ -270,7 +288,7 @@ window.addEventListener('DOMContentLoaded', event => {
             const scanDataState = occurance in state.scanData ? state.scanData[occurance] : {
                 hidden: occurance >= maximumPlots,
                 x: axisSelects[0].length > 2 ? 0 : 1,
-                y: axisSelects[1].length - 1,
+                y: [axisSelects[1].length - 1],
                 logAxis: false
             };
 
@@ -293,7 +311,11 @@ window.addEventListener('DOMContentLoaded', event => {
             logAxisInputs[0].disabled = scanDataState.hidden;
 
             axisSelects[0].selectedIndex = scanDataState.x;
-            axisSelects[1].selectedIndex = scanDataState.y;
+            for (const option of axisSelects[1].options) {
+                if (scanDataState.y.includes(option.index)) {
+                    option.selected = true;
+                }
+            }
             logAxisInputs[0].checked = scanDataState.logAxis;
         }
     }
