@@ -25,7 +25,7 @@ interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code:
 interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], xAxisSelectable: boolean }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
-interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
+interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, enableMultipleSelection: boolean, tree?: Node[] }
 
 /**
  * Provider class for "spec-data" language
@@ -93,6 +93,16 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const refreshPreviewCallback = async (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
+                this.reloadPreview(activePreview, activePreview.uri);
+            } else {
+                vscode.window.showErrorMessage('Failed in finding active preview tab.');
+            }
+        };
+        // callback of 'spec-data.togglePreviewLock'.
+        const toggleMultipleSelectionCallback = (..._args: unknown[]) => {
+            const activePreview = this.getActivePreview();
+            if (activePreview) {
+                activePreview.enableMultipleSelection = !activePreview.enableMultipleSelection;
                 this.reloadPreview(activePreview, activePreview.uri);
             } else {
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
@@ -200,6 +210,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.commands.registerCommand('spec-data.showLockedPreviewToSide', showLockedPreviewToSideCallback),
             vscode.commands.registerCommand('spec-data.showSource', showSourceCallback),
             vscode.commands.registerCommand('spec-data.refreshPreview', refreshPreviewCallback),
+            vscode.commands.registerCommand('spec-data.toggleMultipleSelection', toggleMultipleSelectionCallback),
             vscode.commands.registerCommand('spec-data.togglePreviewLock', togglePreviewLockCallback),
             vscode.languages.registerFoldingRangeProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.languages.registerDocumentSymbolProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
@@ -371,12 +382,14 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return undefined;
         }
 
+        const config = vscode.workspace.getConfiguration('spec-data.preview', uri);
+
         // If panel is not provided, create a new panel.
         let panel2: vscode.WebviewPanel;
         if (panel) {
             panel2 = panel;
         } else {
-            const retainContextWhenHidden = vscode.workspace.getConfiguration('spec-data.preview', uri).get<boolean>('retainContextWhenHidden', false);
+            const retainContextWhenHidden = config.get<boolean>('retainContextWhenHidden', false);
             panel2 = vscode.window.createWebviewPanel(
                 'spec-data.preview',
                 'Preview spec data',
@@ -388,9 +401,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 }
             );
         }
+        const enableMultipleSelection = config.get<boolean>('plot.experimental.enableMulitpleSelection', false);
 
         // 
-        const preview: Preview = { uri, panel: panel2 };
+        const preview: Preview = { uri, panel: panel2, enableMultipleSelection };
         this.previews.push(preview);
         if (!lockPreview) {
             this.livePreview = preview;
@@ -485,7 +499,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         preview.tree = tree;
         preview.panel.title = `${label} ${preview.uri.path.substring(preview.uri.path.lastIndexOf('/') + 1)}`;
-        preview.panel.webview.html = getWebviewContent(webview.cspSource, preview.uri, plotlyJsUri, controllerJsUri, tree);
+        preview.panel.webview.html = getWebviewContent(webview.cspSource, preview.uri, plotlyJsUri, controllerJsUri, tree, preview.enableMultipleSelection);
 
         const messageOut: MessageToWebview = { type: 'lockPreview', flag: lockPreview };
         preview.panel.webview.postMessage(messageOut);
@@ -981,7 +995,7 @@ function parseChiplotContent(lines: string[]): Node[] | undefined {
     return nodes;
 }
 
-function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri: vscode.Uri, controllerJsJri: vscode.Uri, nodes: Node[]): string {
+function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri: vscode.Uri, controllerJsJri: vscode.Uri, nodes: Node[], enableMultipleSelection: boolean): string {
     const nameLists: { [name: string]: string[] } = {};
     const mnemonicLists: { [name: string]: string[] } = {};
 
@@ -991,7 +1005,6 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     const headerType = config.get<string>('table.headerType', 'mnemonic');
     const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
     const plotHeight = config.get<number>('plot.height', 400);
-    const enableMultipleSelecton = config.get<boolean>('plot.experimental.enableMulitpleSelection', false);
 
     // Apply CSP when in untrusted workspaces, even when 
     // it is disabled not in workspace settings but in user settings.
@@ -1095,7 +1108,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 <input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
 <label for="showPlotInput${occurance}">Show Plot</label>, 
 `;
-                const isMultiple = enableMultipleSelecton && ((node.xAxisSelectable && data.length >= 3) || data.length >= 2);
+                const isMultiple = enableMultipleSelection && ((node.xAxisSelectable && data.length >= 3) || data.length >= 2);
                 body += getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], !node.xAxisSelectable);
                 body += getAxisSelectAndOptions('y', occurance, headers, false, isMultiple);
                 body += `<input type="checkbox" id="logAxisInput${occurance}" class="logAxisInput">
