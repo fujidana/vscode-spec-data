@@ -4,11 +4,21 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.6.0] -- 2024-08-27
+
 ### Added
 
 - Enable to select multiple data arrays in a graph. This feature is experimental and currently disabled by default.
   - Add "spec-data: Toggle Multiple Selection" in the command pallete, which is selectable when the preview panel is active. Use this for ad-hoc switch from the original single-plot behavior.
-  - Add `#spec-data.preview.plot.experimental.enableMulitpleSelection` setting. Use this for continueous use.
+  - Add `#spec-data.preview.plot.experimental.enableMulitpleSelection#` setting. Use this for continueous use.
+- Add _first-line_ matching patterns for file associations with: `csv-row` and `csv-column`; a text file starting with `# mode: csv-row` and `# mode: csv-column` are now automatically associated with these languages.
+
+### Changed
+
+- Bump `plotly.js-basic-dist-min` dependency to 2.34.0.
+- Update Node.js packages, including a vulnerable dependency.
+- Raise the minimum VS Code version to 1.91.0.
+- Rename several scope names used in syntax highlighting, based on reference: [Sublime Text / Scope Naming](https://www.sublimetext.com/docs/scope_naming.html).
 
 ## [1.5.5] -- 2023-12-30
 
@@ -277,7 +287,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.5...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.5...v1.6.0
 [1.5.5]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.4...v1.5.5
 [1.5.4]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.3...v1.5.4
 [1.5.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.2...v1.5.3

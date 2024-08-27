@@ -3,9 +3,9 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "1.5.5",
+	"version": "1.6.0",
 	"engines": {
-		"vscode": "^1.85.0"
+		"vscode": "^1.91.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -55,13 +55,15 @@
 				"id": "csv-column",
 				"aliases": [
 					"CSV (numeric columns)"
-				]
+				],
+				"firstLine": "^#\\s*(.*)\\bmode\\s*:\\s*csv-column\\b"
 			},
 			{
 				"id": "csv-row",
 				"aliases": [
 					"CSV (numeric rows)"
-				]
+				],
+				"firstLine": "^#\\s*(.*)\\bmode\\s*:\\s*csv-row\\b"
 			},
 			{
 				"id": "dppmca",
@@ -116,7 +118,7 @@
 				"command": "spec-data.showPreview",
 				"title": "Open Preview",
 				"category": "spec data",
-				"icon": "$(preview)"
+				"icon": "$(graph-line)"
 			},
 			{
 				"command": "spec-data.showPreviewToSide",
@@ -307,7 +309,12 @@
 							"type": "object",
 							"properties": {
 								"data": {
-									"type": "array"
+									"type": "object",
+									"properties": {
+										"scatter": {
+											"type": "array"
+										}
+									}
 								},
 								"layout": {
 									"type": "object"
@@ -428,34 +435,35 @@
 		"js-yaml:dppmca": "js-yaml ./src/dppmca.tmLanguage.yaml > ./syntaxes/dppmca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml ./src/chiplot.tmLanguage.yaml > ./syntaxes/chiplot.tmLanguage.json",
 		"js-yaml": "pnpm run js-yaml:spec-data && pnpm run js-yaml:csv && pnpm run js-yaml:dppmca && pnpm run js-yaml:chiplot",
-		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@2.27.1"
+		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@2.34.0"
 	},
 	"devDependencies": {
 		"@types/assert": "^1.5.10",
 		"@types/lodash.merge": "^4.6.9",
 		"@types/minimatch": "^5.1.2",
-		"@types/mocha": "^10.0.6",
-		"@types/node": "18.x",
-		"@types/vscode": "^1.85.0",
-		"@types/vscode-webview": "^1.57.4",
-		"@types/webpack-env": "^1.18.4",
-		"@typescript-eslint/eslint-plugin": "^6.15.0",
-		"@typescript-eslint/parser": "^6.15.0",
-		"@vscode/test-cli": "^0.0.4",
-		"@vscode/test-electron": "^2.3.8",
-		"@vscode/test-web": "^0.0.50",
+		"@types/mocha": "^10.0.7",
+		"@types/node": "20.x",
+		"@types/plotly.js-basic-dist-min": "^2.12.4",
+		"@types/vscode": "^1.91.0",
+		"@types/vscode-webview": "^1.57.5",
+		"@types/webpack-env": "^1.18.5",
+		"@typescript-eslint/eslint-plugin": "^7.14.1",
+		"@typescript-eslint/parser": "^7.11.0",
+		"@vscode/test-cli": "^0.0.9",
+		"@vscode/test-electron": "^2.4.0",
+		"@vscode/test-web": "^0.0.55",
 		"assert": "^2.1.0",
-		"eslint": "^8.56.0",
+		"eslint": "^8.57.0",
 		"js-yaml": "^4.1.0",
-		"mocha": "^10.2.0",
+		"mocha": "^10.5.2",
 		"process": "^0.11.10",
 		"ts-loader": "^9.5.1",
-		"typescript": "^5.3.3",
-		"webpack": "^5.89.0",
+		"typescript": "^5.4.5",
+		"webpack": "^5.92.1",
 		"webpack-cli": "^5.1.4"
 	},
 	"dependencies": {
 		"lodash.merge": "^4.6.2",
-		"minimatch": "^9.0.3"
+		"minimatch": "^10.0.1"
 	}
 }

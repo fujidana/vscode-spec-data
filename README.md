@@ -10,15 +10,16 @@ The data file formats the exension supports are as follows:
   - A pair of columns in a `csv-column` file and that of rows in a `csv-row` file can be graphically plotted.
   - All cells must be numeric; string may appear only in a header line that starts with a hash character (`#`).
   - A delimiter may be either a whitespace, tab, or comma, and is auto-detected.
-  - The IDs are not associated with any file extensions by default because it can not be determined from a file extension which direction (column-wise or row-wise) an array should be extracted from a table.
+  - The extension does not associate the file extensions such as `.csv`, `tsv`, or `dat` with and language ID by the following reasons:
+    - The extension can not determine from the file extension which direction (column-wise or row-wise) an array should be extracted from a table.
+    - The extension do not intend to support all possible features for general CSV files. The main feature is drawing a graph and thus files consisting of number only are targeted.
   - A data file exported by ESRF's __spec__ macro, [BLISS / mca.mac](https://www.esrf.fr/blissdb/macros/macdoc.py?macname=mca.mac), is also covered in `csv-row`.
 - __spec standard data file__ (ID: `spec-data`, extension: `.spec`): files the __spec__ software outputs during various scan commands.
+  - Note that the __spec__ software does not specify a file extension for the data format. Use of `.spec` for __spec__ data file is just the preference of the extension author.
 - __fit2d chiplot file format__ (ID: `chiplot`, extension: `.chi`): a text file format in which __fit2d__ software imports and exports one-dimensional dataset such as scattering profiles.
 - __DppMCA spectra data file format__ (ID: `dppmca`, extension: `.mca`): DppMCA is DP5 Digital Pulse Prosessor Display & Acquisition Software for Multichannel Analyzers, developed by Amptek.
 
-While the extension associates `spec-data` file with `.spec` file by default, __spec__ does not specify a file extension for the data format.
-Also, the extension does not associate `csv-row` or `csv-column` file with any file extensions commonly used for CSV files (`.csv`, `tsv`, or `dat`).
-However, a user can set and modify the association between a language identifier and file extensions (or blob pattern) by oneself.
+While the default file associations (relations between language identifier and file extensions (or blob pattern)) are set as listed above, a user can customize them by oneself using `#files.associations#` setting.
 Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs/languages/overview) (official document of VS Code) for further details.
 
 ## What's __spec__?
@@ -67,14 +68,14 @@ The following example code in the _setting.json_ file makes the line color green
     "spec-data.preview.plot.templates": {
         "light": {
             "data": [
-                {"type": "scatter", "line": { "color": "#00FF00" } }
+                { "type": "scatter", "line": { "color": "#00FF00" } }
             ]
         }
     }
 }
 ```
 
-The default template objects for the respective color themes can be found in [/src/plotTemplate.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/plotTemplate.ts) in the GitHub repository.
+The default template objects for the respective color themes can be found in [src/plotTemplate.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/plotTemplate.ts) in the GitHub repository.
 This may help a user to find the name of an attribute he/she wants to change.
 See the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) for the complete list of the Plotly.js template attributes.
 
@@ -95,17 +96,20 @@ Read GitHub Issue #1 for more details.
 
 ### Unsupported text encodings for not-in-editor documents
 
-When a preview whose source editor has been closed is reloaded, the extension tries to load the file contents using the value for `files.encoding` setting ID as the text encoding.
-The current implementation does not support several text encodings in this situation and defaults to UTF-8 in these cases.
-See GitHub issue fujidana/vscode-spec-command#6 for more details.
-In most cases data files will consist of ASCII characters only.
-Then, it is safely loaded as UTF-8 and the problem does not arise.
+When a preview whose source editor has been closed is reloaded, the extension tries to load the file contents using the value for `#files.encoding#` setting ID as the text encoding.
+The current implementation does not support several text encodings in this situation and defaults to UTF-8 in such cases.
+See GitHub issue [fujidana/vscode-spec-command#6](https://github.com/fujidana/vscode-spec-command/issues/6) (another extension) for more details.
 
 ## Release Notes
 
 See [CHANGELOG.md](CHANGELOG.md).
 
 ## Tips
+
+### File associations using the file contents
+
+In addition to a file extension and file pattter, VS Code refers to the first line of a file in order to associate the file with a language (IOW, editor mode).
+A text file starting with `# mode: csv-row` and `# mode: csv-column` is automatically associated with `csv-row` and `csv-column`, respectively.
 
 ### Make __spec__ output a row-wise CSV file
 

@@ -1047,7 +1047,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
         header += `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src 'unsafe-inline'; script-src ${cspSource};">
 `;
     }
-    header += `<title>Preview spec scan</title>
+    header += `<title>Preview of spec-data</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="${plotlyJsUri}"></script>
     <script src="${controllerJsJri}"></script>
