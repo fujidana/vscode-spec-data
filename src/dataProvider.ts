@@ -3,6 +3,7 @@ import plotTemplate from './plotTemplate';
 import merge = require('lodash.merge');
 import { minimatch } from 'minimatch';
 import { getTextDecoder } from './textEncoding';
+import type { State, MessageToWebview, MessageFromWebview } from "./previewTypes";
 
 const SPEC_DATA_FILTER = { language: 'spec-data' };
 const CSV_COLUMNS_FILTER = { language: 'csv-column' };
@@ -25,10 +26,6 @@ interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], d
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
 interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, tree?: Node[] }
-
-interface ValueListState { [occurance: number]: { hidden: boolean } }
-interface ScanDataState { [occurance: number]: { x: number, y: number, hidden: boolean, logAxis: boolean } }
-interface State { template: unknown, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
 
 /**
  * Provider class for "spec-data" language
@@ -110,7 +107,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 if (this.livePreview && activePreview.panel === this.livePreview.panel) {
                     // If the active view is a live preview, lock the view to the file.
                     this.livePreview = undefined;
-                    activePreview.panel.webview.postMessage({ command: 'lockPreview', flag: true });
+                    const messageOut: MessageToWebview = { type: 'lockPreview', flag: true };
+                    activePreview.panel.webview.postMessage(messageOut);
                     activePreview.panel.title = `[Preview] ${filePath.substring(filePath.lastIndexOf('/') + 1)}`;
                 } else {
                     // If the active view is not a live preview...
@@ -120,7 +118,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     }
                     // and set the active view to live view.
                     this.livePreview = activePreview;
-                    activePreview.panel.webview.postMessage({ command: 'lockPreview', flag: false });
+                    const messageOut: MessageToWebview = { type: 'lockPreview', flag: false };
+                    activePreview.panel.webview.postMessage(messageOut);
                     activePreview.panel.title = `Preview ${filePath.substring(filePath.lastIndexOf('/') + 1)}`;
                 }
             } else {
@@ -146,7 +145,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 for (const preview of previews) {
                     const node = preview.tree?.find(node => (node.lineEnd >= line));
                     if (node) {
-                        preview.panel.webview.postMessage({ command: 'scrollToElement', elementId: `l${node.lineStart}` });
+                        const messageOut: MessageToWebview = { type: 'scrollToElement', elementId: `l${node.lineStart}` };
+                        preview.panel.webview.postMessage(messageOut);
                     }
                 }
             }
@@ -181,11 +181,12 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     // only delivered if the webview is live (either visible or in 
                     // the background with `retainContextWhenHidden`).
                     // However, it seems invisible webviews also handle the following messages.
-                    preview.panel.webview.postMessage({
-                        command: 'setTemplate',
+                    const messageOut: MessageToWebview = {
+                        type: 'setTemplate',
                         template: getPlotlyTemplate(colorTheme.kind, preview.uri),
                         action: 'update'
-                    });
+                    };
+                    preview.panel.webview.postMessage(messageOut);
                 }
             }
             this.colorThemeKind = colorTheme.kind;
@@ -408,16 +409,15 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         }, null, this.subscriptions);
 
-        panel2.webview.onDidReceiveMessage(message => {
-            // console.log(message);
-            if (message.command === 'requestPlotData') {
+        panel2.webview.onDidReceiveMessage((messageIn: MessageFromWebview) => {
+            if (messageIn.type === 'requestPlotData') {
                 const tree = this.previews.find(preview => preview.panel === panel2)?.tree;
                 if (tree) {
-                    const node = tree.find(node => node.occurance === message.occurance && node.type === 'scanData');
+                    const node = tree.find(node => node.occurance === messageIn.occurance && node.type === 'scanData');
                     if (node && node.type === 'scanData' && node.data.length) {
                         const headers = node.headers;
                         const data = node.data;
-                        const [xIndex, yIndex] = message.indexes;
+                        const [xIndex, yIndex] = messageIn.indexes;
                         let xData, xLabel;
                         if (xIndex >= 0 && xIndex < data.length) {
                             xData = data[xIndex];
@@ -428,23 +428,25 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                         }
 
                         if (yIndex >= 0 && yIndex < data.length) {
-                            panel2.webview.postMessage({
-                                command: 'updatePlot',
-                                elementId: `plotly${message.occurance}`,
+                            const messageOut: MessageToWebview = {
+                                type: 'updatePlot',
+                                elementId: `plotly${messageIn.occurance}`,
                                 data: [{ x: xData, y: data[yIndex] }],
                                 labels: [xLabel, headers[yIndex]],
-                                logAxis: message.logAxis,
-                                action: message.action
-                            });
+                                logAxis: messageIn.logAxis,
+                                action: messageIn.action
+                            };
+                            panel2.webview.postMessage(messageOut);
                         }
                     }
                 }
-            } else if (message.command === 'requestTemplate') {
-                panel2.webview.postMessage({
-                    command: 'setTemplate',
+            } else if (messageIn.type === 'contentLoaded') {
+                const messageTo: MessageToWebview = {
+                    type: 'setTemplate',
                     template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, uri),
-                    action: message.action
-                });
+                    action: 'new'
+                };
+                panel2.webview.postMessage(messageTo);
             }
         }, undefined, this.subscriptions);
 
@@ -485,7 +487,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.panel.title = `${label} ${preview.uri.path.substring(preview.uri.path.lastIndexOf('/') + 1)}`;
         preview.panel.webview.html = getWebviewContent(webview.cspSource, preview.uri, plotlyJsUri, controllerJsUri, tree);
 
-        preview.panel.webview.postMessage({ command: 'lockPreview', flag: lockPreview });
+        const messageOut: MessageToWebview = { type: 'lockPreview', flag: lockPreview };
+        preview.panel.webview.postMessage(messageOut);
     }
 
     private getActivePreview(): Preview | undefined {
@@ -749,7 +752,6 @@ function parseSpecDataContent(lines: string[]): Node[] | undefined {
 
 // character-separated values. The delimiter is auto-detected from a horizontal tab, a whitespace, or a comma. 
 function parseCsvContent(lines: string[], columnWise: boolean): Node[] | undefined {
-    
     const lineCount = lines.length;
     const nodes: Node[] = [];
     let dataOccurrance = 0, commentOccurance = 0;
@@ -779,7 +781,7 @@ function parseCsvContent(lines: string[], columnWise: boolean): Node[] | undefin
                 // If the line starts with "@A", it is data in ESRF's MCA format.
                 // Trim the prefix: "@A ".
                 isEsrfMca = true;
-                
+
                 // Concatenate the lines that ends with a backslash.
                 let lineText2 = lineText.substring(3);
                 while (lineText2.endsWith('\\') && lineIndex + 1 < lineCount) {
@@ -792,12 +794,12 @@ function parseCsvContent(lines: string[], columnWise: boolean): Node[] | undefin
                 data.push(firstRowCells.map(cell => parseFloat(cell)));
                 dataStartIndex = lineIndex;
                 lineIndex++;
-                break;                
+                break;
             } else {
                 let firstCell: string;
                 let delimMatch: RegExpExecArray | null;
                 if ((delimMatch = /[\t, ]/.exec(lineText)) !== null) {
-                // If the first cell delimited by a delimiter (a tab, comma, or whitespace) is a number, go to the next step.
+                    // If the first cell delimited by a delimiter (a tab, comma, or whitespace) is a number, go to the next step.
                     firstCell = lineText.slice(0, delimMatch.index);
                     if (delimMatch[0] === ' ') {
                         delimRegexp = / +/;
@@ -856,7 +858,7 @@ function parseCsvContent(lines: string[], columnWise: boolean): Node[] | undefin
                 data.push(currentRowCells.map(cell => parseFloat(cell)));
             }
         }
-        
+
         // Add the read data to the nodes.
         if (columnWise) {
             data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
@@ -870,7 +872,6 @@ function parseCsvContent(lines: string[], columnWise: boolean): Node[] | undefin
         dataOccurrance++;
     }
 
-    
     if (nodes.some(node => node.type === 'scanData')) {
         return nodes;
     }
@@ -1009,6 +1010,19 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
         return str;
     }
 
+    function getAxisSelectAndOptions(axis: string, occurance: number | undefined, headers: string[], hidden: boolean) {
+        const hiddenStr = hidden ? 'hidden' : '';
+        let tmpStr;
+        tmpStr = `<label for="axisSelect${axis.toUpperCase()}${occurance}" ${hiddenStr}>${axis}:</label>
+        <select id="axisSelect${axis.toUpperCase()}${occurance}" class="axisSelect" data-axis="${axis}" ${hiddenStr}>
+        `;
+        tmpStr += headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('');
+        tmpStr += `</select>
+        <span ${hiddenStr}>, </span>
+        `;
+        return tmpStr;
+    }
+
     let header = `<!DOCTYPE html>
 <html lang="en">
 <head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${sourceUri.toString()}">
@@ -1079,21 +1093,8 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 <input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
 <label for="showPlotInput${occurance}">Show Plot</label>, 
 `;
-                const axes = ['x', 'y'];
-                for (let j = 0; j < axes.length; j++) {
-                    const axis = axes[j];
-                    const hiddenStr = (j === 0 && node.xAxisSelectable === false) ? 'hidden' : '';
-                    body += `<label for="axisSelect${axis.toUpperCase()}${occurance}" ${hiddenStr}>${axis}:</label>
-<select id="axisSelect${axis.toUpperCase()}${occurance}" class="axisSelect" data-axis="${axis}" ${hiddenStr}>
-`;
-                    body += headers.map(item => `<option>${getSanitizedString(item)}</option>`).join('');
-                    if (j === 0) {
-                        body += '<option>[point]</option>';
-                    }
-                    body += `</select>
-<span ${hiddenStr}>, </span>
-`;
-                }
+                body += getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], !node.xAxisSelectable);
+                body += getAxisSelectAndOptions('y', occurance, headers, false);
                 body += `<input type="checkbox" id="logAxisInput${occurance}" class="logAxisInput">
 <label for="logAxisInput${occurance}">Log y-axis</label>
 </p>

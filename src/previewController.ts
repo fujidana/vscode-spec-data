@@ -4,12 +4,18 @@
  * from other sources.
  */
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
+/*
+ * @types/plotly.js and @types/plotly.js-basic-dist-min distributed by npm does not contain `makeTemplate()` function
+ * and thus, syntax error is thrown when used as type definitions. 
+ * Therefore, `declare` is used instead.
+ */
 declare const Plotly: any;
 
-interface ValueListState { [occurance: number]: { hidden: boolean } }
-interface ScanDataState { [occurance: number]: { x: number, y: number, hidden: boolean, logAxis: boolean } }
-interface State { template: unknown, valueList: ValueListState, scanData: ScanDataState, sourceUri: string, lockPreview: boolean }
+import type { MessageFromWebview, MessageToWebview, ActionType, State } from "./previewTypes";
+// type MessageFromWebview = any;
+// type MessageToWebview = any;
+// type ActionType = any;
+// type State = any;
 
 const vscode = acquireVsCodeApi<State>();
 
@@ -58,8 +64,8 @@ const showPlotInputChangeHandler = function (event: Event) {
 
             // show or hide the graph
             if (showPlotInput.checked) {
-                vscode.postMessage({
-                    command: 'requestPlotData',
+                const messageOut: MessageFromWebview = {
+                    type: 'requestPlotData',
                     occurance: occurance,
                     indexes: [
                         axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
@@ -67,7 +73,8 @@ const showPlotInputChangeHandler = function (event: Event) {
                     ],
                     logAxis: logAxisInputs[0].checked,
                     action: 'new'
-                });
+                };
+                vscode.postMessage(messageOut);
             } else {
                 Plotly.purge('plotly' + occuranceString);
             }
@@ -102,8 +109,8 @@ const plotAxisSelectChangeHandler = function (event: Event) {
             const occurance = parseInt(occuranceString);
 
             // redraw the graph
-            vscode.postMessage({
-                command: 'requestPlotData',
+            const messageOut: MessageFromWebview = {
+                type: 'requestPlotData',
                 occurance: occurance,
                 indexes: [
                     axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
@@ -111,7 +118,8 @@ const plotAxisSelectChangeHandler = function (event: Event) {
                 ],
                 logAxis: logAxisInputs[0].checked,
                 action: 'react'
-            });
+            };
+            vscode.postMessage(messageOut);
 
             // save the current state
             state.scanData[occurance] = {
@@ -155,7 +163,7 @@ const logAxisInputChangeHander = function (event: Event) {
 };
 
 // show all graphs
-const showAllGraphs = (action: string) => {
+const showAllGraphs = (action: ActionType) => {
     for (const div of document.body.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>) {
         const occuranceString = div.dataset.occurance;
         const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
@@ -165,8 +173,8 @@ const showAllGraphs = (action: string) => {
         if (occuranceString && showPlotInputs && axisSelects && logAxisInputs && plotDivs && showPlotInputs.length === 1 && axisSelects.length === 2 && logAxisInputs.length === 1 && plotDivs.length === 1) {
             if (showPlotInputs[0].checked) {
                 if (action === 'new') {
-                    vscode.postMessage({
-                        command: 'requestPlotData',
+                    const messageOut: MessageFromWebview = {
+                        type: 'requestPlotData',
                         occurance: parseInt(occuranceString),
                         indexes: [
                             axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex,
@@ -174,7 +182,8 @@ const showAllGraphs = (action: string) => {
                         ],
                         logAxis: logAxisInputs[0].checked,
                         action: action
-                    });
+                    };
+                    vscode.postMessage(messageOut);
                 } else if (action === 'update') {
                     Plotly.relayout(plotDivs[0], {
                         template: state.template
@@ -185,59 +194,46 @@ const showAllGraphs = (action: string) => {
     }
 };
 
-window.addEventListener('message', event => {
-    const message = event.data;
+window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
+    const messageIn = event.data;
 
-    if (message.command === 'setTemplate') {
-        state.template = Plotly.makeTemplate(message.template);
+    if (messageIn.type === 'setTemplate') {
+        state.template = Plotly.makeTemplate(messageIn.template);
         vscode.setState(state);
-        if (message.action) {
-            showAllGraphs(message.action);
+        if (messageIn.action) {
+            showAllGraphs(messageIn.action);
         }
-    } else if (message.command === 'scrollToElement') {
-        const element = document.getElementById(message.elementId);
+    } else if (messageIn.type === 'scrollToElement') {
+        const element = document.getElementById(messageIn.elementId);
         if (element) {
             element.scrollIntoView({
                 behavior: 'smooth',
                 block: 'start'
             });
         }
-    } else if (message.command === 'updatePlot') {
-        const element = document.getElementById(message.elementId);
+    } else if (messageIn.type === 'updatePlot') {
+        const element = document.getElementById(messageIn.elementId);
         if (element) {
-            if (message.action === 'new') {
+            const layout = {
+                template: state.template,
+                height: plotHeight,
+                xaxis: { title: messageIn.labels[0] },
+                yaxis: {
+                    type: messageIn.logAxis ? 'log' : 'linear',
+                    title: messageIn.labels[1]
+                },
+                margin: { t: 20, r: 20 }
+            };
+
+            if (messageIn.action === 'new') {
                 element.hidden = false;
-                Plotly.newPlot(element,
-                    message.data,
-                    {
-                        template: state.template,
-                        height: plotHeight,
-                        xaxis: { title: message.labels[0] },
-                        yaxis: {
-                            type: message.logAxis ? 'log' : 'linear',
-                            title: message.labels[1]
-                        },
-                        margin: { t: 20, r: 20 }
-                    },
-                    { responsive: true }
-                );
-            } else if (message.action === 'react') {
-                Plotly.react(element,
-                    message.data,
-                    {
-                        template: state.template,
-                        xaxis: { title: message.labels[0] },
-                        yaxis: {
-                            type: message.logAxis ? 'log' : 'linear',
-                            title: message.labels[1]
-                        },
-                        margin: { t: 20, r: 20 }
-                    }
-                );
+                Plotly.newPlot(element, messageIn.data, layout, { responsive: true });
+            } else if (messageIn.action === 'react') {
+                Plotly.react(element, messageIn.data, layout);
             }
         }
-    } else if (message.command === 'lockPreview') {
-        state.lockPreview = message.flag;
+    } else if (messageIn.type === 'lockPreview') {
+        state.lockPreview = messageIn.flag;
         vscode.setState(state);
     }
 });
@@ -302,8 +298,8 @@ window.addEventListener('DOMContentLoaded', event => {
         }
     }
 
-    vscode.postMessage({
-        command: 'requestTemplate',
-        action: 'new'
-    });
+    const messageOut: MessageFromWebview = {
+        type: 'contentLoaded',
+    };
+    vscode.postMessage(messageOut);
 });
