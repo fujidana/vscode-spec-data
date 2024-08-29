@@ -25,12 +25,19 @@ const plotHeight = headDataset.plotHeight !== undefined ? parseInt(headDataset.p
 const hideTableGlobal = headDataset.hideTable !== undefined ? Boolean(parseInt(headDataset.hideTable)) : false;
 const sourceUri = headDataset.sourceUri !== undefined ? headDataset.sourceUri : '';
 
-let state0 = vscode.getState();
-if (state0 === undefined || state0.sourceUri !== sourceUri) {
-    state0 = { template: undefined, valueList: {}, scanData: {}, sourceUri: sourceUri, lockPreview: false };
-    vscode.setState(state0);
+let state = vscode.getState();
+if (state === undefined || state.sourceUri !== sourceUri) {
+    const enableMultipleSelection = headDataset.enableMultipleSelection !== undefined ? Boolean(parseInt(headDataset.enableMultipleSelection)) : false;
+    state = {
+        template: undefined,
+        valueList: {},
+        scanData: {},
+        sourceUri: sourceUri,
+        lockPreview: false,
+        enableMultipleSelection: enableMultipleSelection,
+    };
+    vscode.setState(state);
 }
-const state = state0;
 
 // a handler for a checkbox to control the table visibility
 const showValueListInputChangeHandler = function (event: Event) {
@@ -57,13 +64,14 @@ const showPlotInputChangeHandler = function (event: Event) {
         const div = event.target.parentElement.parentElement;
         const occuranceString = div.dataset.occurance;
         const showPlotInput = event.target;
-        const axisSelects = div.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const yAxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const logAxisInputs = div.getElementsByClassName('logAxisInput') as HTMLCollectionOf<HTMLInputElement>;
-        if (occuranceString && axisSelects.length === 2 && logAxisInputs.length === 1) {
+        if (occuranceString && xAxisSelects.length === 1 && yAxisSelects.length === 1 && logAxisInputs.length === 1) {
             const occurance = parseInt(occuranceString);
 
-            const xIndex = axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex;
-            const yIndexes = [...axisSelects[1].selectedOptions].map(option => option.index);
+            const xIndex = xAxisSelects[0].hidden ? -1 : xAxisSelects[0].selectedIndex;
+            const yIndexes = [...yAxisSelects[0].selectedOptions].map(option => option.index);
 
             // show or hide the graph
             if (showPlotInput.checked) {
@@ -80,9 +88,8 @@ const showPlotInputChangeHandler = function (event: Event) {
             }
 
             // enable or disable the dropdown axis selectors
-            for (const axisSelect of axisSelects) {
-                axisSelect.disabled = !showPlotInput.checked;
-            }
+            xAxisSelects[0].disabled = !showPlotInput.checked;
+            yAxisSelects[0].disabled = !showPlotInput.checked;
             logAxisInputs[0].disabled = !showPlotInput.checked;
 
             // save the current state
@@ -103,13 +110,14 @@ const plotAxisSelectChangeHandler = function (event: Event) {
         const div = event.target.parentElement.parentElement;
         const occuranceString = div.dataset.occurance;
         const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
-        const axisSelects = div.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const yAxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const logAxisInputs = div.getElementsByClassName('logAxisInput') as HTMLCollectionOf<HTMLInputElement>;
-        if (occuranceString && showPlotInputs.length === 1 && axisSelects.length === 2 && logAxisInputs.length === 1) {
+        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && yAxisSelects.length === 1 && logAxisInputs.length === 1) {
             const occurance = parseInt(occuranceString);
 
-            const xIndex = axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex;
-            const yIndexes = [...axisSelects[1].selectedOptions].map(option => option.index);
+            const xIndex = xAxisSelects[0].hidden ? -1 : xAxisSelects[0].selectedIndex;
+            const yIndexes = [...yAxisSelects[0].selectedOptions].map(option => option.index);
 
             // redraw the graph
             const messageOut: MessageFromWebview = {
@@ -140,9 +148,10 @@ const logAxisInputChangeHander = function (event: Event) {
         const occuranceString = div.dataset.occurance;
         const logAxisInput = event.target;
         const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
-        const axisSelects = div.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const yAxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const plotDivs = div.getElementsByClassName('scanDataPlot') as HTMLCollectionOf<HTMLDivElement>;
-        if (occuranceString && showPlotInputs.length === 1 && axisSelects.length === 2 && plotDivs.length === 1) {
+        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && yAxisSelects.length === 1 && plotDivs.length === 1) {
             const occurance = parseInt(occuranceString);
 
             // redraw the graph
@@ -150,8 +159,8 @@ const logAxisInputChangeHander = function (event: Event) {
                 'yaxis.type': logAxisInput.checked ? 'log' : 'linear'
             });
 
-            const xIndex = axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex;
-            const yIndexes = [...axisSelects[1].selectedOptions].map(option => option.index);
+            const xIndex = xAxisSelects[0].hidden ? -1 : xAxisSelects[0].selectedIndex;
+            const yIndexes = [...yAxisSelects[0].selectedOptions].map(option => option.index);
 
             // save the current state
             state.scanData[occurance] = {
@@ -170,14 +179,15 @@ const showAllGraphs = (action: ActionType) => {
     for (const div of document.body.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>) {
         const occuranceString = div.dataset.occurance;
         const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
-        const axisSelects = div.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const yAxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const logAxisInputs = div.getElementsByClassName('logAxisInput') as HTMLCollectionOf<HTMLInputElement>;
         const plotDivs = div.getElementsByClassName('scanDataPlot') as HTMLCollectionOf<HTMLDivElement>;
-        if (occuranceString && showPlotInputs && axisSelects && logAxisInputs && plotDivs && showPlotInputs.length === 1 && axisSelects.length === 2 && logAxisInputs.length === 1 && plotDivs.length === 1) {
+        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && yAxisSelects.length === 1 && logAxisInputs.length === 1 && plotDivs.length === 1) {
             if (showPlotInputs[0].checked) {
                 if (action === 'new') {
-                    const xIndex = axisSelects[0].hidden ? -1 : axisSelects[0].selectedIndex;
-                    const yIndexes = [...axisSelects[1].selectedOptions].map(option => option.index);
+                    const xIndex = xAxisSelects[0].hidden ? -1 : xAxisSelects[0].selectedIndex;
+                    const yIndexes = [...yAxisSelects[0].selectedOptions].map(option => option.index);
 
                     // redraw the graph
                     const messageOut: MessageFromWebview = {
@@ -253,6 +263,28 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
     } else if (messageIn.type === 'lockPreview') {
         state.lockPreview = messageIn.flag;
         vscode.setState(state);
+    } else if (messageIn.type === 'enableMultipleSelection') {
+        const xAxisSelects = document.body.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const yAxisSelects = document.body.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        if (messageIn.flag === true) {
+            [...xAxisSelects].forEach(xAxisSelect => {
+                xAxisSelect.setAttribute('size', xAxisSelect.dataset.sizeForMultiple ?? '0');
+            });
+            [...yAxisSelects].forEach(yAxisSelect => {
+                yAxisSelect.setAttribute('multiple', '');
+                yAxisSelect.setAttribute('size', yAxisSelect.dataset.sizeForMultiple ?? '0');
+            });
+        } else if (messageIn.flag === false) {
+            [...xAxisSelects].forEach(xAxisSelect => {
+                xAxisSelect.removeAttribute('size');
+            });
+            [...yAxisSelects].forEach(yAxisSelect => {
+                yAxisSelect.removeAttribute('multiple');
+                yAxisSelect.removeAttribute('size');
+            });
+        }
+        state.enableMultipleSelection = messageIn.flag;
+        vscode.setState(state);
     }
 });
 
@@ -263,7 +295,7 @@ window.addEventListener('DOMContentLoaded', event => {
         const showValueListInputs = div.getElementsByClassName('showValueListInput') as HTMLCollectionOf<HTMLInputElement>;
         const valueListTables = div.getElementsByClassName('valueListTable') as HTMLCollectionOf<HTMLTableElement>;
 
-        if (occuranceString && showValueListInputs && valueListTables && showValueListInputs.length === 1 && valueListTables.length === 1) {
+        if (occuranceString && showValueListInputs.length === 1 && valueListTables.length === 1) {
             const occurance = parseInt(occuranceString);
             const hideTable: boolean = state.valueList[occurance] && state.valueList[occurance].hidden !== undefined ? state.valueList[occurance].hidden : hideTableGlobal;
 
@@ -280,15 +312,16 @@ window.addEventListener('DOMContentLoaded', event => {
     for (const div of document.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>) {
         const occuranceString = div.dataset.occurance;
         const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
-        const axisSelects = div.getElementsByClassName('axisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const yAxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const logAxisInputs = div.getElementsByClassName('logAxisInput') as HTMLCollectionOf<HTMLInputElement>;
 
-        if (occuranceString && showPlotInputs && axisSelects && logAxisInputs && showPlotInputs.length === 1 && axisSelects.length === 2 && logAxisInputs.length === 1) {
+        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && yAxisSelects.length === 1 && logAxisInputs.length === 1) {
             const occurance = parseInt(occuranceString);
             const scanDataState = occurance in state.scanData ? state.scanData[occurance] : {
                 hidden: occurance >= maximumPlots,
-                x: axisSelects[0].length > 2 ? 0 : 1,
-                y: [axisSelects[1].length - 1],
+                x: xAxisSelects[0].length > 2 ? 0 : 1,
+                y: [yAxisSelects[0].length - 1],
                 logAxis: false
             };
 
@@ -301,17 +334,27 @@ window.addEventListener('DOMContentLoaded', event => {
 
             // Axis selectors
             // register a handler
-            axisSelects[0].onchange = plotAxisSelectChangeHandler;
-            axisSelects[1].onchange = plotAxisSelectChangeHandler;
+            xAxisSelects[0].onchange = plotAxisSelectChangeHandler;
+            yAxisSelects[0].onchange = plotAxisSelectChangeHandler;
             logAxisInputs[0].onchange = logAxisInputChangeHander;
 
             // set the initial state.
-            axisSelects[0].disabled = scanDataState.hidden;
-            axisSelects[1].disabled = scanDataState.hidden;
+            xAxisSelects[0].disabled = scanDataState.hidden;
+            yAxisSelects[0].disabled = scanDataState.hidden;
             logAxisInputs[0].disabled = scanDataState.hidden;
 
-            axisSelects[0].selectedIndex = scanDataState.x;
-            for (const option of axisSelects[1].options) {
+            // toggle multiple slection
+            if (state.enableMultipleSelection) {
+                xAxisSelects[0].setAttribute('size', xAxisSelects[0].dataset.sizeForMultiple ?? "0");
+                yAxisSelects[0].setAttribute('multiple', '');
+                yAxisSelects[0].setAttribute('size', yAxisSelects[0].dataset.sizeForMultiple ?? "0");
+            } else {
+                xAxisSelects[0].removeAttribute('size');
+                yAxisSelects[0].removeAttribute('size');
+            }
+            // set the data selection.
+            xAxisSelects[0].selectedIndex = scanDataState.x;
+            for (const option of yAxisSelects[0].options) {
                 if (scanDataState.y.includes(option.index)) {
                     option.selected = true;
                 }

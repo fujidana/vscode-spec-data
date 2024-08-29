@@ -4,13 +4,18 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Changed
+
+- Improve the behavior or "spec-data: Toggle Multiple Selection" command. Now the command updates the preview contents without reloading. As a result, the switch becomes faster and does not break the scroll position.
+- Change the settings of several UI components used for multiple selection for better usability.
+
 ## [1.6.0] -- 2024-08-27
 
 ### Added
 
 - Enable to select multiple data arrays in a graph. This feature is experimental and currently disabled by default.
   - Add "spec-data: Toggle Multiple Selection" in the command pallete, which is selectable when the preview panel is active. Use this for ad-hoc switch from the original single-plot behavior.
-  - Add `#spec-data.preview.plot.experimental.enableMulitpleSelection#` setting. Use this for continueous use.
+  - Add `spec-data.preview.plot.experimental.enableMulitpleSelection` setting. Use this for continueous use.
 - Add _first-line_ matching patterns for file associations with: `csv-row` and `csv-column`; a text file starting with `# mode: csv-row` and `# mode: csv-column` are now automatically associated with these languages.
 
 ### Changed

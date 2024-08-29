@@ -6,14 +6,16 @@ export interface State {
     valueList: ValueListState,
     scanData: ScanDataState,
     sourceUri: string,
-    lockPreview: boolean
+    lockPreview: boolean,
+    enableMultipleSelection: boolean
 }
 
 export type MessageToWebview =
     LockPreviewMessage
     | ScrollToElementMessage
     | SetTemplateMessage
-    | UpdatePlotMessage;
+    | UpdatePlotMessage
+    | EnableMultipleSelectionMessage;
 
 export interface BaseMessage {
     type: string;
@@ -42,6 +44,11 @@ interface UpdatePlotMessage extends BaseMessage {
     y: { label: string, array: number[] }[];
     logAxis: boolean;
     action: ActionType;
+}
+
+interface EnableMultipleSelectionMessage extends BaseMessage {
+    type: 'enableMultipleSelection';
+    flag: boolean;
 }
 
 export type MessageFromWebview =

@@ -102,8 +102,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const toggleMultipleSelectionCallback = (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
-                activePreview.enableMultipleSelection = !activePreview.enableMultipleSelection;
-                this.reloadPreview(activePreview, activePreview.uri);
+                const flag = !activePreview.enableMultipleSelection;
+                activePreview.enableMultipleSelection = flag;
+                const messageOut: MessageToWebview = { type: 'enableMultipleSelection', flag: flag };
+                activePreview.panel.webview.postMessage(messageOut);
             } else {
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
             }
@@ -1024,12 +1026,13 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
         return str;
     }
 
-    function getAxisSelectAndOptions(axis: string, occurance: number | undefined, headers: string[], hidden: boolean = false, isMultiple = false) {
-        const hiddenStr = hidden ? ' hidden' : '';
-        const isMultipleStr = isMultiple ? ' multiple' : '';
+    function getAxisSelectAndOptions(axis: string, occurance: number | undefined, headers: string[], hidden?: boolean, size?: number) {
+        const hiddenStr = hidden === true ? ' hidden' : '';
+        const sizeStr = size !== undefined ? ` data-size-for-multiple=${size}` : '';
+        // const isMultipleStr = isMultiple ? ' multiple' : '';
         let tmpStr;
-        tmpStr = `<label for="axisSelect${axis.toUpperCase()}${occurance}"${hiddenStr}>${axis}:</label>
-        <select id="axisSelect${axis.toUpperCase()}${occurance}" class="axisSelect" data-axis="${axis}"${isMultipleStr}${hiddenStr}>
+        tmpStr = `<label for="${axis}AxisSelect${occurance}"${hiddenStr}>${axis}:</label>
+        <select id="${axis}AxisSelect${occurance}" class="${axis}AxisSelect" data-axis="${axis}"${hiddenStr}${sizeStr}>
         `;
         tmpStr += headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('');
         tmpStr += `</select>
@@ -1040,7 +1043,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 
     let header = `<!DOCTYPE html>
 <html lang="en">
-<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${sourceUri.toString()}">
+<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${sourceUri.toString()}" data-enable-multiple-selection="${Number(enableMultipleSelection)}">
 	<meta charset="UTF-8">
 `;
     if (applyCsp) {
@@ -1108,9 +1111,9 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 <input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
 <label for="showPlotInput${occurance}">Show Plot</label>, 
 `;
-                const isMultiple = enableMultipleSelection && ((node.xAxisSelectable && data.length >= 3) || data.length >= 2);
-                body += getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], !node.xAxisSelectable);
-                body += getAxisSelectAndOptions('y', occurance, headers, false, isMultiple);
+                const size = Math.min((node.xAxisSelectable ? headers.length + 1 : headers.length), 4);
+                body += getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], !node.xAxisSelectable, size);
+                body += getAxisSelectAndOptions('y', occurance, headers, false, size);
                 body += `<input type="checkbox" id="logAxisInput${occurance}" class="logAxisInput">
 <label for="logAxisInput${occurance}">Log y-axis</label>
 </p>
