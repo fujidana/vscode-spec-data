@@ -65,24 +65,27 @@ const showPlotInputChangeHandler = function (event: Event) {
         const occuranceString = div.dataset.occurance;
         const showPlotInput = event.target;
         const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const yAxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y1AxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y2AxisSelects = div.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const logAxisInputs = div.getElementsByClassName('logAxisInput') as HTMLCollectionOf<HTMLInputElement>;
-        if (occuranceString && xAxisSelects.length === 1 && yAxisSelects.length === 1 && logAxisInputs.length === 1) {
+        if (occuranceString && xAxisSelects.length === 1 && y1AxisSelects.length === 1 && y2AxisSelects.length === 1 && logAxisInputs.length === 1) {
             const occurance = parseInt(occuranceString);
 
             const xAxisSelect = xAxisSelects[0];
-            const yAxisSelect = yAxisSelects[0];
+            const y1AxisSelect = y1AxisSelects[0];
+            const y2AxisSelect = y2AxisSelects[0];
             const logAxisInput = logAxisInputs[0];
 
             const xIndex = xAxisSelect.hidden ? -1 : xAxisSelect.selectedIndex;
-            const yIndexes = [...yAxisSelect.selectedOptions].map(option => option.index);
+            const y1Indexes = [...y1AxisSelect.selectedOptions].map(option => option.index);
+            const y2Indexes = y2AxisSelect.hidden ? [] : [...y2AxisSelect.selectedOptions].map(option => option.index);
 
             // show or hide the graph
             if (showPlotInput.checked) {
                 const messageOut: MessageFromWebview = {
                     type: 'requestPlotData',
                     occurance: occurance,
-                    indexes: { x: xIndex, y: yIndexes },
+                    indexes: { x: xIndex, y1: y1Indexes, y2: y2Indexes },
                     logAxis: logAxisInput.checked,
                     callback: 'newPlot'
                 };
@@ -93,13 +96,15 @@ const showPlotInputChangeHandler = function (event: Event) {
 
             // enable or disable the dropdown axis selectors
             xAxisSelect.disabled = !showPlotInput.checked;
-            yAxisSelect.disabled = !showPlotInput.checked;
+            y1AxisSelect.disabled = !showPlotInput.checked;
+            y2AxisSelect.disabled = !showPlotInput.checked;
             logAxisInput.disabled = !showPlotInput.checked;
 
             // save the current state
             state.scanData[occurance] = {
                 x: xIndex,
-                y: yIndexes,
+                y1: y1Indexes,
+                y2: y2Indexes,
                 hidden: !showPlotInput.checked,
                 logAxis: logAxisInput.checked
             };
@@ -115,23 +120,26 @@ const plotAxisSelectChangeHandler = function (event: Event) {
         const occuranceString = div.dataset.occurance;
         const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
         const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const yAxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y1AxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y2AxisSelects = div.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const logAxisInputs = div.getElementsByClassName('logAxisInput') as HTMLCollectionOf<HTMLInputElement>;
-        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && yAxisSelects.length === 1 && logAxisInputs.length === 1) {
+        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && y1AxisSelects.length === 1 && y2AxisSelects.length === 1 && logAxisInputs.length === 1) {
             const occurance = parseInt(occuranceString);
             const showPlotInput = showPlotInputs[0];
             const xAxisSelect = xAxisSelects[0];
-            const yAxisSelect = yAxisSelects[0];
+            const y1AxisSelect = y1AxisSelects[0];
+            const y2AxisSelect = y2AxisSelects[0];
             const logAxisInput = logAxisInputs[0];
 
             const xIndex = xAxisSelect.hidden ? -1 : xAxisSelect.selectedIndex;
-            const yIndexes = [...yAxisSelect.selectedOptions].map(option => option.index);
+            const y1Indexes = [...y1AxisSelect.selectedOptions].map(option => option.index);
+            const y2Indexes = y2AxisSelect.hidden ? [] : [...y2AxisSelect.selectedOptions].map(option => option.index);
 
             // redraw the graph
             const messageOut: MessageFromWebview = {
                 type: 'requestPlotData',
                 occurance: occurance,
-                indexes: { x: xIndex, y: yIndexes },
+                indexes: { x: xIndex, y1: y1Indexes, y2: y2Indexes },
                 logAxis: logAxisInput.checked,
                 callback: 'react'
             };
@@ -140,7 +148,8 @@ const plotAxisSelectChangeHandler = function (event: Event) {
             // save the current state
             state.scanData[occurance] = {
                 x: xIndex,
-                y: yIndexes,
+                y1: y1Indexes,
+                y2: y2Indexes,
                 hidden: !showPlotInput.checked,
                 logAxis: logAxisInput.checked
             };
@@ -157,26 +166,30 @@ const logAxisInputChangeHander = function (event: Event) {
         const logAxisInput = event.target;
         const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
         const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const yAxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y1AxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y2AxisSelects = div.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const plotDivs = div.getElementsByClassName('scanDataPlot') as HTMLCollectionOf<HTMLDivElement>;
-        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && yAxisSelects.length === 1 && plotDivs.length === 1) {
+        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && y1AxisSelects.length === 1 && y2AxisSelects.length === 1 && plotDivs.length === 1) {
             const occurance = parseInt(occuranceString);
             const showPlotInput = showPlotInputs[0];
             const xAxisSelect = xAxisSelects[0];
-            const yAxisSelect = yAxisSelects[0];
+            const y1AxisSelect = y1AxisSelects[0];
+            const y2AxisSelect = y2AxisSelects[0];
 
             // redraw the graph
             Plotly.relayout(plotDivs[0], {
-                'yaxis.type': logAxisInput.checked ? 'log' : 'linear'
+                'yaxis.type': logAxisInput.checked ? 'log' : 'linear',
             });
 
             const xIndex = xAxisSelect.hidden ? -1 : xAxisSelect.selectedIndex;
-            const yIndexes = [...yAxisSelect.selectedOptions].map(option => option.index);
+            const y1Indexes = [...y1AxisSelect.selectedOptions].map(option => option.index);
+            const y2Indexes = y2AxisSelect.hidden ? [] : [...y2AxisSelect.selectedOptions].map(option => option.index);
 
             // save the current state
             state.scanData[occurance] = {
                 x: xIndex,
-                y: yIndexes,
+                y1: y1Indexes,
+                y2: y2Indexes,
                 hidden: !showPlotInput.checked,
                 logAxis: logAxisInput.checked
             };
@@ -191,24 +204,27 @@ const showAllGraphs = (callback: CallbackType) => {
         const occuranceString = div.dataset.occurance;
         const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
         const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const yAxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y1AxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y2AxisSelects = div.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const logAxisInputs = div.getElementsByClassName('logAxisInput') as HTMLCollectionOf<HTMLInputElement>;
         const plotDivs = div.getElementsByClassName('scanDataPlot') as HTMLCollectionOf<HTMLDivElement>;
-        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && yAxisSelects.length === 1 && logAxisInputs.length === 1 && plotDivs.length === 1) {
+        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && y1AxisSelects.length === 1 && y2AxisSelects.length === 1 && logAxisInputs.length === 1 && plotDivs.length === 1) {
             if (showPlotInputs[0].checked) {
                 if (callback === 'newPlot') {
                     const xAxisSelect = xAxisSelects[0];
-                    const yAxisSelect = yAxisSelects[0];
+                    const y1AxisSelect = y1AxisSelects[0];
+                    const y2AxisSelect = y2AxisSelects[0];
                     const logAxisInput = logAxisInputs[0];
 
                     const xIndex = xAxisSelect.hidden ? -1 : xAxisSelect.selectedIndex;
-                    const yIndexes = [...yAxisSelect.selectedOptions].map(option => option.index);
+                    const y1Indexes = [...y1AxisSelect.selectedOptions].map(option => option.index);
+                    const y2Indexes = y2AxisSelect.hidden ? [] : [...y2AxisSelect.selectedOptions].map(option => option.index);
 
                     // redraw the graph
                     const messageOut: MessageFromWebview = {
                         type: 'requestPlotData',
                         occurance: parseInt(occuranceString),
-                        indexes: { x: xIndex, y: yIndexes },
+                        indexes: { x: xIndex, y1: y1Indexes, y2: y2Indexes },
                         logAxis: logAxisInput.checked,
                         callback: callback
                     };
@@ -241,7 +257,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
     } else if (messageIn.type === 'updatePlot') {
         const graphDiv = document.getElementById(`plotly${messageIn.occurance}`);
         if (graphDiv) {
-            const data = messageIn.y.map(y_i => {
+            const y1Data = messageIn.y1.map(y_i => {
                 return {
                     x: messageIn.x.array,
                     y: y_i.array,
@@ -249,13 +265,32 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
                     name: y_i.label
                 };
             });
-            let yLabel: string;
-            if (messageIn.y.length > 2) {
-                yLabel = `${messageIn.y[0].label}, ${messageIn.y[1].label}, ...`;
-            } else if (messageIn.y.length === 2) {
-                yLabel = `${messageIn.y[0].label}, ${messageIn.y[1].label}`;
+            const y2Data = messageIn.y2.map(y1_i => {
+                return {
+                    x: messageIn.x.array,
+                    y: y1_i.array,
+                    yaxis: 'y2',
+                    type: 'scatter',
+                    name: y1_i.label
+                };
+            });
+            const data = y1Data.concat(y2Data);
+
+            let y1Label: string;
+            if (messageIn.y1.length > 2) {
+                y1Label = `${messageIn.y1[0].label}, ${messageIn.y1[1].label}, ...`;
+            } else if (messageIn.y1.length === 2) {
+                y1Label = `${messageIn.y1[0].label}, ${messageIn.y1[1].label}`;
             } else {
-                yLabel = messageIn.y[0].label;
+                y1Label = messageIn.y1[0].label;
+            }
+            let y2Label: string = 'aaa';
+            if (messageIn.y2.length > 2) {
+                y2Label = `${messageIn.y2[0].label}, ${messageIn.y2[1].label}, ...`;
+            } else if (messageIn.y2.length > 1) {
+                y2Label = `${messageIn.y2[0].label}, ${messageIn.y2[1].label}`;
+            } else if (messageIn.y2.length > 0) {
+                y2Label = messageIn.y2[0].label;
             }
 
             const layout = {
@@ -263,8 +298,14 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
                 height: plotHeight,
                 xaxis: { title: messageIn.x.label },
                 yaxis: {
+                    title: y1Label,
+                    type: messageIn.logAxis ? 'log' : 'linear'
+                },
+                yaxis2: {
+                    title: y2Label,
                     type: messageIn.logAxis ? 'log' : 'linear',
-                    title: yLabel
+                    overlaying: 'y',
+                    side: 'right'
                 },
                 margin: { t: 20, r: 20 }
             };
@@ -281,22 +322,23 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         vscode.setState(state);
     } else if (messageIn.type === 'enableMultipleSelection') {
         const xAxisSelects = document.body.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const yAxisSelects = document.body.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y1AxisSelects = document.body.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y2AxisSelects = document.body.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         if (messageIn.flag === true) {
-            [...xAxisSelects].forEach(xAxisSelect => {
-                xAxisSelect.setAttribute('size', xAxisSelect.dataset.sizeForMultiple ?? '0');
+            [...xAxisSelects].forEach(axisSelect => {
+                axisSelect.setAttribute('size', axisSelect.dataset.sizeForMultiple ?? '0');
             });
-            [...yAxisSelects].forEach(yAxisSelect => {
-                yAxisSelect.setAttribute('multiple', '');
-                yAxisSelect.setAttribute('size', yAxisSelect.dataset.sizeForMultiple ?? '0');
+            [...y1AxisSelects, ...y2AxisSelects].forEach(axisSelect => {
+                axisSelect.setAttribute('multiple', '');
+                axisSelect.setAttribute('size', axisSelect.dataset.sizeForMultiple ?? '0');
             });
         } else if (messageIn.flag === false) {
-            [...xAxisSelects].forEach(xAxisSelect => {
-                xAxisSelect.removeAttribute('size');
+            [...xAxisSelects].forEach(axisSelect => {
+                axisSelect.removeAttribute('size');
             });
-            [...yAxisSelects].forEach(yAxisSelect => {
-                yAxisSelect.removeAttribute('multiple');
-                yAxisSelect.removeAttribute('size');
+            [...y1AxisSelects, ...y2AxisSelects].forEach(axisSelect => {
+                axisSelect.removeAttribute('multiple');
+                axisSelect.removeAttribute('size');
             });
         }
         state.enableMultipleSelection = messageIn.flag;
@@ -329,19 +371,22 @@ window.addEventListener('DOMContentLoaded', _event => {
         const occuranceString = div.dataset.occurance;
         const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
         const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const yAxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y1AxisSelects = div.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y2AxisSelects = div.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const logAxisInputs = div.getElementsByClassName('logAxisInput') as HTMLCollectionOf<HTMLInputElement>;
 
-        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && yAxisSelects.length === 1 && logAxisInputs.length === 1) {
+        if (occuranceString && showPlotInputs.length === 1 && xAxisSelects.length === 1 && y1AxisSelects.length === 1 && y2AxisSelects.length === 1 && logAxisInputs.length === 1) {
             const occurance = parseInt(occuranceString);
             const showPlotInput = showPlotInputs[0];
             const xAxisSelect = xAxisSelects[0];
-            const yAxisSelect = yAxisSelects[0];
+            const y1AxisSelect = y1AxisSelects[0];
+            const y2AxisSelect = y2AxisSelects[0];
             const logAxisInput = logAxisInputs[0];
             const scanDataState = occurance in state.scanData ? state.scanData[occurance] : {
                 hidden: occurance >= maximumPlots,
                 x: xAxisSelect.length > 2 ? 0 : 1,
-                y: [yAxisSelect.length - 1],
+                y1: [y1AxisSelect.length - 1],
+                y2: [y2AxisSelect.length - 1],
                 logAxis: false
             };
 
@@ -355,27 +400,37 @@ window.addEventListener('DOMContentLoaded', _event => {
             // Axis selectors
             // register a handler
             xAxisSelect.onchange = plotAxisSelectChangeHandler;
-            yAxisSelect.onchange = plotAxisSelectChangeHandler;
+            y1AxisSelect.onchange = plotAxisSelectChangeHandler;
+            y2AxisSelect.onchange = plotAxisSelectChangeHandler;
             logAxisInput.onchange = logAxisInputChangeHander;
 
             // set the initial state.
             xAxisSelect.disabled = scanDataState.hidden;
-            yAxisSelect.disabled = scanDataState.hidden;
+            y1AxisSelect.disabled = scanDataState.hidden;
+            y2AxisSelect.disabled = scanDataState.hidden;
             logAxisInput.disabled = scanDataState.hidden;
 
             // toggle multiple slection
             if (state.enableMultipleSelection) {
                 xAxisSelect.setAttribute('size', xAxisSelect.dataset.sizeForMultiple ?? "0");
-                yAxisSelect.setAttribute('multiple', '');
-                yAxisSelect.setAttribute('size', yAxisSelect.dataset.sizeForMultiple ?? "0");
+                y1AxisSelect.setAttribute('multiple', '');
+                y1AxisSelect.setAttribute('size', y1AxisSelect.dataset.sizeForMultiple ?? "0");
+                y2AxisSelect.setAttribute('multiple', '');
+                y2AxisSelect.setAttribute('size', y2AxisSelect.dataset.sizeForMultiple ?? "0");
             } else {
                 xAxisSelect.removeAttribute('size');
-                yAxisSelect.removeAttribute('size');
+                y1AxisSelect.removeAttribute('size');
+                y2AxisSelect.removeAttribute('size');
             }
             // set the data selection.
             xAxisSelect.selectedIndex = scanDataState.x;
-            for (const option of yAxisSelect.options) {
-                if (scanDataState.y.includes(option.index)) {
+            for (const option of y1AxisSelect.options) {
+                if (scanDataState.y1.includes(option.index)) {
+                    option.selected = true;
+                }
+            }
+            for (const option of y2AxisSelect.options) {
+                if (scanDataState.y2.includes(option.index)) {
                     option.selected = true;
                 }
             }

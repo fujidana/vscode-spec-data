@@ -1,5 +1,5 @@
 export interface ValueListState { [occurance: number]: { hidden: boolean } }
-export interface ScanDataState { [occurance: number]: { x: number, y: number[], hidden: boolean, logAxis: boolean } }
+export interface ScanDataState { [occurance: number]: { x: number, y1: number[], y2: number[], hidden: boolean, logAxis: boolean } }
 
 export interface State {
     template: unknown,
@@ -41,7 +41,8 @@ interface UpdatePlotMessage extends BaseMessage {
     type: 'updatePlot';
     occurance: number;
     x: { label: string, array: number[] };
-    y: { label: string, array: number[] }[];
+    y1: { label: string, array: number[] }[];
+    y2: { label: string, array: number[] }[];
     logAxis: boolean;
     action: CallbackType;
 }
@@ -60,7 +61,8 @@ interface requestPlotDataMessage extends BaseMessage {
     occurance: number;
     indexes: {
         x: number,
-        y: number[]
+        y1: number[],
+        y2: number[]
     };
     logAxis: boolean;
     callback: CallbackType;

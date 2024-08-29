@@ -98,7 +98,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
             }
         };
-        // callback of 'spec-data.togglePreviewLock'.
+        // callback of 'spec-data.toggleMultipleSelection'.
         const toggleMultipleSelectionCallback = (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
@@ -431,7 +431,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 if (tree) {
                     const node = tree.find(node => node.occurance === messageIn.occurance && node.type === 'scanData');
                     if (node && node.type === 'scanData' && node.data.length) {
-                        const { x: xIndex, y: yIndexes } = messageIn.indexes;
+                        const { x: xIndex, y1: yIndexes, y2: y2Indexes } = messageIn.indexes;
 
                         let xArray: number[], xLabel: string;
                         if (xIndex >= 0 && xIndex < node.data.length) {
@@ -442,19 +442,20 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                             xLabel = 'point';
                         }
 
-                        if (yIndexes.length > 0) {
-                            const yData = yIndexes.map(yIndex => { return { label: node.headers[yIndex], array: node.data[yIndex]}; });
+                        const y1Data = messageIn.indexes.y1.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
+                        const y2Data = messageIn.indexes.y2.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
 
-                            const messageOut: MessageToWebview = {
-                                type: 'updatePlot',
-                                occurance: messageIn.occurance,
-                                x: { label: xLabel, array: xArray },
-                                y: yData,
-                                logAxis: messageIn.logAxis,
-                                action: messageIn.callback
-                            };
-                            panel2.webview.postMessage(messageOut);
-                        }
+                        const messageOut: MessageToWebview = {
+                            type: 'updatePlot',
+                            occurance: messageIn.occurance,
+                            x: { label: xLabel, array: xArray },
+                            y1: y1Data,
+                            y2: y2Data,
+                            logAxis: messageIn.logAxis,
+                            action: messageIn.callback
+                        };
+                        panel2.webview.postMessage(messageOut);
+
                     }
                 }
             } else if (messageIn.type === 'contentLoaded') {
@@ -1008,6 +1009,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     const headerType = config.get<string>('table.headerType', 'mnemonic');
     const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
     const plotHeight = config.get<number>('plot.height', 400);
+    const enableRightAxis = config.get<boolean>('plot.experimental.enableRightAxis', false);
 
     // Apply CSP when in untrusted workspaces, even when 
     // it is disabled not in workspace settings but in user settings.
@@ -1115,6 +1117,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
                 const size = Math.min((node.xAxisSelectable ? headers.length + 1 : headers.length), 4);
                 body += getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], !node.xAxisSelectable, size);
                 body += getAxisSelectAndOptions('y', occurance, headers, false, size);
+                body += getAxisSelectAndOptions('y2', occurance, [...headers, '[none]'], !enableRightAxis, size);
                 body += `<input type="checkbox" id="logAxisInput${occurance}" class="logAxisInput">
 <label for="logAxisInput${occurance}">Log y-axis</label>
 </p>

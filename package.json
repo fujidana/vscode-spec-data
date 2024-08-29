@@ -366,7 +366,12 @@
 				"spec-data.preview.plot.experimental.enableMulitpleSelection": {
 					"type": "boolean",
 					"default": false,
-					"description": "Enable to select multiple data arrays in a graph. The configuration key may be removed or renamed in a future release."
+					"description": "Enable to select multiple data arrays to be plotted in a graph. The configuration key may be removed or renamed in a future release."
+				},
+				"spec-data.preview.plot.experimental.enableRightAxis": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enable to select data array(s) for traces plotted using the right axis. The configuration key may be removed or renamed in a future release."
 				},
 				"spec-data.preview.table.hide": {
 					"type": "boolean",
