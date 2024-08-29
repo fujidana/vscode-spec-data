@@ -34,16 +34,16 @@ interface ScrollToElementMessage extends BaseMessage {
 interface SetTemplateMessage extends BaseMessage {
     type: 'setTemplate';
     template: any; // TODOS: type definition
-    action: ActionType;
+    callback: CallbackType;
 }
 
 interface UpdatePlotMessage extends BaseMessage {
     type: 'updatePlot';
-    elementId: string;
+    occurance: number;
     x: { label: string, array: number[] };
     y: { label: string, array: number[] }[];
     logAxis: boolean;
-    action: ActionType;
+    action: CallbackType;
 }
 
 interface EnableMultipleSelectionMessage extends BaseMessage {
@@ -63,11 +63,11 @@ interface requestPlotDataMessage extends BaseMessage {
         y: number[]
     };
     logAxis: boolean;
-    action: ActionType;
+    callback: CallbackType;
 }
 
 interface ContentLoadedMessage extends BaseMessage {
     type: 'contentLoaded';
 }
 
-export type ActionType = 'new' | 'update' | 'react';
+export type CallbackType = 'newPlot' | 'relayout' | 'react';

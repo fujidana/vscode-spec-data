@@ -3,7 +3,7 @@ import plotTemplate from './plotTemplate';
 import merge = require('lodash.merge');
 import { minimatch } from 'minimatch';
 import { getTextDecoder } from './textEncoding';
-import type { State, MessageToWebview, MessageFromWebview } from "./previewTypes";
+import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
 
 const SPEC_DATA_FILTER = { language: 'spec-data' };
 const CSV_COLUMNS_FILTER = { language: 'csv-column' };
@@ -196,7 +196,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     const messageOut: MessageToWebview = {
                         type: 'setTemplate',
                         template: getPlotlyTemplate(colorTheme.kind, preview.uri),
-                        action: 'update'
+                        callback: 'relayout'
                     };
                     preview.panel.webview.postMessage(messageOut);
                 }
@@ -432,6 +432,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     const node = tree.find(node => node.occurance === messageIn.occurance && node.type === 'scanData');
                     if (node && node.type === 'scanData' && node.data.length) {
                         const { x: xIndex, y: yIndexes } = messageIn.indexes;
+
                         let xArray: number[], xLabel: string;
                         if (xIndex >= 0 && xIndex < node.data.length) {
                             xArray = node.data[xIndex];
@@ -440,17 +441,17 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                             xArray = Array(node.data[0].length).fill(0).map((_x, i) => i);
                             xLabel = 'point';
                         }
+
                         if (yIndexes.length > 0) {
-                            
                             const yData = yIndexes.map(yIndex => { return { label: node.headers[yIndex], array: node.data[yIndex]}; });
 
                             const messageOut: MessageToWebview = {
                                 type: 'updatePlot',
-                                elementId: `plotly${messageIn.occurance}`,
+                                occurance: messageIn.occurance,
                                 x: { label: xLabel, array: xArray },
                                 y: yData,
                                 logAxis: messageIn.logAxis,
-                                action: messageIn.action
+                                action: messageIn.callback
                             };
                             panel2.webview.postMessage(messageOut);
                         }
@@ -460,7 +461,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 const messageTo: MessageToWebview = {
                     type: 'setTemplate',
                     template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, uri),
-                    action: 'new'
+                    callback: 'newPlot'
                 };
                 panel2.webview.postMessage(messageTo);
             }
