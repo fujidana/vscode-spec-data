@@ -4,6 +4,11 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Added
+
+- Keep the scroll position of a preview when it is shown again after hidden behind other tabs. #7
+- Enable to draw a graph using _y2_-axis (right), in addition to normal _y_-axis (left).
+
 ### Changed
 
 - Improve the behavior or "spec-data: Toggle Multiple Selection" command. Now the command updates the preview contents without reloading. As a result, the switch becomes faster and does not break the scroll position.

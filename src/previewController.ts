@@ -35,6 +35,7 @@ if (state === undefined || state.sourceUri !== headDataset.sourceUri) {
         sourceUri: sourceUri,
         lockPreview: false,
         enableMultipleSelection: enableMultipleSelection,
+        scrollY: 0
     };
     vscode.setState(state);
 }
@@ -447,4 +448,20 @@ window.addEventListener('DOMContentLoaded', _event => {
         type: 'contentLoaded',
     };
     vscode.postMessage(messageOut);
+
+    if (state.scrollY > 0) {
+        window.scrollTo(0, state.scrollY);
+    }
+});
+
+let timer: NodeJS.Timeout | undefined;
+
+window.addEventListener("scroll", _event => {
+    if (timer) {
+        clearTimeout(timer);
+    }
+    timer = setTimeout(() => {
+        state.scrollY = window.scrollY;
+        vscode.setState(state);
+    }, 200);
 });

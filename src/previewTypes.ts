@@ -8,12 +8,13 @@ export interface ScanDataState {
 }
 
 export interface State {
-    template: unknown,
-    valueList: { [occurance: number]: { hidden: boolean } },
-    scanData: { [occurance: number]: Partial<ScanDataState> },
-    sourceUri: string,
-    lockPreview: boolean,
-    enableMultipleSelection: boolean
+    template: unknown;
+    valueList: { [occurance: number]: { hidden: boolean } };
+    scanData: { [occurance: number]: Partial<ScanDataState> };
+    sourceUri: string;
+    lockPreview: boolean;
+    enableMultipleSelection: boolean;
+    scrollY: number;
 }
 
 export interface BaseMessage {
