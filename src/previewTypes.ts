@@ -1,13 +1,23 @@
-export interface ValueListState { [occurance: number]: { hidden: boolean } }
-export interface ScanDataState { [occurance: number]: { x: number, y1: number[], y2: number[], hidden: boolean, logAxis: boolean } }
+export interface ScanDataState {
+    xIndex: number;
+    y1Indexes: number[];
+    y2Indexes: number[];
+    hidden: boolean;
+    y1Log: boolean;
+    y2Log: boolean;
+}
 
 export interface State {
     template: unknown,
-    valueList: ValueListState,
-    scanData: ScanDataState,
+    valueList: { [occurance: number]: { hidden: boolean } },
+    scanData: { [occurance: number]: Partial<ScanDataState> },
     sourceUri: string,
     lockPreview: boolean,
     enableMultipleSelection: boolean
+}
+
+export interface BaseMessage {
+    type: string;
 }
 
 export type MessageToWebview =
@@ -16,10 +26,6 @@ export type MessageToWebview =
     | SetTemplateMessage
     | UpdatePlotMessage
     | EnableMultipleSelectionMessage;
-
-export interface BaseMessage {
-    type: string;
-}
 
 interface LockPreviewMessage extends BaseMessage {
     type: 'lockPreview';
@@ -43,7 +49,6 @@ interface UpdatePlotMessage extends BaseMessage {
     x: { label: string, array: number[] };
     y1: { label: string, array: number[] }[];
     y2: { label: string, array: number[] }[];
-    logAxis: boolean;
     action: CallbackType;
 }
 
@@ -64,7 +69,6 @@ interface requestPlotDataMessage extends BaseMessage {
         y1: number[],
         y2: number[]
     };
-    logAxis: boolean;
     callback: CallbackType;
 }
 

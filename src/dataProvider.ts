@@ -451,7 +451,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                             x: { label: xLabel, array: xArray },
                             y1: y1Data,
                             y2: y2Data,
-                            logAxis: messageIn.logAxis,
                             action: messageIn.callback
                         };
                         panel2.webview.postMessage(messageOut);
@@ -1029,18 +1028,24 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
         return str;
     }
 
-    function getAxisSelectAndOptions(axis: string, occurance: number | undefined, headers: string[], hidden?: boolean, size?: number) {
+    /** create components to select arrays (<select>) and select log-linear <input> */
+    function getAxisSelectAndOptions(axis: string, occurance: number | undefined, headers: string[], size?: number, useLogInput?: boolean, hidden?: boolean) {
         const hiddenStr = hidden === true ? ' hidden' : '';
         const sizeStr = size !== undefined ? ` data-size-for-multiple=${size}` : '';
         // const isMultipleStr = isMultiple ? ' multiple' : '';
         let tmpStr;
-        tmpStr = `<label for="${axis}AxisSelect${occurance}"${hiddenStr}>${axis}:</label>
-        <select id="${axis}AxisSelect${occurance}" class="${axis}AxisSelect" data-axis="${axis}"${hiddenStr}${sizeStr}>
-        `;
+        tmpStr = `<span${hiddenStr}>; </span>
+<label for="${axis}AxisSelect${occurance}"${hiddenStr}><var>${axis}</var>:</label>
+<select id="${axis}AxisSelect${occurance}" class="${axis}AxisSelect" data-axis="${axis}"${hiddenStr}${sizeStr}>
+`;
         tmpStr += headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('');
         tmpStr += `</select>
-        <span${hiddenStr}>, </span>
-        `;
+`;
+        if (useLogInput) {
+            tmpStr += `<span${hiddenStr}>,</span><input type="checkbox" id="${axis}LogInput${occurance}" class="${axis}LogInput"${hiddenStr}>
+<label for="${axis}LogInput${occurance}"${hiddenStr}>log</label>`;
+        }
+
         return tmpStr;
     }
 
@@ -1112,15 +1117,12 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
             if (data.length) {
                 body += `<p>
 <input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
-<label for="showPlotInput${occurance}">Show Plot</label>, 
-`;
+<label for="showPlotInput${occurance}">Show Plot</label>`;
                 const size = Math.min((node.xAxisSelectable ? headers.length + 1 : headers.length), 4);
-                body += getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], !node.xAxisSelectable, size);
-                body += getAxisSelectAndOptions('y', occurance, headers, false, size);
-                body += getAxisSelectAndOptions('y2', occurance, [...headers, '[none]'], !enableRightAxis, size);
-                body += `<input type="checkbox" id="logAxisInput${occurance}" class="logAxisInput">
-<label for="logAxisInput${occurance}">Log y-axis</label>
-</p>
+                body += getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], size, false, !node.xAxisSelectable);
+                body += getAxisSelectAndOptions('y', occurance, headers, size, true, false);
+                body += getAxisSelectAndOptions('y2', occurance, [...headers, '[none]'], size, true, !enableRightAxis);
+                body += `.</p>
 <div id="plotly${occurance}" class="scanDataPlot"></div>
 `;
             }
