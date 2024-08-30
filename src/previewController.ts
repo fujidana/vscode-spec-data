@@ -20,14 +20,14 @@ import type { MessageFromWebview, MessageToWebview, CallbackType, State, ScanDat
 const vscode = acquireVsCodeApi<State>();
 
 const headDataset = document.head.dataset;
-const maximumPlots = headDataset.maximumPlots !== undefined ? parseInt(headDataset.maximumPlots) : 0;
-const plotHeight = headDataset.plotHeight !== undefined ? parseInt(headDataset.plotHeight) : 0;
-const hideTableGlobal = headDataset.hideTable !== undefined ? Boolean(parseInt(headDataset.hideTable)) : false;
-const sourceUri = headDataset.sourceUri !== undefined ? headDataset.sourceUri : '';
+const maximumPlots = parseInt(headDataset.maximumPlots ?? "0");
+const plotHeight = parseInt(headDataset.plotHeight ?? "100");
+const hideTableGlobal = Boolean(parseInt(headDataset.hideTable ?? "0"));
+const sourceUri = headDataset.sourceUri ?? '';
 
 let state = vscode.getState();
-if (state === undefined || state.sourceUri !== sourceUri) {
-    const enableMultipleSelection = headDataset.enableMultipleSelection !== undefined ? Boolean(parseInt(headDataset.enableMultipleSelection)) : false;
+if (state === undefined || state.sourceUri !== headDataset.sourceUri) {
+    const enableMultipleSelection = Boolean(parseInt(headDataset.enableMultipleSelection ?? "0"));
     state = {
         template: undefined,
         valueList: {},
@@ -300,17 +300,40 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         const y1AxisSelects = document.body.getElementsByClassName('yAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         const y2AxisSelects = document.body.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
         if (messageIn.flag === true) {
+            // When swithing to multiple mode,
+            // Set 'size' attributes for x-axis. The value is stored in the dataset region of the element.
             [...xAxisSelects].forEach(axisSelect => {
                 axisSelect.setAttribute('size', axisSelect.dataset.sizeForMultiple ?? '0');
             });
+            // Hide '[none]' option in y2-axis. Unselect all if '[none]' was selected, 
+            [...y2AxisSelects].forEach(axisSelect => {
+                const noneOption = axisSelect.options[axisSelect.options.length - 1];
+                if (noneOption.selected) {
+                    noneOption.selected = false;
+                    axisSelect.selectedIndex = -1;
+                }
+                noneOption.hidden = true;
+            });
+            // Set 'multiple' and 'size' attributes for y1- and y2-axis.
             [...y1AxisSelects, ...y2AxisSelects].forEach(axisSelect => {
                 axisSelect.setAttribute('multiple', '');
                 axisSelect.setAttribute('size', axisSelect.dataset.sizeForMultiple ?? '0');
             });
         } else if (messageIn.flag === false) {
+            // When multiple mode turns off,
+            // Remove 'size' attributes for x-axis. Otherwise, the the element does not become a compact dropdown list.
             [...xAxisSelects].forEach(axisSelect => {
                 axisSelect.removeAttribute('size');
             });
+            // Show '[none]' option in y2-axis, then select it if nothing was selected in multiple mode.
+            [...y2AxisSelects].forEach(axisSelect => {
+                const noneOption = axisSelect.options[axisSelect.options.length - 1];
+                noneOption.hidden = false;
+                if (axisSelect.selectedIndex === -1) {
+                    noneOption.selected = true;
+                }
+            });
+            // Remove 'multiple' and 'size' attributes from y1- nad y2-axis.
             [...y1AxisSelects, ...y2AxisSelects].forEach(axisSelect => {
                 axisSelect.removeAttribute('multiple');
                 axisSelect.removeAttribute('size');
@@ -399,18 +422,20 @@ window.addEventListener('DOMContentLoaded', _event => {
             // xAxisSelect.selectedIndex = state.scanData[occurance]?.xIndex ?? 0;
             xAxisSelect.selectedIndex = state.scanData[occurance]?.xIndex ?? (xAxisSelect.length > 2 ? 0 : 1);
 
-            const y1AxisSelection = state.scanData[occurance]?.y1Indexes ?? [y1AxisSelect.length - 1];
-            for (const option of y1AxisSelect.options) {
-                if (y1AxisSelection.includes(option.index)) {
-                    option.selected = true;
-                }
-            }
+            const y1Indexes = state.scanData[occurance]?.y1Indexes ?? [y1AxisSelect.length - 1];
+            // y1Indexes.forEach(i => y1AxisSelect.options[i].selected = true);
+            [...y1AxisSelect.options].forEach(option => { option.selected = y1Indexes.includes(option.index); });
 
-            const y2AxisSelection = state.scanData[occurance]?.y2Indexes ?? [y2AxisSelect.length - 1];
-            for (const option of y2AxisSelect.options) {
-                if (y2AxisSelection.includes(option.index)) {
-                    option.selected = true;
-                }
+            const y2Indexes = state.scanData[occurance]?.y2Indexes ?? [y2AxisSelect.length - 1];
+            // y2Indexes.forEach(i => y2AxisSelect.options[i].selected = true);
+            [...y2AxisSelect.options].forEach(option => { option.selected = y2Indexes.includes(option.index); });
+
+            // If multiple selection mode is enabled and the stored state indicates [none] is selected, deselect it.
+            if (state.enableMultipleSelection) {
+                y2AxisSelect.options[y2AxisSelect.length - 1].selected = false;
+                y2AxisSelect.options[y2AxisSelect.options.length - 1].hidden = true;
+            } else {
+                y2AxisSelect.options[y2AxisSelect.options.length - 1].hidden = false;
             }
 
             y1LogInput.checked = state.scanData[occurance]?.y1Log ?? false;
