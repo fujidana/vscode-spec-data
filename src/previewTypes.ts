@@ -28,7 +28,8 @@ export type MessageToWebview =
     | ScrollPreviewMessage
     | SetTemplateMessage
     | UpdatePlotMessage
-    | EnableMultipleSelectionMessage;
+    | EnableMultipleSelectionMessage
+    | SetScrollBehaviorMessage;
 
 interface LockPreviewMessage extends BaseMessage {
     type: 'lockPreview';
@@ -58,6 +59,11 @@ interface UpdatePlotMessage extends BaseMessage {
 interface EnableMultipleSelectionMessage extends BaseMessage {
     type: 'enableMultipleSelection';
     flag: boolean;
+}
+
+interface SetScrollBehaviorMessage extends BaseMessage {
+    type: 'setScrollBehavior';
+    value: 'auto' | 'smooth';
 }
 
 export type MessageFromWebview =

@@ -179,7 +179,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const configurationChangeListner = (event: vscode.ConfigurationChangeEvent) => {
             if (event.affectsConfiguration('spec-data.preview.scrollEditorWithPreview')) {
                 for (const preview of this.previews) {
-                    preview.scrollEditorWithPreview = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollEditorWithPreview', true);
+                    preview.scrollEditorWithPreview = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('scrollEditorWithPreview', true);
                 }
             }
             if (event.affectsConfiguration('spec-data.preview.scrollPreviewWithEditor')) {
@@ -198,6 +198,12 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                         this.textEditorVisibleRangesChangeDisposable.dispose();
                     }
                     this.textEditorVisibleRangesChangeDisposable = undefined;
+                }
+            } else if (event.affectsConfiguration('spec-data.preview.smoothScrolling')) {
+                for (const preview of this.previews) {
+                    const flag = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('smoothScrolling', true);
+                    const messageOut: MessageToWebview = { type: 'setScrollBehavior', value: flag ? 'smooth' : 'auto' };
+                    preview.panel.webview.postMessage(messageOut);
                 }
             }
         };
@@ -465,7 +471,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
                         const xData = (xIndex >= 0 && xIndex < node.data.length) ?
                             { label: node.headers[xIndex], array: node.data[xIndex] } :
-                            { label: 'point', array: Array(node.data[0].length).fill(0).map((_x, i) => i)};
+                            { label: 'point', array: Array(node.data[0].length).fill(0).map((_x, i) => i) };
                         const y1Data = y1Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
                         const y2Data = y2Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
 
@@ -511,7 +517,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.window.showErrorMessage(message);
             return undefined;
         }
-        
+
         preview.uri = uri;
         const config = vscode.workspace.getConfiguration('spec-data.preview', uri);
         preview.enableMultipleSelection = config.get<boolean>('plot.experimental.enableMulitpleSelection', false);
@@ -1037,6 +1043,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
     const plotHeight = config.get<number>('plot.height', 400);
     const enableRightAxis = config.get<boolean>('plot.experimental.enableRightAxis', false);
+    const smoothScrolling = config.get<boolean>('smoothScrolling', false);
 
     // Apply CSP when in untrusted workspaces, even when 
     // it is disabled not in workspace settings but in user settings.
@@ -1090,6 +1097,11 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="${plotlyJsUri}"></script>
     <script src="${controllerJsJri}"></script>
+    <style>
+html {
+    scroll-behavior: ${smoothScrolling ? 'smooth' : 'auto'};
+}
+    </style>
 </head>
 <body>
 `;

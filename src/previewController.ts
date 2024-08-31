@@ -228,7 +228,6 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         if (event.timeStamp - lastScrollEditorTimeStamp > 1500 && element) {
             // Ignore 'scrollPreview' message soon (< 1.5 sec) after sending 'scrollEditor' message.
             element.scrollIntoView({
-                behavior: 'smooth',
                 block: 'start'
             });
             lastScrollPreviewTimeStamp = event.timeStamp;
@@ -347,6 +346,8 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         }
         state.enableMultipleSelection = messageIn.flag;
         vscode.setState(state);
+    } else if (messageIn.type === 'setScrollBehavior') {
+        document.documentElement.style.scrollBehavior = messageIn.value;
     }
 });
 
@@ -455,7 +456,7 @@ window.addEventListener('DOMContentLoaded', _event => {
     vscode.postMessage(messageOut);
 
     if (state.scrollY > 0) {
-        window.scrollTo(0, state.scrollY);
+        window.scrollTo({ top: state.scrollY, left: 0, behavior: 'instant' });
     }
 });
 

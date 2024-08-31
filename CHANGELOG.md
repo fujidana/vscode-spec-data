@@ -8,6 +8,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 - Add preview-to-editor scroll synchronization feature, which is currently enabled by default. #2
   - Add `spec-data.preview.scrollEditorWithPreview` setting, which enables or disables this feature.
+- Make the scroll behavior of preview pane selectable, smooth or instant.
+  - Add `spec-data.preview.smoothScrolling` setting to control this feature.
 - Enable to draw a graph using the right axis (_y2_), in addition to the normal left axis (_y_). This feature is experimental and currently enabled by default.
   - Add `spec-data.preview.plot.experimental.enableRightAxis` setting, which enables or disables this feature.
 
