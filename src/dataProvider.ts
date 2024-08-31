@@ -25,7 +25,13 @@ interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code:
 interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], xAxisSelectable: boolean }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
-interface Preview { uri: vscode.Uri, panel: vscode.WebviewPanel, enableMultipleSelection: boolean, tree?: Node[] }
+interface Preview {
+    uri: vscode.Uri;
+    panel: vscode.WebviewPanel;
+    enableMultipleSelection: boolean;
+    scrollEditorWithPreview: boolean;
+    tree?: Node[];
+}
 
 /**
  * Provider class for "spec-data" language
@@ -38,6 +44,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     livePreview: Preview | undefined = undefined;
     colorThemeKind: vscode.ColorThemeKind;
     textEditorVisibleRangesChangeDisposable: vscode.Disposable | undefined;
+
+    lastScrollEditorTimeStamp = 0;
+    lastScrollPreviewTimeStamp = 0;
 
     constructor(context: vscode.ExtensionContext) {
         this.extensionUri = context.extensionUri;
@@ -151,20 +160,28 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         const textEditorVisibleRangesChangeListener = (event: vscode.TextEditorVisibleRangesChangeEvent) => {
-            if (event.visibleRanges.length) {
+            const now = Date.now();
+            if (now - this.lastScrollEditorTimeStamp > 1500 && event.visibleRanges.length > 0) {
+                // Refrain from sending 'scrollPreview' message soon ( < 1.5 sec) after receiving 'scrollEditor' message.
                 const line = event.visibleRanges[0].start.line;
                 const previews = this.previews.filter(preview => preview.uri.toString() === event.textEditor.document.uri.toString());
                 for (const preview of previews) {
                     const node = preview.tree?.find(node => (node.lineEnd >= line));
                     if (node) {
-                        const messageOut: MessageToWebview = { type: 'scrollToElement', elementId: `l${node.lineStart}` };
+                        const messageOut: MessageToWebview = { type: 'scrollPreview', elementId: `l${node.lineStart}` };
                         preview.panel.webview.postMessage(messageOut);
                     }
                 }
+                this.lastScrollPreviewTimeStamp = now;
             }
         };
 
         const configurationChangeListner = (event: vscode.ConfigurationChangeEvent) => {
+            if (event.affectsConfiguration('spec-data.preview.scrollEditorWithPreview')) {
+                for (const preview of this.previews) {
+                    preview.scrollEditorWithPreview = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollEditorWithPreview', true);
+                }
+            }
             if (event.affectsConfiguration('spec-data.preview.scrollPreviewWithEditor')) {
                 const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('spec-data.preview').get('scrollPreviewWithEditor', true);
                 if (scrollPreviewWithEditor) {
@@ -372,8 +389,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      * Create a webview panel if `panel` parameter is undefined. 
      * @param panel Webveiw panel or `undefined`.
      * @param uri Source file URI.
-     * @param showToSide Flag whether the new preview panel is shown to side (`true`) or in the active editor (`false`).
      * @param lockPreview Flag whether the new preview panel is locked.
+     * @param showToSide Flag whether the new preview panel is shown to side (`true`) or in the active editor (`false`).
      * @returns Preview object if succeeded in parsing a file or `undefined`.
      */
     private async initPreview(panel: vscode.WebviewPanel | undefined, uri: vscode.Uri, lockPreview = false, showToSide = false) {
@@ -404,9 +421,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             );
         }
         const enableMultipleSelection = config.get<boolean>('plot.experimental.enableMulitpleSelection', false);
-
-        // 
-        const preview: Preview = { uri, panel: panel2, enableMultipleSelection };
+        const scrollEditorWithPreview = config.get<boolean>('scrollEditorWithPreview', true);
+        const preview: Preview = { uri, panel: panel2, enableMultipleSelection, scrollEditorWithPreview };
         this.previews.push(preview);
         if (!lockPreview) {
             this.livePreview = preview;
@@ -426,29 +442,37 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         }, null, this.subscriptions);
 
         panel2.webview.onDidReceiveMessage((messageIn: MessageFromWebview) => {
-            if (messageIn.type === 'requestPlotData') {
+            if (messageIn.type === 'scrollEditor') {
+                const preview = this.previews.find(preview => preview.panel === panel2);
+                if (preview && preview.scrollEditorWithPreview === true) {
+                    const now = Date.now();
+                    if (now - this.lastScrollPreviewTimeStamp > 1500) {
+                        // Ignore 'scrollEditor' message soon ( < 1.5 sec) after sending 'scrollPreview' command.
+                        for (const editor of vscode.window.visibleTextEditors) {
+                            if (editor.document.uri.toString() === preview.uri.toString()) {
+                                editor.revealRange(new vscode.Range(messageIn.line, 0, messageIn.line, 0), vscode.TextEditorRevealType.AtTop);
+                            }
+                        }
+                        this.lastScrollEditorTimeStamp = now;
+                    }
+                }
+            } else if (messageIn.type === 'requestPlotData') {
                 const tree = this.previews.find(preview => preview.panel === panel2)?.tree;
                 if (tree) {
                     const node = tree.find(node => node.occurance === messageIn.occurance && node.type === 'scanData');
                     if (node && node.type === 'scanData' && node.data.length) {
-                        const { x: xIndex, y1: yIndexes, y2: y2Indexes } = messageIn.indexes;
+                        const { x: xIndex, y1: y1Indexes, y2: y2Indexes } = messageIn.indexes;
 
-                        let xArray: number[], xLabel: string;
-                        if (xIndex >= 0 && xIndex < node.data.length) {
-                            xArray = node.data[xIndex];
-                            xLabel = node.headers[xIndex];
-                        } else {
-                            xArray = Array(node.data[0].length).fill(0).map((_x, i) => i);
-                            xLabel = 'point';
-                        }
-
-                        const y1Data = messageIn.indexes.y1.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
-                        const y2Data = messageIn.indexes.y2.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
+                        const xData = (xIndex >= 0 && xIndex < node.data.length) ?
+                            { label: node.headers[xIndex], array: node.data[xIndex] } :
+                            { label: 'point', array: Array(node.data[0].length).fill(0).map((_x, i) => i)};
+                        const y1Data = y1Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
+                        const y2Data = y2Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
 
                         const messageOut: MessageToWebview = {
                             type: 'updatePlot',
                             occurance: messageIn.occurance,
-                            x: { label: xLabel, array: xArray },
+                            x: xData,
                             y1: y1Data,
                             y2: y2Data,
                             action: messageIn.callback
@@ -487,8 +511,12 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.window.showErrorMessage(message);
             return undefined;
         }
-
+        
         preview.uri = uri;
+        const config = vscode.workspace.getConfiguration('spec-data.preview', uri);
+        preview.enableMultipleSelection = config.get<boolean>('plot.experimental.enableMulitpleSelection', false);
+        preview.scrollEditorWithPreview = config.get<boolean>('scrollEditorWithPreview', true);
+
         this.updatePreviewWithTree(preview, tree);
         return preview;
     }

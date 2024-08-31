@@ -40,6 +40,9 @@ if (state === undefined || state.sourceUri !== headDataset.sourceUri) {
     vscode.setState(state);
 }
 
+let lastScrollEditorTimeStamp = 0;
+let lastScrollPreviewTimeStamp = 0;
+
 // a handler for a checkbox to control the table visibility
 const showValueListInputChangeHandler = function (event: Event) {
     if (event.target && event.target instanceof HTMLInputElement && event.target.parentElement?.parentElement) {
@@ -220,13 +223,15 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         state.template = Plotly.makeTemplate(messageIn.template);
         vscode.setState(state);
         showAllGraphs(messageIn.callback);
-    } else if (messageIn.type === 'scrollToElement') {
+    } else if (messageIn.type === 'scrollPreview') {
         const element = document.getElementById(messageIn.elementId);
-        if (element) {
+        if (event.timeStamp - lastScrollEditorTimeStamp > 1500 && element) {
+            // Ignore 'scrollPreview' message soon (< 1.5 sec) after sending 'scrollEditor' message.
             element.scrollIntoView({
                 behavior: 'smooth',
                 block: 'start'
             });
+            lastScrollPreviewTimeStamp = event.timeStamp;
         }
     } else if (messageIn.type === 'updatePlot') {
         const graphDiv = document.getElementById(`plotly${messageIn.occurance}`);
@@ -454,14 +459,43 @@ window.addEventListener('DOMContentLoaded', _event => {
     }
 });
 
-let timer: NodeJS.Timeout | undefined;
+let timer1: NodeJS.Timeout | undefined;
+let timer2: NodeJS.Timeout | undefined;
 
-window.addEventListener("scroll", _event => {
-    if (timer) {
-        clearTimeout(timer);
+const idPattern = /^l(\d+)*/;
+
+window.addEventListener("scroll", event => {
+    // The scroll position is stored 1 sec after a user stops scrolloing.
+    if (timer1) {
+        clearTimeout(timer1);
     }
-    timer = setTimeout(() => {
+    timer1 = setTimeout(() => {
         state.scrollY = window.scrollY;
         vscode.setState(state);
-    }, 200);
+    }, 1000);
+
+    if (timer2 && event.timeStamp - lastScrollEditorTimeStamp < 50) {
+        clearTimeout(timer2);
+    }
+    timer2 = setTimeout(() => {
+        // Send 'scrollEditor' command.
+        // Currently thie preview controller always sends message whether the setting for scroll synchronization is on or off
+        // and the main controller determines whether the editor is scrolled or not.
+        if (event.timeStamp - lastScrollPreviewTimeStamp > 1500) {
+            // Refrain from sending 'scrollEditor' message soon ( < 1.5 sec) after receiving 'scrollPreview' message.
+            let matches: RegExpMatchArray | null;
+            for (const element of document.body.childNodes) {
+                if (element instanceof HTMLElement && element.getBoundingClientRect().y >= 0 && (matches = element.id.match(idPattern)) !== null) {
+                    // console.log(element.id, element.tagName, ...element.classList);
+                    const messageOut: MessageFromWebview = {
+                        type: 'scrollEditor',
+                        line: parseInt(matches[1])
+                    };
+                    vscode.postMessage(messageOut);
+                    lastScrollEditorTimeStamp = event.timeStamp;
+                    break;
+                }
+            }
+        } 
+    }, 50);
 });

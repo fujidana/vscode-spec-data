@@ -267,6 +267,11 @@
 		"configuration": {
 			"title": "spec data",
 			"properties": {
+				"spec-data.preview.scrollEditorWithPreview": {
+					"type": "boolean",
+					"default": true,
+					"description": "Synchronizes page scroll of a editor with that of the corresoinding preview."
+				},
 				"spec-data.preview.scrollPreviewWithEditor": {
 					"type": "boolean",
 					"default": true,

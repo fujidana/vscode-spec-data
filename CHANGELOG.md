@@ -6,21 +6,24 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Added
 
-- Keep the scroll position of a preview when it is shown again after hidden behind other tabs. #7
-- Enable to draw a graph using _y2_-axis (right), in addition to normal _y_-axis (left).
+- Add preview-to-editor scroll synchronization feature, which is currently enabled by default. #2
+  - Add `spec-data.preview.scrollEditorWithPreview` setting, which enables or disables this feature.
+- Enable to draw a graph using the right axis (_y2_), in addition to the normal left axis (_y_). This feature is experimental and currently enabled by default.
+  - Add `spec-data.preview.plot.experimental.enableRightAxis` setting, which enables or disables this feature.
 
 ### Changed
 
-- Improve the behavior or "spec-data: Toggle Multiple Selection" command. Now the command updates the preview contents without reloading. As a result, the switch becomes faster and does not break the scroll position.
+- Improve the behavior of "spec-command: Toggle Multiple Selection" command. Now the command updates the preview contents without reloading. As a result, the switch becomes faster and does not break the scroll position.
 - Change the settings of several UI components used for multiple selection for better usability.
+- Keep the scroll position of a preview when it is shown again after hidden behind other tabs. #7
 
 ## [1.6.0] -- 2024-08-27
 
 ### Added
 
 - Enable to select multiple data arrays in a graph. This feature is experimental and currently disabled by default.
+  - Add `spec-data.preview.plot.experimental.enableMulitpleSelection` setting, which determines the selection mode of new preview panes.
   - Add "spec-data: Toggle Multiple Selection" in the command pallete, which is selectable when the preview panel is active. Use this for ad-hoc switch from the original single-plot behavior.
-  - Add `spec-data.preview.plot.experimental.enableMulitpleSelection` setting. Use this for continueous use.
 - Add _first-line_ matching patterns for file associations with: `csv-row` and `csv-column`; a text file starting with `# mode: csv-row` and `# mode: csv-column` are now automatically associated with these languages.
 
 ### Changed

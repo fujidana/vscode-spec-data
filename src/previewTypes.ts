@@ -21,9 +21,11 @@ export interface BaseMessage {
     type: string;
 }
 
+export type CallbackType = 'newPlot' | 'relayout' | 'react';
+
 export type MessageToWebview =
     LockPreviewMessage
-    | ScrollToElementMessage
+    | ScrollPreviewMessage
     | SetTemplateMessage
     | UpdatePlotMessage
     | EnableMultipleSelectionMessage;
@@ -33,8 +35,8 @@ interface LockPreviewMessage extends BaseMessage {
     flag: boolean;
 }
 
-interface ScrollToElementMessage extends BaseMessage {
-    type: 'scrollToElement';
+interface ScrollPreviewMessage extends BaseMessage {
+    type: 'scrollPreview';
     elementId: string;
 }
 
@@ -59,8 +61,14 @@ interface EnableMultipleSelectionMessage extends BaseMessage {
 }
 
 export type MessageFromWebview =
-    requestPlotDataMessage
+    ScrollEditorMessage
+    | requestPlotDataMessage
     | ContentLoadedMessage;
+
+interface ScrollEditorMessage extends BaseMessage {
+    type: 'scrollEditor';
+    line: number;
+}
 
 interface requestPlotDataMessage extends BaseMessage {
     type: 'requestPlotData';
@@ -76,5 +84,3 @@ interface requestPlotDataMessage extends BaseMessage {
 interface ContentLoadedMessage extends BaseMessage {
     type: 'contentLoaded';
 }
-
-export type CallbackType = 'newPlot' | 'relayout' | 'react';
