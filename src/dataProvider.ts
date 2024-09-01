@@ -25,11 +25,18 @@ interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code:
 interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], xAxisSelectable: boolean }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
+/** 
+ * While the `scrollEditorWithPreview` and `scrollPreviewWithEditor` configuration values
+ * are very frequently referred to for scrolling synchronization, 
+ * and the values may not be unique when multiple workspaces are used.
+ * Therefore, the setting value for URI is prefetched and stored here.
+ */
 interface Preview {
     uri: vscode.Uri;
     panel: vscode.WebviewPanel;
     enableMultipleSelection: boolean;
     scrollEditorWithPreview: boolean;
+    scrollPreviewWithEditor: boolean;
     tree?: Node[];
 }
 
@@ -43,7 +50,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     livePreview: Preview | undefined = undefined;
     colorThemeKind: vscode.ColorThemeKind;
-    textEditorVisibleRangesChangeDisposable: vscode.Disposable | undefined;
 
     lastScrollEditorTimeStamp = 0;
     lastScrollPreviewTimeStamp = 0;
@@ -161,10 +167,12 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         const textEditorVisibleRangesChangeListener = (event: vscode.TextEditorVisibleRangesChangeEvent) => {
             const now = Date.now();
-            if (now - this.lastScrollEditorTimeStamp > 1500 && event.visibleRanges.length > 0) {
+            const document = event.textEditor.document;
+            if (vscode.languages.match(DOCUMENT_SELECTOR, document) && now - this.lastScrollEditorTimeStamp > 1500 && event.visibleRanges.length > 0) {
                 // Refrain from sending 'scrollPreview' message soon ( < 1.5 sec) after receiving 'scrollEditor' message.
+
                 const line = event.visibleRanges[0].start.line;
-                const previews = this.previews.filter(preview => preview.uri.toString() === event.textEditor.document.uri.toString());
+                const previews = this.previews.filter(preview => preview.scrollPreviewWithEditor && preview.uri.toString() === document.uri.toString());
                 for (const preview of previews) {
                     const node = preview.tree?.find(node => (node.lineEnd >= line));
                     if (node) {
@@ -183,23 +191,11 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 }
             }
             if (event.affectsConfiguration('spec-data.preview.scrollPreviewWithEditor')) {
-                const scrollPreviewWithEditor: boolean = vscode.workspace.getConfiguration('spec-data.preview').get('scrollPreviewWithEditor', true);
-                if (scrollPreviewWithEditor) {
-                    if (!this.textEditorVisibleRangesChangeDisposable) {
-                        this.textEditorVisibleRangesChangeDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(textEditorVisibleRangesChangeListener);
-                        context.subscriptions.push(this.textEditorVisibleRangesChangeDisposable);
-                    }
-                } else {
-                    if (this.textEditorVisibleRangesChangeDisposable) {
-                        const index = context.subscriptions.indexOf(this.textEditorVisibleRangesChangeDisposable);
-                        if (index >= 0) {
-                            context.subscriptions.splice(index, 1);
-                        }
-                        this.textEditorVisibleRangesChangeDisposable.dispose();
-                    }
-                    this.textEditorVisibleRangesChangeDisposable = undefined;
+                for (const preview of this.previews) {
+                    preview.scrollPreviewWithEditor = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('scrollPreviewWithEditor', true);
                 }
-            } else if (event.affectsConfiguration('spec-data.preview.smoothScrolling')) {
+            }
+            if (event.affectsConfiguration('spec-data.preview.smoothScrolling')) {
                 for (const preview of this.previews) {
                     const flag = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('smoothScrolling', true);
                     const messageOut: MessageToWebview = { type: 'setScrollBehavior', value: flag ? 'smooth' : 'auto' };
@@ -241,15 +237,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.languages.registerDocumentSymbolProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.window.registerWebviewPanelSerializer('spec-data.preview', this),
             vscode.window.onDidChangeActiveTextEditor(activeTextEditorChangeListener),
+            vscode.window.onDidChangeTextEditorVisibleRanges(textEditorVisibleRangesChangeListener),
             vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
             vscode.workspace.onDidChangeConfiguration(configurationChangeListner)
         );
-
-        const scrollPreviewWithEditor = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollPreviewWithEditor', true);
-        if (scrollPreviewWithEditor) {
-            this.textEditorVisibleRangesChangeDisposable = vscode.window.onDidChangeTextEditorVisibleRanges(textEditorVisibleRangesChangeListener);
-            context.subscriptions.push(this.textEditorVisibleRangesChangeDisposable);
-        }
     }
 
     /**
@@ -428,7 +419,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         }
         const enableMultipleSelection = config.get<boolean>('plot.experimental.enableMulitpleSelection', false);
         const scrollEditorWithPreview = config.get<boolean>('scrollEditorWithPreview', true);
-        const preview: Preview = { uri, panel: panel2, enableMultipleSelection, scrollEditorWithPreview };
+        const scrollPreviewWithEditor = config.get<boolean>('scrollPreviewWithEditor', true);
+        const preview: Preview = { uri, panel: panel2, enableMultipleSelection, scrollEditorWithPreview, scrollPreviewWithEditor };
         this.previews.push(preview);
         if (!lockPreview) {
             this.livePreview = preview;
@@ -521,6 +513,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.uri = uri;
         const config = vscode.workspace.getConfiguration('spec-data.preview', uri);
         preview.enableMultipleSelection = config.get<boolean>('plot.experimental.enableMulitpleSelection', false);
+        preview.scrollPreviewWithEditor = config.get<boolean>('scrollPreviewWithEditor', true);
         preview.scrollEditorWithPreview = config.get<boolean>('scrollEditorWithPreview', true);
 
         this.updatePreviewWithTree(preview, tree);

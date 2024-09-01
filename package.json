@@ -270,16 +270,19 @@
 				"spec-data.preview.scrollEditorWithPreview": {
 					"type": "boolean",
 					"default": true,
+					"scope": "resource",
 					"description": "Synchronizes page scroll of a editor with that of the corresoinding preview."
 				},
 				"spec-data.preview.scrollPreviewWithEditor": {
 					"type": "boolean",
 					"default": true,
+					"scope": "resource",
 					"description": "Synchronizes page scroll of a preview with that of the corresoinding editor."
 				},
 				"spec-data.preview.smoothScrolling": {
 					"type": "boolean",
 					"default": false,
+					"scope": "resource",
 					"markdownDescription": "Controls whether the preview will scroll using an animation. Use `#editor.smoothScrolling#` to control the scroll behavior of the editor."
 				},
 				"spec-data.preview.retainContextWhenHidden": {
