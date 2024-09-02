@@ -8,9 +8,6 @@ importers:
 
   .:
     dependencies:
-      lodash.merge:
-        specifier: ^4.6.2
-        version: 4.6.2
       minimatch:
         specifier: ^10.0.1
         version: 10.0.1
@@ -18,9 +15,6 @@ importers:
       '@types/assert':
         specifier: ^1.5.10
         version: 1.5.10
-      '@types/lodash.merge':
-        specifier: ^4.6.9
-        version: 4.6.9
       '@types/minimatch':
         specifier: ^5.1.2
         version: 5.1.2
@@ -210,12 +204,6 @@ packages:
 
   '@types/json-schema@7.0.12':
     resolution: {integrity: sha512-Hr5Jfhc9eYOQNPYO5WLDq/n4jqijdHNlDXjuAQkkt+mWdQR+XJToOHrsD4cPaMXpn6KO7y2+wM8AZEs8VpBLVA==}
-
-  '@types/lodash.merge@4.6.9':
-    resolution: {integrity: sha512-23sHDPmzd59kUgWyKGiOMO2Qb9YtqRO/x4IhkgNUiPQ1+5MUVqi6bCZeq9nBJ17msjIMbEIO5u+XW4Kz6aGUhQ==}
-
-  '@types/lodash@4.14.191':
-    resolution: {integrity: sha512-BdZ5BCCvho3EIXw6wUCXHe7rS53AIDPLE+JzwgT+OsJk53oBfbSmZZ7CX4VaRoN78N+TJpFi9QPlfIVNmJYWxQ==}
 
   '@types/minimatch@5.1.2':
     resolution: {integrity: sha512-K0VQKziLUWkVKiRVrx4a40iPaxTUefQmjtkQofBkYRcoaaL/8rhwDWww9qWbrgicNOgnpIsMxyNIUM4+n6dUIA==}
@@ -2010,12 +1998,6 @@ snapshots:
   '@types/istanbul-lib-coverage@2.0.6': {}
 
   '@types/json-schema@7.0.12': {}
-
-  '@types/lodash.merge@4.6.9':
-    dependencies:
-      '@types/lodash': 4.14.191
-
-  '@types/lodash@4.14.191': {}
 
   '@types/minimatch@5.1.2': {}
 

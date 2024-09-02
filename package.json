@@ -311,70 +311,51 @@
 					"scope": "resource",
 					"description": "Height of the respective graphs."
 				},
-				"spec-data.preview.plot.template": {
-					"type": "object",
-					"markdownDeprecationMessage": "**Deprecated**: Please use `#spec-data.preview.plot.templates#` instead."
-				},
 				"spec-data.preview.plot.templates": {
 					"type": "object",
+					"scope": "resource",
+					"markdownDeprecationMessage": "**Deprecated**: Please use `#spec-data.preview.plot.traceTemplate#` and `#spec-data.preview.plot.layoutTemplate#` instead.",
+					"markdownDescription": "Overrides the built-in plot appearance such as line color. The key of this setting object is either `\"light\"`, `\"dark\"`, `\"highContrast\"`, or `\"highContrastLight\"` and the value is a Plotly.js template object for the color theme the corresponding key represents. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) page."
+				},
+				"spec-data.preview.plot.traceTemplate": {
+					"type": "object",
+					"scope": "resource",
+					"markdownDescription": "Overrides the built-in trace appearances such as a trace color. The key shall be either `\"light\"`, `\"dark\"`, `\"highContrast\"`, or `\"highContrastLight\"` and the value shall be an array of Plotly.js scatter templates. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in [Plotly.js Reference](https://plotly.com/javascript/reference/index/).",
 					"properties": {
 						"light": {
-							"type": "object",
-							"properties": {
-								"data": {
-									"type": "object",
-									"properties": {
-										"scatter": {
-											"type": "array"
-										}
-									}
-								},
-								"layout": {
-									"type": "object"
-								}
-							},
-							"additionalProperties": false
+							"type": "array"
 						},
 						"dark": {
-							"type": "object",
-							"properties": {
-								"data": {
-									"type": "array"
-								},
-								"layout": {
-									"type": "object"
-								}
-							},
-							"additionalProperties": false
+							"type": "array"
 						},
 						"highContrast": {
-							"type": "object",
-							"properties": {
-								"data": {
-									"type": "array"
-								},
-								"layout": {
-									"type": "object"
-								}
-							},
-							"additionalProperties": false
+							"type": "array"
 						},
 						"highContrastLight": {
-							"type": "object",
-							"properties": {
-								"data": {
-									"type": "array"
-								},
-								"layout": {
-									"type": "object"
-								}
-							},
-							"additionalProperties": false
-						}
-					},
-					"additionalProperties": false,
+							"type": "array"
+						},
+						"additionalProperties": false
+					}
+				},
+				"spec-data.preview.plot.layoutTemplate": {
+					"type": "object",
 					"scope": "resource",
-					"markdownDescription": "Overrides the built-in plot appearance such as line color. The key of this setting object is either `\"light\"`, `\"dark\"`, `\"highContrast\"`, or `\"highContrastLight\"` and the value is a Plotly.js template object for the color theme the corresponding key represents. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) page."
+					"markdownDescription": "Overrides the built-in layout appearances such as a background color. The key shall be either `\"light\"`, `\"dark\"`, `\"highContrast\"`, or `\"highContrastLight\"` and the value shall be a Plotly.js layout template. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in [Plotly.js Reference](https://plotly.com/javascript/reference/index/).",
+					"additionalProperties": false,
+					"properties": {
+						"light": {
+							"type": "object"
+						},
+						"dark": {
+							"type": "object"
+						},
+						"highContrast": {
+							"type": "object"
+						},
+						"highContrastLight": {
+							"type": "object"
+						}
+					}
 				},
 				"spec-data.preview.plot.experimental.enableMulitpleSelection": {
 					"type": "boolean",
@@ -430,7 +411,8 @@
 			"supported": "limited",
 			"description": "In untrusted workspaces, the content security policy is forcibly applied to the preview and Plotly templates in workspace settings are ignored.",
 			"restrictedConfigurations": [
-				"spec-data.preview.plot.templates",
+				"spec-data.preview.plot.traceTemplate",
+				"spec-data.preview.plot.layoutTemplate",
 				"spec-data.preview.applyContentSecurityPolicy"
 			]
 		}
@@ -457,7 +439,6 @@
 	},
 	"devDependencies": {
 		"@types/assert": "^1.5.10",
-		"@types/lodash.merge": "^4.6.9",
 		"@types/minimatch": "^5.1.2",
 		"@types/mocha": "^10.0.7",
 		"@types/node": "20.x",
@@ -481,7 +462,6 @@
 		"webpack-cli": "^5.1.4"
 	},
 	"dependencies": {
-		"lodash.merge": "^4.6.2",
 		"minimatch": "^10.0.1"
 	}
 }

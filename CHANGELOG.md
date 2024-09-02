@@ -18,6 +18,13 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 - Improve the behavior of "spec-command: Toggle Multiple Selection" command. Now the command updates the preview contents without reloading. As a result, the switch becomes faster and does not break the scroll position.
 - Change the settings of several UI components used for multiple selection for better usability.
 - Keep the scroll position of a preview when it is shown again after hidden behind other tabs. #7
+- Make the following configuration options available from _Folder Settings_ in a multi-root workspace:
+  - `spec-data.preview.scrollPreviewWithEditor`
+- Redesign the mechanism for a user to specify Plotly.js templates for easier customization of graph appearance.
+  - Deprecate `spec-data.preview.plot.templates` setting.
+  - Instead introduce `spec-data.preview.plot.traceTemplate` and `spec-data.preview.plot.layoutTemplate` settings. Now the customization for traces and layout are separately specified.
+  - When a user provides a template for a color theme, the extension's template for the coresppoinding color theme is overwritten. Previously it was merged (but then it was difficult to revert to Plotly's native behavior).
+- Change the default (i.e., extension's) Plotly.js templates so that multiple traces are depicted in different colors.
 
 ## [1.6.0] -- 2024-08-27
 

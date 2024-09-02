@@ -9,6 +9,7 @@
  * and thus, syntax error is thrown when used as type definitions. 
  * Therefore, `declare` is used instead.
  */
+// import Plotly from 'plotly.js-basic-dist-min';
 declare const Plotly: any;
 
 import type { MessageFromWebview, MessageToWebview, CallbackType, State, ScanDataState } from './previewTypes';
@@ -220,7 +221,8 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
     const messageIn = event.data;
 
     if (messageIn.type === 'setTemplate') {
-        state.template = Plotly.makeTemplate(messageIn.template);
+        // state.template = Plotly.makeTemplate(messageIn.template);
+        state.template = messageIn.template;
         vscode.setState(state);
         showAllGraphs(messageIn.callback);
     } else if (messageIn.type === 'scrollPreview') {

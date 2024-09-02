@@ -1,9 +1,8 @@
 import * as vscode from 'vscode';
-import plotTemplate from './plotTemplate';
-import merge = require('lodash.merge');
 import { minimatch } from 'minimatch';
 import { getTextDecoder } from './textEncoding';
 import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
+import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
 
 const SPEC_DATA_FILTER = { language: 'spec-data' };
 const CSV_COLUMNS_FILTER = { language: 'csv-column' };
@@ -1160,36 +1159,41 @@ html {
     </html>`;
 }
 
-type PlotlyTemplate = { data?: unknown[], layout?: unknown };
-type UserPlotlyTemplates = { light?: PlotlyTemplate, dark?: PlotlyTemplate, highContrast?: PlotlyTemplate, highContrastLight?: PlotlyTemplate };
+type ColorThemeKind = "light" | "dark" | "highContrast" | "highContrastLight";
+type traceTemplate = Record<string, unknown>[];
+type LayoutTemplate = Record<string, unknown>;
 
-function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope): PlotlyTemplate {
-    let systemTemplate: PlotlyTemplate;
-    let userTemplate: PlotlyTemplate | undefined;
 
-    const userTemplates = vscode.workspace.getConfiguration('spec-data.preview.plot', scope).get<UserPlotlyTemplates>('templates');
+function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope) {
+    let traceTemplate: traceTemplate;
+    let layoutTemplate: LayoutTemplate;
+
+    const config = vscode.workspace.getConfiguration('spec-data.preview.plot', scope);
+    const userTraceTemplate = config.get<{ [key in ColorThemeKind]?: traceTemplate }>('traceTemplate');
+    const userLayoutTemplate = config.get<{ [key in ColorThemeKind]?: LayoutTemplate }>('layoutTemplate');
 
     switch (kind) {
+        case vscode.ColorThemeKind.Light:
+            traceTemplate = userTraceTemplate?.light ?? defaultTraceTemplate.light;
+            layoutTemplate = userLayoutTemplate?.light ?? defaultLayoutTemplate.light;
+            break;
         case vscode.ColorThemeKind.Dark:
-            systemTemplate = plotTemplate.dark;
-            userTemplate = userTemplates?.dark;
+            traceTemplate = userTraceTemplate?.dark ?? defaultTraceTemplate.dark;
+            layoutTemplate = userLayoutTemplate?.dark ?? defaultLayoutTemplate.dark;
             break;
         case vscode.ColorThemeKind.HighContrast:
-            systemTemplate = plotTemplate.highContast;
-            userTemplate = userTemplates?.highContrast;
+            traceTemplate = userTraceTemplate?.highContrast ?? defaultTraceTemplate.highContrast;
+            layoutTemplate = userLayoutTemplate?.highContrast ?? defaultLayoutTemplate.highContrast;
             break;
+
         case vscode.ColorThemeKind.HighContrastLight:
-            systemTemplate = plotTemplate.highContrastLight;
-            userTemplate = userTemplates?.highContrastLight;
+            traceTemplate = userTraceTemplate?.highContrastLight ?? defaultTraceTemplate.highContrastLight;
+            layoutTemplate = userLayoutTemplate?.highContrastLight ?? defaultLayoutTemplate.highContrastLight;
             break;
         default:
-            systemTemplate = plotTemplate.light;
-            userTemplate = userTemplates?.light;
+            traceTemplate = [];
+            layoutTemplate = {};
     }
 
-    if (userTemplate) {
-        return merge({}, systemTemplate, userTemplate);
-    } else {
-        return merge({}, systemTemplate);
-    }
+    return { data: { "scatter": traceTemplate }, "layout": layoutTemplate };
 }

@@ -43,7 +43,7 @@ interface ScrollPreviewMessage extends BaseMessage {
 
 interface SetTemplateMessage extends BaseMessage {
     type: 'setTemplate';
-    template: any; // TODOS: type definition
+    template: unknown;
     callback: CallbackType;
 }
 
