@@ -1038,9 +1038,10 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     const enableRightAxis = config.get<boolean>('plot.experimental.enableRightAxis', false);
     const smoothScrolling = config.get<boolean>('smoothScrolling', false);
 
-    // Apply CSP when in untrusted workspaces, even when 
-    // it is disabled not in workspace settings but in user settings.
-    const applyCsp = vscode.workspace.isTrusted ? config.get<boolean>('applyContentSecurityPolicy', true) : true;
+    // Apply CSP regardless of user settings when in untrusted workspaces.
+    const metaCspStr = !vscode.workspace.isTrusted || config.get<boolean>('applyContentSecurityPolicy', true)
+        ? `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src 'unsafe-inline'; script-src ${cspSource};">`
+        : '';
 
     function getSanitizedString(text: string) {
         // const charactersReplacedWith = ['&amp;', '&lt;', '&gt;', '&quot;', '&#39;'];
@@ -1049,11 +1050,8 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     }
 
     function getAttributesForNode(node: Node) {
-        let str = `id="l${node.lineStart}" class="${node.type}"`;
-        if (node.occurance !== undefined) {
-            str += ` data-occurance="${node.occurance}"`;
-        }
-        return str;
+        const occuranceStr = node.occurance !== undefined ? ` data-occurance="${node.occurance}"` : '';
+        return `id="l${node.lineStart}" class="${node.type}"${occuranceStr}`;
     }
 
     /** create components to select arrays (<select>) and select log-linear <input> */
@@ -1065,28 +1063,23 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
         tmpStr = `<span${hiddenStr}>; </span>
 <label for="${axis}AxisSelect${occurance}"${hiddenStr}><var>${axis}</var>:</label>
 <select id="${axis}AxisSelect${occurance}" class="${axis}AxisSelect" data-axis="${axis}"${hiddenStr}${sizeStr}>
-`;
-        tmpStr += headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('');
-        tmpStr += `</select>
-`;
+${headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('\n')}
+</select>`;
         if (useLogInput) {
-            tmpStr += `<span${hiddenStr}>,</span><input type="checkbox" id="${axis}LogInput${occurance}" class="${axis}LogInput"${hiddenStr}>
+            tmpStr += `
+<span${hiddenStr}>,</span><input type="checkbox" id="${axis}LogInput${occurance}" class="${axis}LogInput"${hiddenStr}>
 <label for="${axis}LogInput${occurance}"${hiddenStr}>log</label>`;
         }
 
         return tmpStr;
     }
 
-    let header = `<!DOCTYPE html>
+    const header = `<!DOCTYPE html>
 <html lang="en">
 <head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${sourceUri.toString()}" data-enable-multiple-selection="${Number(enableMultipleSelection)}">
 	<meta charset="UTF-8">
-`;
-    if (applyCsp) {
-        header += `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src 'unsafe-inline'; script-src ${cspSource};">
-`;
-    }
-    header += `<title>Preview of spec-data</title>
+    ${metaCspStr}
+    <title>Preview of spec-data</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="${plotlyJsUri}"></script>
     <script src="${controllerJsJri}"></script>
@@ -1099,14 +1092,14 @@ html {
 <body>
 `;
 
-    let body = "";
+    const lines: string[] = [];
     for (const node of nodes) {
         if (node.type === 'file') {
-            body += `<h1 ${getAttributesForNode(node)}>${getSanitizedString(node.value)}</h1>`;
+            lines.push(`<h1 ${getAttributesForNode(node)}>${getSanitizedString(node.value)}</h1>`);
         } else if (node.type === 'date') {
-            body += `<p ${getAttributesForNode(node)}>Date: ${getSanitizedString(node.value)}</p>`;
+            lines.push(`<p ${getAttributesForNode(node)}>Date: ${getSanitizedString(node.value)}</p>`);
         } else if (node.type === 'comment') {
-            body += `<p ${getAttributesForNode(node)}>Comment: ${getSanitizedString(node.value)}</p>`;
+            lines.push(`<p ${getAttributesForNode(node)}>Comment: ${getSanitizedString(node.value)}</p>`);
         } else if (node.type === 'nameList') {
             if (node.mnemonic) {
                 mnemonicLists[node.kind] = node.values.map(value => getSanitizedString(value));
@@ -1114,62 +1107,57 @@ html {
                 nameLists[node.kind] = node.values.map(value => getSanitizedString(value));
             }
         } else if (node.type === 'scanHead') {
-            body += `<h2 ${getAttributesForNode(node)}>Scan ${node.index}: <code>${getSanitizedString(node.code)}</code></h2>`;
+            lines.push(`<h2 ${getAttributesForNode(node)}>Scan ${node.index}: <code>${getSanitizedString(node.code)}</code></h2>`);
         } else if (node.type === 'valueList') {
             const valueList = node.values;
             const headerList = (headerType === 'Name') ? nameLists['motor'] : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : undefined;
             const occurance = node.occurance;
-            body += `<div ${getAttributesForNode(node)}>`;
+            lines.push(`<div ${getAttributesForNode(node)}>`);
             if (headerList && (headerList.length !== valueList.length)) {
-                body += '<p><em>The number of scan headers and data columns mismatched.</em></p>';
+                lines.push('<p><em>The number of scan headers and data columns mismatched.</em></p>');
             } else {
-                body += `<p>
+                lines.push(`<p>
 <input type="checkbox" id="showValueListInput${occurance}" class="showValueListInput">
 <label for="showValueListInput${occurance}">Show Prescan Table</label>
 </p>
 <table id="valueListTable${occurance}" class="valueListTable">
-<caption>${getSanitizedString(node.kind)}</caption>
-`;
+<caption>${getSanitizedString(node.kind)}</caption>`);
                 for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
                     if (headerList) {
                         const headerListInRow = headerList.slice(row * columnsPerLine, Math.min((row + 1) * columnsPerLine, headerList.length));
-                        body += `<tr>${headerListInRow.map(item => `<td><strong>${item}</td></strong>`).join('')}</tr>`;
+                        lines.push(`<tr>${headerListInRow.map(item => `<td><strong>${item}</td></strong>`).join('')}</tr>`);
                     }
                     const valueListInRow = valueList.slice(row * columnsPerLine, Math.min((row + 1) * columnsPerLine, valueList.length));
-                    body += `<tr>${valueListInRow.map(item => `<td>${item}</td>`).join('')}</tr>`;
+                    lines.push(`<tr>${valueListInRow.map(item => `<td>${item}</td>`).join('')}</tr>`);
                 }
-                body += `</table>`;
+                lines.push(`</table>`);
             }
-            body += `</div>`;
+            lines.push(`</div>`);
         } else if (node.type === 'scanData') {
             const data = node.data;
             const headers = node.headers;
             const occurance = node.occurance;
 
-            body += `<div ${getAttributesForNode(node)}>`;
+            lines.push(`<div ${getAttributesForNode(node)}>`);
             if (data.length) {
-                body += `<p>
+                lines.push(`<p>
 <input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
-<label for="showPlotInput${occurance}">Show Plot</label>`;
+<label for="showPlotInput${occurance}">Show Plot</label>`);
                 const size = Math.min((node.xAxisSelectable ? headers.length + 1 : headers.length), 4);
-                body += getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], size, false, !node.xAxisSelectable);
-                body += getAxisSelectAndOptions('y', occurance, headers, size, true, false);
-                body += getAxisSelectAndOptions('y2', occurance, [...headers, '[none]'], size, true, !enableRightAxis);
-                body += `.</p>
-<div id="plotly${occurance}" class="scanDataPlot"></div>
-`;
+                lines.push(getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], size, false, !node.xAxisSelectable));
+                lines.push(getAxisSelectAndOptions('y', occurance, headers, size, true, false));
+                lines.push(getAxisSelectAndOptions('y2', occurance, [...headers, '[none]'], size, true, !enableRightAxis));
+                lines.push(`.</p>
+<div id="plotly${occurance}" class="scanDataPlot"></div>`);
             }
-            body += `</div>`;
+            lines.push(`</div>`);
             // } else if (node.type === 'unknown') {
             //     body += `<p> #${node.kind} ${node.value}`;
         }
     }
 
-    body += `</body>
-    </html>
-    `;
-
-    return header + body;
+    return header + lines.join('\n') + `</body>
+    </html>`;
 }
 
 type PlotlyTemplate = { data?: unknown[], layout?: unknown };
