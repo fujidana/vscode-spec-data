@@ -19,7 +19,7 @@ The data file formats the exension supports are as follows:
 - __fit2d chiplot file format__ (ID: `chiplot`, extension: `.chi`): a text file format in which __fit2d__ software imports and exports one-dimensional dataset such as scattering profiles.
 - __DppMCA spectra data file format__ (ID: `dppmca`, extension: `.mca`): DppMCA is DP5 Digital Pulse Prosessor Display & Acquisition Software for Multichannel Analyzers, developed by Amptek.
 
-While the default file associations (relations between language identifier and file extensions (or blob pattern)) are set as listed above, a user can customize them by oneself using `#files.associations#` setting.
+While the default file associations (relations between language identifier and file extensions) are set as listed above, a user can customize them using `files.associations` setting.
 Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs/languages/overview) (official document of VS Code) for further details.
 
 ## What's __spec__?
@@ -41,7 +41,7 @@ Use [GitHub issues](https://github.com/fujidana/vscode-spec-data/issues) for bug
 - __Preview__
   - motor positions just before a scan in a table view (`spec-data` only)
   - scan data depicted in a graphical and interactive graph, powered by [Plotly.js](https://plotly.com/javascript/). A user can select a pair of columns to be drawn.
-  - scroll sync of the editor and preview (Currently only _scroll-preview-from-editor_ works; _scroll-editor-from-preview_ does not.)
+  - scroll sync of the editor and preview (as of v.1.7.0 both _scroll-preview-with-editor_ and _scroll-editor-with-preview_ are supported.)
 
 ![screenshot](resources/screenshot.png)
 
@@ -54,30 +54,51 @@ Nothing.
 This extension contributes configuration options, accecible from the _Settings_ editor (Win/Linux: `Ctrl+,`, Mac: `Cmd+,`).
 Read [Visual Studio Code User and Workspace Settings](https://code.visualstudio.com/docs/getstarted/settings) for details about the _Settings_ window.
 
-### Plotly.js template
+### Customization of Graph Appearances
 
-The extension internally switches Plotly.js templates in order to coordinate the appearance of graphs with the four kinds of VS Code color themes.
-A user can modify the appearance by overriding the templates via the `spec-data.preview.plot.templates` configuraiton option.
+__note__: `spec-data.preview.plot.traceTemplate` was deprecated and the way to customize the templates was changed at v1.7.0.
+Read the following to migrate the settings.
 
-The option shall be passed as a JSON object consisting of at most 4 key-value pairs.
-The key shall be either `"light"`, `"dark"`, `"highContrast"`, or `"highContrastLight"` and the value shall be a Plotly.js template object for the color theme the corresponding key represents.
-The following example code in the _setting.json_ file makes the line color green in the _light_ theme.
+To the extension author's knowledge, Plotly.js does not provide a simple way to support so-called dark mode.
+Therefore, the extension has prepared its own Plotly.js templates for the four color themes of VS Code and switches them according to the active color theme of VS Code.
+These template objects can be found at [src/previewTemplates.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/previewTemplates.ts) in the GitHub repository.
+
+A user can modify the appearance of graphs by overriding these templates via the `spec-data.preview.plot.traceTemplate` and `spec-data.preview.plot.layoutTemplate` settings.
+Both the settings shall be a JSON object having at most 4 keys, `"light"`, `"dark"`, `"highContrast"`, and `"highContrastLight"`. The template shall be defined with respect to each color theme.
+
+The former setting, `spec-data.preview.plot.traceTemplate`, is for customization of trace appearances such as a line color.
+The value corresponding to each color theme shall be an array of template objects for scatter plots.
+The templates are applied cyclically to multiple traces.
+With the following example, the extension draws traces in red and blue altenatively only when _light_ color theme is selected.
 
 ```json
 {
-    "spec-data.preview.plot.templates": {
-        "light": {
-            "data": [
-                { "type": "scatter", "line": { "color": "#00FF00" } }
-            ]
-        }
-    }
+  "spec-data.preview.plot.traceTemplate": {
+    "light": [
+        { "marker": { "color": "#f00" }, "line": { "color": "#f00" } },
+        { "marker": { "color": "#00f" }, "line": { "color": "#00f" } }
+    ]
+  }
 }
 ```
 
-The default template objects for the respective color themes can be found in [src/plotTemplate.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/plotTemplate.ts) in the GitHub repository.
-This may help a user to find the name of an attribute he/she wants to change.
-See the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) for the complete list of the Plotly.js template attributes.
+One can find parameter names typically used for customization in the extension's default template file, [src/previewTemplates.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/previewTemplates.ts).
+For more comprehensive list of trace template parameters, see [Plotly.com - Scatter traces in JavaScript](https://plotly.com/javascript/reference/scatter/).
+
+The latter setting, `spec-data.preview.plot.layoutTemplate`, is for customization of layout appearances such as a background color.
+Unlike the former setting, the value for the color theme key in this setting is an object (IOW, dictionary), not an array.
+One can find parameter names typically used for customization in the extension's template file, [src/previewTemplates.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/previewTemplates.ts).
+For more comprehensive list of layout template parameters, see [Plotly.com - Layout in JavaScript](https://plotly.com/javascript/reference/layout/).
+
+When an empty array and object are passed for these settings, they overwrite the extension's settings and thus, graphs are drawn with vanilla Plotly.js's (i.e., not the extension's) template.
+For example, with the following settings the graph is drawn in the default manner of Plotly.js, with white background color even in dark mode.
+
+```json
+{
+    "spec-data.preview.plot.traceTemplate": { "dark": [] },
+    "spec-data.preview.plot.layoutTemplate": { "dark": {} }
+}
+```
 
 ## Known Issues
 
@@ -86,8 +107,9 @@ See the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) fo
 VS Code provides [Webview API](https://code.visualstudio.com/api/extension-guides/webview) for extension authors to implement graphically rich contents.
 As its name suggests, the content may be prepared as a webpage, i.e., an aggregate of HTML/CSS/JavaScript.
 This extension employs [Plotly.js](https://plotly.com/javascript/) to plot graphs in the HTML body.
-While Plotly.js looks performant as an interactive and nice-looking graph generator, to render a preview consisting of a large number of scan dataset cosumues both CPU and memory resources.
-For this reason, the maximum number of plots is limited to 25 by default; a user can change the this limitation in the _Settings_ window.
+When data in a file is separated in several blocks (depending on the file format but) typically with two or more empty lines, the extension creates a page consisting of multiple graphs.
+While Plotly.js looks performant as an interactive and nice-looking graph generator, to render a preview consisting of a large number of graphs cosumues both CPU and memory resources.
+For this reason, the maximum number of graphs is limited to 25 by default; a user can change the this limitation in the _Settings_ window.
 
 ### Download button in Plotly.js graph unfunctions
 
@@ -96,7 +118,7 @@ Read GitHub Issue #1 for more details.
 
 ### Unsupported text encodings for not-in-editor documents
 
-When a preview whose source editor has been closed is reloaded, the extension tries to load the file contents using the value for `#files.encoding#` setting ID as the text encoding.
+When a preview whose source editor has been closed is reloaded, the extension tries to load the file contents using the value for `files.encoding` setting ID as the text encoding.
 The current implementation does not support several text encodings in this situation and defaults to UTF-8 in such cases.
 See GitHub issue [fujidana/vscode-spec-command#6](https://github.com/fujidana/vscode-spec-command/issues/6) (another extension) for more details.
 

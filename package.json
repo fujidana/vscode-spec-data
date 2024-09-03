@@ -3,7 +3,7 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "1.6.0",
+	"version": "1.7.0",
 	"engines": {
 		"vscode": "^1.91.0"
 	},

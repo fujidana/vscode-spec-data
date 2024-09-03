@@ -4,15 +4,17 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.7.0] -- 2024-09-03
+
 ### Added
 
+- Enable to draw a graph using the right axis (_y2_), in addition to the normal left axis (_y_).
+  - Add `spec-data.preview.plot.enableRightAxis` setting, which determines the UIs for right-axis selection hidden or not.
+  - Add "spec-data: Toggle Right Axis" in the command pallete, which is selectable when the preview panel is active. Use this for ad-hoc switch from the original left-axis-only behavior.
 - Add preview-to-editor scroll synchronization feature, which is currently enabled by default. #2
   - Add `spec-data.preview.scrollEditorWithPreview` setting, which enables or disables this feature.
 - Make the scroll behavior of preview pane selectable, smooth or instant.
   - Add `spec-data.preview.smoothScrolling` setting to control this feature.
-- Enable to draw a graph using the right axis (_y2_), in addition to the normal left axis (_y_).
-  - Add `spec-data.preview.plot.enableRightAxis` setting, which determines the UIs for right-axis selection hidden or not.
-  - Add "spec-data: Toggle Right Axis" in the command pallete, which is selectable when the preview panel is active. Use this for ad-hoc switch from the original left-axis-only behavior.
 
 ### Changed
 
@@ -312,7 +314,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.5...v1.6.0
 [1.5.5]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.4...v1.5.5
 [1.5.4]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.3...v1.5.4
