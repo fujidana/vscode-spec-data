@@ -14,6 +14,7 @@ export interface State {
     sourceUri: string;
     lockPreview: boolean;
     enableMultipleSelection: boolean;
+    enableRightAxis: boolean;
     scrollY: number;
 }
 
@@ -29,6 +30,7 @@ export type MessageToWebview =
     | SetTemplateMessage
     | UpdatePlotMessage
     | EnableMultipleSelectionMessage
+    | EnableRightAxisMessage
     | SetScrollBehaviorMessage;
 
 interface LockPreviewMessage extends BaseMessage {
@@ -58,6 +60,11 @@ interface UpdatePlotMessage extends BaseMessage {
 
 interface EnableMultipleSelectionMessage extends BaseMessage {
     type: 'enableMultipleSelection';
+    flag: boolean;
+}
+
+interface EnableRightAxisMessage extends BaseMessage {
+    type: 'enableRightAxis';
     flag: boolean;
 }
 

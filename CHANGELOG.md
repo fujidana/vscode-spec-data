@@ -10,21 +10,24 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - Add `spec-data.preview.scrollEditorWithPreview` setting, which enables or disables this feature.
 - Make the scroll behavior of preview pane selectable, smooth or instant.
   - Add `spec-data.preview.smoothScrolling` setting to control this feature.
-- Enable to draw a graph using the right axis (_y2_), in addition to the normal left axis (_y_). This feature is experimental and currently enabled by default.
-  - Add `spec-data.preview.plot.experimental.enableRightAxis` setting, which enables or disables this feature.
+- Enable to draw a graph using the right axis (_y2_), in addition to the normal left axis (_y_).
+  - Add `spec-data.preview.plot.enableRightAxis` setting, which determines the UIs for right-axis selection hidden or not.
+  - Add "spec-data: Toggle Right Axis" in the command pallete, which is selectable when the preview panel is active. Use this for ad-hoc switch from the original left-axis-only behavior.
 
 ### Changed
 
-- Improve the behavior of "spec-command: Toggle Multiple Selection" command. Now the command updates the preview contents without reloading. As a result, the switch becomes faster and does not break the scroll position.
-- Change the settings of several UI components used for multiple selection for better usability.
+- Apply many modifications on "Multiple Selection" feature.
+  - Improve the behavior of "spec-command: Toggle Multiple Selection" command. Now the command updates the preview contents without reloading. As a result, the switch becomes faster and does not break the scroll position.
+  - Rename `spec-data.preview.plot.experimental.enableMulitpleSelection` to `spec-data.preview.plot.enableMultipleSelection`
+  - Apply other minor modifications.
 - Keep the scroll position of a preview when it is shown again after hidden behind other tabs. #7
-- Make the following configuration options available from _Folder Settings_ in a multi-root workspace:
-  - `spec-data.preview.scrollPreviewWithEditor`
 - Redesign the mechanism for a user to specify Plotly.js templates for easier customization of graph appearance.
   - Deprecate `spec-data.preview.plot.templates` setting.
   - Instead introduce `spec-data.preview.plot.traceTemplate` and `spec-data.preview.plot.layoutTemplate` settings. Now the customization for traces and layout are separately specified.
   - When a user provides a template for a color theme, the extension's template for the coresppoinding color theme is overwritten. Previously it was merged (but then it was difficult to revert to Plotly's native behavior).
 - Change the default (i.e., extension's) Plotly.js templates so that multiple traces are depicted in different colors.
+- Make the following configuration options available from _Folder Settings_ in a multi-root workspace:
+  - `spec-data.preview.scrollPreviewWithEditor`
 
 ## [1.6.0] -- 2024-08-27
 

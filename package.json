@@ -152,6 +152,12 @@
 				"command": "spec-data.toggleMultipleSelection",
 				"title": "Toggle Multiple Selection",
 				"category": "spec data",
+				"icon": "$(list-unordered)"
+			},
+			{
+				"command": "spec-data.toggleRightAxis",
+				"title": "Toggle Right Axis",
+				"category": "spec data",
 				"icon": "$(list-selection)"
 			},
 			{
@@ -193,12 +199,13 @@
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
-					"command": "spec-data.refreshPreview",
-					"group": "2_specdata",
+					"command": "spec-data.toggleMultipleSelection",
+					"alt": "spec-data.toggleRightAxis",
+					"group": "navigation",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
-					"command": "spec-data.toggleMultipleSelection",
+					"command": "spec-data.refreshPreview",
 					"group": "2_specdata",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
@@ -242,6 +249,10 @@
 				},
 				{
 					"command": "spec-data.toggleMultipleSelection",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+				},
+				{
+					"command": "spec-data.toggleRightAxis",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
@@ -357,15 +368,17 @@
 						}
 					}
 				},
-				"spec-data.preview.plot.experimental.enableMulitpleSelection": {
+				"spec-data.preview.plot.enableMultipleSelection": {
 					"type": "boolean",
 					"default": false,
-					"description": "Enable to select multiple data arrays to be plotted in a graph. The configuration key may be removed or renamed in a future release."
+					"scope": "resource",
+					"description": "Makes multiple data arrays selectable for plotting a graph when a preview is created."
 				},
-				"spec-data.preview.plot.experimental.enableRightAxis": {
+				"spec-data.preview.plot.enableRightAxis": {
 					"type": "boolean",
-					"default": true,
-					"description": "Enable to select data array(s) for traces plotted using the right axis. The configuration key may be removed or renamed in a future release."
+					"default": false,
+					"scope": "resource",
+					"description": "Makes the right axis available for plotting a graph when a preview is created."
 				},
 				"spec-data.preview.table.hide": {
 					"type": "boolean",

@@ -24,20 +24,25 @@ const headDataset = document.head.dataset;
 const maximumPlots = parseInt(headDataset.maximumPlots ?? "0");
 const plotHeight = parseInt(headDataset.plotHeight ?? "100");
 const hideTableGlobal = Boolean(parseInt(headDataset.hideTable ?? "0"));
-const sourceUri = headDataset.sourceUri ?? '';
 
 let state = vscode.getState();
-if (state === undefined || state.sourceUri !== headDataset.sourceUri) {
-    const enableMultipleSelection = Boolean(parseInt(headDataset.enableMultipleSelection ?? "0"));
+if (state === undefined) {
     state = {
         template: undefined,
         valueList: {},
         scanData: {},
-        sourceUri: sourceUri,
+        sourceUri: headDataset.sourceUri ?? '',
         lockPreview: false,
-        enableMultipleSelection: enableMultipleSelection,
+        enableMultipleSelection: Boolean(parseInt(headDataset.enableMultipleSelection ?? "0")),
+        enableRightAxis: Boolean(parseInt(headDataset.enableRightAxis ?? "0")),
         scrollY: 0
     };
+    vscode.setState(state);
+} else if (state.sourceUri !== headDataset.sourceUri) {
+    state.valueList = {};
+    state.scanData = {};
+    state.sourceUri = headDataset.sourceUri ?? '';
+    scrollY = 0;
     vscode.setState(state);
 }
 
@@ -258,33 +263,27 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
             });
             const data = y1Data.concat(y2Data);
 
-            let y1Label: string;
-            if (messageIn.y1.length > 2) {
-                y1Label = `${messageIn.y1[0].label}, ${messageIn.y1[1].label}, ...`;
-            } else if (messageIn.y1.length === 2) {
-                y1Label = `${messageIn.y1[0].label}, ${messageIn.y1[1].label}`;
-            } else {
-                y1Label = messageIn.y1[0].label;
-            }
-            let y2Label: string = 'aaa';
-            if (messageIn.y2.length > 2) {
-                y2Label = `${messageIn.y2[0].label}, ${messageIn.y2[1].label}, ...`;
-            } else if (messageIn.y2.length > 1) {
-                y2Label = `${messageIn.y2[0].label}, ${messageIn.y2[1].label}`;
-            } else if (messageIn.y2.length > 0) {
-                y2Label = messageIn.y2[0].label;
-            }
-
+            const getAxisLabel = function(headers: { label: string }[]): string {
+                if (headers.length < 1) {
+                    return '';
+                } else if (headers.length < 2) {
+                    return headers[0].label;
+                } else if (headers.length < 3) {
+                    return headers[0].label + ', ' + headers[1].label;
+                } else {
+                    return headers[0].label + ', ' + headers[1].label + ',';
+                }
+            };
             const layout = {
                 template: state.template,
                 height: plotHeight,
                 xaxis: { title: messageIn.x.label },
                 yaxis: {
-                    title: y1Label,
+                    title: getAxisLabel(messageIn.y1),
                     type: (y1LogInput as HTMLInputElement).checked ? 'log' : 'linear'
                 },
                 yaxis2: {
-                    title: y2Label,
+                    title: getAxisLabel(messageIn.y2),
                     type: (y2LogInput as HTMLInputElement).checked ? 'log' : 'linear',
                     overlaying: 'y',
                     side: 'right'
@@ -315,11 +314,11 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
             // Hide '[none]' option in y2-axis. Unselect all if '[none]' was selected, 
             [...y2AxisSelects].forEach(axisSelect => {
                 const noneOption = axisSelect.options[axisSelect.options.length - 1];
+                noneOption.hidden = true;
                 if (noneOption.selected) {
                     noneOption.selected = false;
                     axisSelect.selectedIndex = -1;
                 }
-                noneOption.hidden = true;
             });
             // Set 'multiple' and 'size' attributes for y1- and y2-axis.
             [...y1AxisSelects, ...y2AxisSelects].forEach(axisSelect => {
@@ -347,6 +346,11 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
             });
         }
         state.enableMultipleSelection = messageIn.flag;
+        vscode.setState(state);
+    } else if (messageIn.type === 'enableRightAxis') {
+        const y2Elements = document.body.getElementsByClassName('y2') as HTMLCollectionOf<HTMLElement>;
+        [...y2Elements].forEach(element => element.hidden = !messageIn.flag);
+        state.enableRightAxis = messageIn.flag;
         vscode.setState(state);
     } else if (messageIn.type === 'setScrollBehavior') {
         document.documentElement.style.scrollBehavior = messageIn.value;
@@ -415,7 +419,8 @@ window.addEventListener('DOMContentLoaded', _event => {
             y1LogInput.disabled = hidesPlot;
             y2LogInput.disabled = hidesPlot;
 
-            // toggle multiple slection
+            // toggle multiple slection: start
+            // This does essentially the same as "enableMultipleSelection" event handler.
             if (state.enableMultipleSelection) {
                 xAxisSelect.setAttribute('size', xAxisSelect.dataset.sizeForMultiple ?? "0");
                 y1AxisSelect.setAttribute('multiple', '');
@@ -427,6 +432,8 @@ window.addEventListener('DOMContentLoaded', _event => {
                 y1AxisSelect.removeAttribute('size');
                 y2AxisSelect.removeAttribute('size');
             }
+            // toggle multiple slection: end
+
             // set the data selection.
             // xAxisSelect.selectedIndex = state.scanData[occurance]?.xIndex ?? 0;
             xAxisSelect.selectedIndex = state.scanData[occurance]?.xIndex ?? (xAxisSelect.length > 2 ? 0 : 1);
@@ -439,6 +446,8 @@ window.addEventListener('DOMContentLoaded', _event => {
             // y2Indexes.forEach(i => y2AxisSelect.options[i].selected = true);
             [...y2AxisSelect.options].forEach(option => { option.selected = y2Indexes.includes(option.index); });
 
+            // toggle multiple slection: start
+            // This does essentially the same as "enableMultipleSelection" event handler.
             // If multiple selection mode is enabled and the stored state indicates [none] is selected, deselect it.
             if (state.enableMultipleSelection) {
                 y2AxisSelect.options[y2AxisSelect.length - 1].selected = false;
@@ -446,7 +455,14 @@ window.addEventListener('DOMContentLoaded', _event => {
             } else {
                 y2AxisSelect.options[y2AxisSelect.options.length - 1].hidden = false;
             }
+            // toggle multiple slection: end
 
+            // toggle right axis: start
+            // This does essentially the same as "enableRightAxis" event handler.
+            const y2Elements = div.getElementsByClassName('y2') as HTMLCollectionOf<HTMLElement>;
+            [...y2Elements].forEach(element => element.hidden = !state.enableRightAxis);
+            // toggle right axis: end
+                    
             y1LogInput.checked = state.scanData[occurance]?.y1Log ?? false;
             y2LogInput.checked = state.scanData[occurance]?.y2Log ?? false;
         }

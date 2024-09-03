@@ -30,19 +30,24 @@ interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: s
  * and the values may not be unique when multiple workspaces are used.
  * Therefore, the setting value for URI is prefetched and stored here.
  */
-interface Preview {
-    uri: vscode.Uri;
+type Preview = {
+    uri: vscode.Uri
     panel: vscode.WebviewPanel;
+    config: PreviewConfig;
+    tree?: Node[];
+};
+
+type PreviewConfig = {
     enableMultipleSelection: boolean;
+    enableRightAxis: boolean;
     scrollEditorWithPreview: boolean;
     scrollPreviewWithEditor: boolean;
-    tree?: Node[];
-}
+};
 
 /**
  * Provider class for "spec-data" language
  */
-export class DataProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider, vscode.WebviewPanelSerializer {
+export class DataProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider, vscode.WebviewPanelSerializer<State> {
     readonly extensionUri;
     readonly subscriptions;
     readonly previews: Preview[] = [];
@@ -74,7 +79,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'spec-data.showPreviewToSide'.
+        // callback of 'spec-data.showLockedPreview'.
         const showLockedPreviewCallback = async (...args: unknown[]) => {
             for (const uri of getTargetFileUris(args)) {
                 this.showPreview(uri, true, false);
@@ -116,9 +121,22 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const toggleMultipleSelectionCallback = (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
-                const flag = !activePreview.enableMultipleSelection;
-                activePreview.enableMultipleSelection = flag;
+                const flag = !activePreview.config.enableMultipleSelection;
+                activePreview.config.enableMultipleSelection = flag;
                 const messageOut: MessageToWebview = { type: 'enableMultipleSelection', flag: flag };
+                activePreview.panel.webview.postMessage(messageOut);
+            } else {
+                vscode.window.showErrorMessage('Failed in finding active preview tab.');
+            }
+        };
+
+        // callback of 'spec-data.toggleRightAxis'.
+        const toggleRightAxisCallback = (..._args: unknown[]) => {
+            const activePreview = this.getActivePreview();
+            if (activePreview) {
+                const flag = !activePreview.config.enableRightAxis;
+                activePreview.config.enableRightAxis = flag;
+                const messageOut: MessageToWebview = { type: 'enableRightAxis', flag: flag };
                 activePreview.panel.webview.postMessage(messageOut);
             } else {
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
@@ -171,7 +189,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 // Refrain from sending 'scrollPreview' message soon ( < 1.5 sec) after receiving 'scrollEditor' message.
 
                 const line = event.visibleRanges[0].start.line;
-                const previews = this.previews.filter(preview => preview.scrollPreviewWithEditor && preview.uri.toString() === document.uri.toString());
+                const previews = this.previews.filter(preview => preview.config.scrollPreviewWithEditor && preview.uri.toString() === document.uri.toString());
                 for (const preview of previews) {
                     const node = preview.tree?.find(node => (node.lineEnd >= line));
                     if (node) {
@@ -186,12 +204,12 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const configurationChangeListner = (event: vscode.ConfigurationChangeEvent) => {
             if (event.affectsConfiguration('spec-data.preview.scrollEditorWithPreview')) {
                 for (const preview of this.previews) {
-                    preview.scrollEditorWithPreview = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('scrollEditorWithPreview', true);
+                    preview.config.scrollEditorWithPreview = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('scrollEditorWithPreview', true);
                 }
             }
             if (event.affectsConfiguration('spec-data.preview.scrollPreviewWithEditor')) {
                 for (const preview of this.previews) {
-                    preview.scrollPreviewWithEditor = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('scrollPreviewWithEditor', true);
+                    preview.config.scrollPreviewWithEditor = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('scrollPreviewWithEditor', true);
                 }
             }
             if (event.affectsConfiguration('spec-data.preview.smoothScrolling')) {
@@ -231,6 +249,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.commands.registerCommand('spec-data.showSource', showSourceCallback),
             vscode.commands.registerCommand('spec-data.refreshPreview', refreshPreviewCallback),
             vscode.commands.registerCommand('spec-data.toggleMultipleSelection', toggleMultipleSelectionCallback),
+            vscode.commands.registerCommand('spec-data.toggleRightAxis', toggleRightAxisCallback),
             vscode.commands.registerCommand('spec-data.togglePreviewLock', togglePreviewLockCallback),
             vscode.languages.registerFoldingRangeProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.languages.registerDocumentSymbolProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
@@ -352,7 +371,11 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.window.showErrorMessage(message, 'OK').then(() => panel.dispose());
             return;
         }
-        this.initPreview(panel, vscode.Uri.parse(state.sourceUri), state.lockPreview);
+        const config: Partial<PreviewConfig> = {
+            enableRightAxis: state.enableRightAxis,
+            enableMultipleSelection: state.enableMultipleSelection
+        };
+        this.initPreview(panel, vscode.Uri.parse(state.sourceUri), config, state.lockPreview);
     }
 
     /**
@@ -376,7 +399,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return this.livePreview;
         } else {
             // Else create a new panel as a live panel.
-            return await this.initPreview(undefined, uri, lockPreview, showToSide);
+            return await this.initPreview(undefined, uri, {}, lockPreview, showToSide);
         }
     }
 
@@ -389,7 +412,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      * @param showToSide Flag whether the new preview panel is shown to side (`true`) or in the active editor (`false`).
      * @returns Preview object if succeeded in parsing a file or `undefined`.
      */
-    private async initPreview(panel: vscode.WebviewPanel | undefined, uri: vscode.Uri, lockPreview = false, showToSide = false) {
+    private async initPreview(panel: vscode.WebviewPanel | undefined, uri: vscode.Uri, previewConfig: Partial<PreviewConfig>, lockPreview: boolean, showToSide = false) {
         const tree = await parseDocumentContent(uri);
         if (!tree) {
             const message = `Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`;
@@ -416,10 +439,17 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 }
             );
         }
-        const enableMultipleSelection = config.get<boolean>('plot.experimental.enableMulitpleSelection', false);
-        const scrollEditorWithPreview = config.get<boolean>('scrollEditorWithPreview', true);
-        const scrollPreviewWithEditor = config.get<boolean>('scrollPreviewWithEditor', true);
-        const preview: Preview = { uri, panel: panel2, enableMultipleSelection, scrollEditorWithPreview, scrollPreviewWithEditor };
+
+        const preview: Preview = {
+            uri: uri,
+            panel: panel2,
+            config: {
+                enableMultipleSelection: previewConfig.enableMultipleSelection ?? config.get<boolean>('plot.enableMultipleSelection', false),
+                enableRightAxis: previewConfig.enableRightAxis ?? config.get<boolean>('plot.enableRightAxis', false),
+                scrollEditorWithPreview: config.get<boolean>('scrollEditorWithPreview', true),
+                scrollPreviewWithEditor: config.get<boolean>('scrollPreviewWithEditor', true)
+            }
+        };
         this.previews.push(preview);
         if (!lockPreview) {
             this.livePreview = preview;
@@ -441,7 +471,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         panel2.webview.onDidReceiveMessage((messageIn: MessageFromWebview) => {
             if (messageIn.type === 'scrollEditor') {
                 const preview = this.previews.find(preview => preview.panel === panel2);
-                if (preview && preview.scrollEditorWithPreview === true) {
+                if (preview && preview.config.scrollEditorWithPreview === true) {
                     const now = Date.now();
                     if (now - this.lastScrollPreviewTimeStamp > 1500) {
                         // Ignore 'scrollEditor' message soon ( < 1.5 sec) after sending 'scrollPreview' command.
@@ -479,12 +509,16 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     }
                 }
             } else if (messageIn.type === 'contentLoaded') {
-                const messageTo: MessageToWebview = {
+                let messageOut: MessageToWebview;
+                messageOut = { type: 'lockPreview', flag: lockPreview };
+                preview.panel.webview.postMessage(messageOut);
+
+                messageOut = {
                     type: 'setTemplate',
                     template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, uri),
                     callback: 'newPlot'
                 };
-                panel2.webview.postMessage(messageTo);
+                panel2.webview.postMessage(messageOut);
             }
         }, undefined, this.subscriptions);
 
@@ -510,28 +544,20 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         }
 
         preview.uri = uri;
-        const config = vscode.workspace.getConfiguration('spec-data.preview', uri);
-        preview.enableMultipleSelection = config.get<boolean>('plot.experimental.enableMulitpleSelection', false);
-        preview.scrollPreviewWithEditor = config.get<boolean>('scrollPreviewWithEditor', true);
-        preview.scrollEditorWithPreview = config.get<boolean>('scrollEditorWithPreview', true);
-
         this.updatePreviewWithTree(preview, tree);
+
         return preview;
     }
 
     private updatePreviewWithTree(preview: Preview, tree: Node[]) {
-        const lockPreview = !(this.livePreview && this.livePreview === preview);
         const webview = preview.panel.webview;
-        const label = lockPreview ? '[Preview]' : 'Preview';
+        const label = this.livePreview === preview ? 'Preview' : '[Preview]';
         const plotlyJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
         const controllerJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewController.js'));
 
         preview.tree = tree;
         preview.panel.title = `${label} ${preview.uri.path.substring(preview.uri.path.lastIndexOf('/') + 1)}`;
-        preview.panel.webview.html = getWebviewContent(webview.cspSource, preview.uri, plotlyJsUri, controllerJsUri, tree, preview.enableMultipleSelection);
-
-        const messageOut: MessageToWebview = { type: 'lockPreview', flag: lockPreview };
-        preview.panel.webview.postMessage(messageOut);
+        preview.panel.webview.html = getWebviewContent(webview.cspSource, preview.uri, plotlyJsUri, controllerJsUri, tree, preview.config.enableMultipleSelection, preview.config.enableRightAxis);
     }
 
     private getActivePreview(): Preview | undefined {
@@ -1024,7 +1050,7 @@ function parseChiplotContent(lines: string[]): Node[] | undefined {
     return nodes;
 }
 
-function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri: vscode.Uri, controllerJsJri: vscode.Uri, nodes: Node[], enableMultipleSelection: boolean): string {
+function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri: vscode.Uri, controllerJsJri: vscode.Uri, nodes: Node[], enableMultipleSelection: boolean, enableRightAxis: boolean): string {
     const nameLists: { [name: string]: string[] } = {};
     const mnemonicLists: { [name: string]: string[] } = {};
 
@@ -1034,7 +1060,6 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     const headerType = config.get<string>('table.headerType', 'mnemonic');
     const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
     const plotHeight = config.get<number>('plot.height', 400);
-    const enableRightAxis = config.get<boolean>('plot.experimental.enableRightAxis', false);
     const smoothScrolling = config.get<boolean>('smoothScrolling', false);
 
     // Apply CSP regardless of user settings when in untrusted workspaces.
@@ -1054,20 +1079,23 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     }
 
     /** create components to select arrays (<select>) and select log-linear <input> */
-    function getAxisSelectAndOptions(axis: string, occurance: number | undefined, headers: string[], size?: number, useLogInput?: boolean, hidden?: boolean) {
+    function getAxisSelectAndOptions(axis: string, occurance: number | undefined, headers: string[], size: number, useLogInput: boolean, hidden: boolean) {
         const hiddenStr = hidden === true ? ' hidden' : '';
-        const sizeStr = size !== undefined ? ` data-size-for-multiple=${size}` : '';
-        // const isMultipleStr = isMultiple ? ' multiple' : '';
+        const sizeStr = size !== undefined ? ` data-size-for-multiple="${size}"` : '';
+        // const multipleStr = isMultiple ? ` multiple size="${size}"` : '';
         let tmpStr;
-        tmpStr = `<span${hiddenStr}>; </span>
-<label for="${axis}AxisSelect${occurance}"${hiddenStr}><var>${axis}</var>:</label>
-<select id="${axis}AxisSelect${occurance}" class="${axis}AxisSelect" data-axis="${axis}"${hiddenStr}${sizeStr}>
-${headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('\n')}
-</select>`;
+        tmpStr = `<span class="${axis}"${hiddenStr}>; </span>
+<label for="${axis}AxisSelect${occurance}" class="${axis}"${hiddenStr}><var>${axis}</var>:</label>
+<select id="${axis}AxisSelect${occurance}" class="${axis} ${axis}AxisSelect"${hiddenStr}${sizeStr}>
+`;
+        tmpStr += headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('\n');
+        tmpStr += `</select>
+`;
         if (useLogInput) {
-            tmpStr += `
-<span${hiddenStr}>,</span><input type="checkbox" id="${axis}LogInput${occurance}" class="${axis}LogInput"${hiddenStr}>
-<label for="${axis}LogInput${occurance}"${hiddenStr}>log</label>`;
+            tmpStr += `<span class="${axis}"${hiddenStr}>,</span>
+<input type="checkbox" id="${axis}LogInput${occurance}" class="${axis} ${axis}LogInput"${hiddenStr}>
+<label for="${axis}LogInput${occurance}" class="${axis}"${hiddenStr}>log</label>
+`;
         }
 
         return tmpStr;
@@ -1075,7 +1103,7 @@ ${headers.map((item, index) => `<option value="${index}">${getSanitizedString(it
 
     const header = `<!DOCTYPE html>
 <html lang="en">
-<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${sourceUri.toString()}" data-enable-multiple-selection="${Number(enableMultipleSelection)}">
+<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${sourceUri.toString()}" data-enable-multiple-selection="${Number(enableMultipleSelection)}" data-enable-right-axis="${Number(enableRightAxis)}">
 	<meta charset="UTF-8">
     ${metaCspStr}
     <title>Preview of spec-data</title>
@@ -1145,6 +1173,7 @@ html {
                 const size = Math.min((node.xAxisSelectable ? headers.length + 1 : headers.length), 4);
                 lines.push(getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], size, false, !node.xAxisSelectable));
                 lines.push(getAxisSelectAndOptions('y', occurance, headers, size, true, false));
+                // lines.push(getAxisSelectAndOptions('y2', occurance, [...headers, '[none]'], size, true, false));
                 lines.push(getAxisSelectAndOptions('y2', occurance, [...headers, '[none]'], size, true, !enableRightAxis));
                 lines.push(`.</p>
 <div id="plotly${occurance}" class="scanDataPlot"></div>`);
