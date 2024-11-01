@@ -23,24 +23,18 @@ patterns:
       - include: "#invalid-illegal-unknown"
   - begin: ^(?!$)
     end: $
+    # contentName: constant.numeric.csv
     name: meta.csv-data-line.csv
     patterns:
       - match: ','
         name: punctuation.separator.comma.csv
       - match: \s+
-      - include: "#literal-numeric-integer"
-      - include: "#literal-numeric-fractional"
+      # - include: "#literal-numeric-integer"
+      # - include: "#literal-numeric-fractional"
       - include: "#constant-nan"
-      - begin: (?<!\")\"
-        beginCaptures:
-          "0": { name: punctuation.definition.string.begin.csv }
-        end: \"(?!\")
-        endCaptures:
-          "0": { name: punctuation.definition.string.end.csv }
-        name: string.double.csv
-        patterns:
-          - match: \"\"
-            name: constant.character.escape.double-quotation.csv
+      - include: "#literal-string-quoted"
+      # - include: "#literal-numeric-invalid"
+      # - include: "#invalid-illegal-unknown"
 repository:
   # literal-numeric:
   #   patterns:
@@ -88,3 +82,19 @@ repository:
   invalid-illegal-unknown:
     match: \S+
     name: invalid.illegal.unknown.csv
+  literal-string-quoted:
+    begin: (?<!\")\"
+    beginCaptures:
+      "0": { name: punctuation.definition.string.begin.csv }
+    end: \"(?!\")
+    endCaptures:
+      "0": { name: punctuation.definition.string.end.csv }
+    name: string.quoted.double.csv
+    patterns:
+      - match: \"\"
+        name: constant.character.escape.csv
+      # - match: \\[ntr\\]
+      #   name: constant.character.escape.csv
+      - match: \\.
+        name: constant.character.escape.csv
+      #   name: invalid.illegal.unknown-escape.csv

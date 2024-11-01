@@ -4,6 +4,10 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Changed
+
+- Cease marking up numeric values in a CSV file for syntax highlighting. When a file contains thousands of colorized elements per line, responce of the editor such as scrolling becomes laggy (and the extension author often handles such files).
+
 ## [1.7.0] -- 2024-09-03
 
 ### Added
