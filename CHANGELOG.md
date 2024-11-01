@@ -4,8 +4,13 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.7.1] -- 2024-11-01
+
 ### Changed
 
+- Bump `plotly.js-basic-dist-min` dependency to 2.35.2.
+- Update other Node.js packages, including a vulnerable dependency.
+- Raise the minimum VS Code version to 1.95.0.
 - Cease marking up numeric values in a CSV file for syntax highlighting. When a file contains thousands of colorized elements per line, responce of the editor such as scrolling becomes laggy (and the extension author often handles such files).
 
 ## [1.7.0] -- 2024-09-03
@@ -318,7 +323,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.1...HEAD
+[1.7.1]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.5...v1.6.0
 [1.5.5]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.4...v1.5.5
