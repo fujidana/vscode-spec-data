@@ -173,11 +173,11 @@ const logAxisInputChangeHander = function (event: Event) {
 
             // redraw the graph
             const axisTypeValue = logAxisInput.checked ? 'log' : 'linear';
-            const layout = logAxisInput.className === 'y2LogInput' ? { 'yaxis2.type': axisTypeValue } : { 'yaxis.type': axisTypeValue };
+            const layout = logAxisInput.id.startsWith('y2LogInput') ? { 'yaxis2.type': axisTypeValue } : { 'yaxis.type': axisTypeValue };
             Plotly.relayout(plotDivs[0], layout);
 
             // save the current state
-            const newScanDataStatus: Partial<ScanDataState> = logAxisInput.className === 'y2LogInput' ? { y2Log: logAxisInput.checked } : { y1Log: logAxisInput.checked };
+            const newScanDataStatus: Partial<ScanDataState> = logAxisInput.id.startsWith('y2LogInput') ? { y2Log: logAxisInput.checked } : { y1Log: logAxisInput.checked };
             state.scanData[occurance] = occurance in state.scanData ? { ...state.scanData[occurance], ...newScanDataStatus } : newScanDataStatus;
             vscode.setState(state);
         }

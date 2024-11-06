@@ -4,6 +4,12 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.7.2] -- 2024-11-06
+
+### Fixed
+
+- Fixed an issume where checkboxes that control log/linear scale for right-axis funcions incorrectly.
+
 ## [1.7.1] -- 2024-11-01
 
 ### Changed
@@ -323,7 +329,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.1...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.2...HEAD
+[1.7.2]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.1...v1.7.2
 [1.7.1]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.5.5...v1.6.0
