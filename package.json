@@ -3,9 +3,9 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "1.7.2",
+	"version": "1.7.3",
 	"engines": {
-		"vscode": "^1.95.0"
+		"vscode": "^1.97.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -448,33 +448,34 @@
 		"js-yaml:dppmca": "js-yaml ./src/dppmca.tmLanguage.yaml > ./syntaxes/dppmca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml ./src/chiplot.tmLanguage.yaml > ./syntaxes/chiplot.tmLanguage.json",
 		"js-yaml": "pnpm run js-yaml:spec-data && pnpm run js-yaml:csv && pnpm run js-yaml:dppmca && pnpm run js-yaml:chiplot",
-		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@2.35.2"
+		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@3.0.0"
 	},
 	"devDependencies": {
-		"@types/assert": "^1.5.10",
+		"@types/assert": "^1.5.11",
 		"@types/minimatch": "^5.1.2",
-		"@types/mocha": "^10.0.9",
+		"@types/mocha": "^10.0.10",
 		"@types/node": "20.x",
 		"@types/plotly.js-basic-dist-min": "^2.12.4",
-		"@types/vscode": "^1.95.0",
+		"@types/vscode": "^1.97.0",
 		"@types/vscode-webview": "^1.57.5",
-		"@types/webpack-env": "^1.18.5",
-		"@typescript-eslint/eslint-plugin": "^8.10.0",
-		"@typescript-eslint/parser": "^8.7.0",
+		"@types/webpack-env": "^1.18.8",
+		"@typescript-eslint/eslint-plugin": "^8.22.0",
+		"@typescript-eslint/parser": "^8.22.0",
 		"@vscode/test-cli": "^0.0.10",
 		"@vscode/test-electron": "^2.4.1",
-		"@vscode/test-web": "^0.0.63",
+		"@vscode/test-web": "^0.0.66",
 		"assert": "^2.1.0",
-		"eslint": "^9.13.0",
+		"eslint": "^9.19.0",
 		"js-yaml": "^4.1.0",
-		"mocha": "^10.7.3",
+		"mocha": "^11.1.0",
 		"process": "^0.11.10",
-		"ts-loader": "^9.5.1",
-		"typescript": "^5.6.3",
-		"webpack": "^5.95.0",
-		"webpack-cli": "^5.1.4"
+		"ts-loader": "^9.5.2",
+		"typescript": "^5.7.3",
+		"webpack": "^5.97.1",
+		"webpack-cli": "^6.0.1"
 	},
 	"dependencies": {
 		"minimatch": "^10.0.1"
-	}
+	},
+	"packageManager": "pnpm@10.4.1+sha512.c753b6c3ad7afa13af388fa6d808035a008e30ea9993f58c6663e2bc5ff21679aa834db094987129aa4d488b86df57f7b634981b2f827cdcacc698cc0cfb88af"
 }

@@ -4,11 +4,19 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.7.3] -- 2025-02-17
+
+### Changed
+
+- Bump `plotly.js-basic-dist-min` dependency to 3.0.0.
+- Update other Node.js packages, including a vulnerable dependency.
+- Raise the minimum VS Code version to 1.97.0.
+
 ## [1.7.2] -- 2024-11-06
 
 ### Fixed
 
-- Fixed an issume where checkboxes that control log/linear scale for right-axis funcions incorrectly.
+- Fixed an issue where checkboxes that control log/linear scaling for right-axis function incorrectly.
 
 ## [1.7.1] -- 2024-11-01
 
@@ -329,7 +337,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.2...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.3...HEAD
+[1.7.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.2...v1.7.3
 [1.7.2]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.1...v1.7.2
 [1.7.1]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.0...v1.7.1
 [1.7.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.6.0...v1.7.0
