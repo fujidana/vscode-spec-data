@@ -4,6 +4,9 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+- Update Node.js packages.
+- Raise the minimum VS Code version to 1.98.0.
+
 ## [1.7.3] -- 2025-02-17
 
 ### Changed
