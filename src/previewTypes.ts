@@ -1,3 +1,5 @@
+import type { Template } from 'plotly.js-basic-dist-min';
+
 export interface ScanDataState {
     xIndex: number;
     y1Indexes: number[];
@@ -8,7 +10,7 @@ export interface ScanDataState {
 }
 
 export interface State {
-    template: unknown;
+    template: Template | undefined;
     valueList: { [occurance: number]: { hidden: boolean } };
     scanData: { [occurance: number]: Partial<ScanDataState> };
     sourceUri: string;
@@ -25,7 +27,7 @@ export interface BaseMessage {
 export type CallbackType = 'newPlot' | 'relayout' | 'react';
 
 export type MessageToWebview =
-    LockPreviewMessage
+    | LockPreviewMessage
     | ScrollPreviewMessage
     | SetTemplateMessage
     | UpdatePlotMessage
@@ -45,7 +47,7 @@ interface ScrollPreviewMessage extends BaseMessage {
 
 interface SetTemplateMessage extends BaseMessage {
     type: 'setTemplate';
-    template: unknown;
+    template: Template;
     callback: CallbackType;
 }
 
@@ -74,7 +76,7 @@ interface SetScrollBehaviorMessage extends BaseMessage {
 }
 
 export type MessageFromWebview =
-    ScrollEditorMessage
+    | ScrollEditorMessage
     | requestPlotDataMessage
     | ContentLoadedMessage;
 

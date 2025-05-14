@@ -171,13 +171,18 @@ const logAxisInputChangeHander = function (event: Event) {
         if (occuranceString && plotDivs.length === 1) {
             const occurance = parseInt(occuranceString);
 
-            // redraw the graph
+            let layout: any; // Partial<Plotly.Layout>;
+            let newScanDataStatus: Partial<ScanDataState>;
             const axisTypeValue = logAxisInput.checked ? 'log' : 'linear';
-            const layout = logAxisInput.id.startsWith('y2LogInput') ? { 'yaxis2.type': axisTypeValue } : { 'yaxis.type': axisTypeValue };
-            Plotly.relayout(plotDivs[0], layout);
+            if (logAxisInput.id.startsWith('y2LogInput')) {
+                layout = { 'yaxis2.type': axisTypeValue };
+                newScanDataStatus = { y2Log: logAxisInput.checked };
+            } else {
+                layout = { 'yaxis.type': axisTypeValue };
+                newScanDataStatus = { y1Log: logAxisInput.checked };
+            }
 
-            // save the current state
-            const newScanDataStatus: Partial<ScanDataState> = logAxisInput.id.startsWith('y2LogInput') ? { y2Log: logAxisInput.checked } : { y1Log: logAxisInput.checked };
+            Plotly.relayout(plotDivs[0], layout);
             state.scanData[occurance] = occurance in state.scanData ? { ...state.scanData[occurance], ...newScanDataStatus } : newScanDataStatus;
             vscode.setState(state);
         }
@@ -244,7 +249,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         const y1LogInput = document.getElementById(`yLogInput${messageIn.occurance}`);
         const y2LogInput = document.getElementById(`y2LogInput${messageIn.occurance}`);
         if (graphDiv && y1LogInput && y2LogInput) {
-            const y1Data = messageIn.y1.map(y_i => {
+            const y1Data: Partial<Plotly.PlotData>[] = messageIn.y1.map(y_i => {
                 return {
                     x: messageIn.x.array,
                     y: y_i.array,
@@ -252,7 +257,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
                     name: y_i.label
                 };
             });
-            const y2Data = messageIn.y2.map(y1_i => {
+            const y2Data: Partial<Plotly.PlotData>[] = messageIn.y2.map(y1_i => {
                 return {
                     x: messageIn.x.array,
                     y: y1_i.array,
@@ -263,7 +268,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
             });
             const data = y1Data.concat(y2Data);
 
-            const getAxisLabel = function(headers: { label: string }[]): string {
+            const getAxisLabel = function (headers: { label: string }[]): string {
                 if (headers.length < 1) {
                     return '';
                 } else if (headers.length < 2) {
@@ -274,16 +279,16 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
                     return headers[0].label + ', ' + headers[1].label + ',';
                 }
             };
-            const layout = {
+            const layout: Partial<Plotly.Layout> = {
                 template: state.template,
                 height: plotHeight,
-                xaxis: { title: messageIn.x.label },
+                xaxis: { title: { text: messageIn.x.label } },
                 yaxis: {
-                    title: getAxisLabel(messageIn.y1),
+                    title: { text: getAxisLabel(messageIn.y1) },
                     type: (y1LogInput as HTMLInputElement).checked ? 'log' : 'linear'
                 },
                 yaxis2: {
-                    title: getAxisLabel(messageIn.y2),
+                    title: { text: getAxisLabel(messageIn.y2) },
                     type: (y2LogInput as HTMLInputElement).checked ? 'log' : 'linear',
                     overlaying: 'y',
                     side: 'right'
@@ -462,7 +467,7 @@ window.addEventListener('DOMContentLoaded', _event => {
             const y2Elements = div.getElementsByClassName('y2') as HTMLCollectionOf<HTMLElement>;
             [...y2Elements].forEach(element => element.hidden = !state.enableRightAxis);
             // toggle right axis: end
-                    
+
             y1LogInput.checked = state.scanData[occurance]?.y1Log ?? false;
             y2LogInput.checked = state.scanData[occurance]?.y2Log ?? false;
         }
@@ -515,6 +520,6 @@ window.addEventListener("scroll", event => {
                     break;
                 }
             }
-        } 
+        }
     }, 50);
 });

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { minimatch } from 'minimatch';
 import { getTextDecoder } from './textEncoding';
 import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
+import type { PlotData, Layout } from 'plotly.js-basic-dist-min';
 import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
 
 const SPEC_DATA_FILTER = { language: 'spec-data' };
@@ -1188,18 +1189,15 @@ html {
     </html>`;
 }
 
-type ColorThemeKind = "light" | "dark" | "highContrast" | "highContrastLight";
-type traceTemplate = Record<string, unknown>[];
-type LayoutTemplate = Record<string, unknown>;
-
+type ColorThemeKind = 'light' | 'dark' | 'highContrast' | 'highContrastLight';
 
 function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope) {
-    let traceTemplate: traceTemplate;
-    let layoutTemplate: LayoutTemplate;
+    let traceTemplate: Partial<PlotData>[]; // Record<string, unknown>[];
+    let layoutTemplate: Partial<Layout>; // Record<string, unknown>;
 
     const config = vscode.workspace.getConfiguration('spec-data.preview.plot', scope);
-    const userTraceTemplate = config.get<{ [key in ColorThemeKind]?: traceTemplate }>('traceTemplate');
-    const userLayoutTemplate = config.get<{ [key in ColorThemeKind]?: LayoutTemplate }>('layoutTemplate');
+    const userTraceTemplate = config.get<{ [key in ColorThemeKind]?: Partial<PlotData>[] }>('traceTemplate');
+    const userLayoutTemplate = config.get<{ [key in ColorThemeKind]?: Partial<Layout> }>('layoutTemplate');
 
     switch (kind) {
         case vscode.ColorThemeKind.Light:
@@ -1214,7 +1212,6 @@ function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.Configura
             traceTemplate = userTraceTemplate?.highContrast ?? defaultTraceTemplate.highContrast;
             layoutTemplate = userLayoutTemplate?.highContrast ?? defaultLayoutTemplate.highContrast;
             break;
-
         case vscode.ColorThemeKind.HighContrastLight:
             traceTemplate = userTraceTemplate?.highContrastLight ?? defaultTraceTemplate.highContrastLight;
             layoutTemplate = userLayoutTemplate?.highContrastLight ?? defaultLayoutTemplate.highContrastLight;
