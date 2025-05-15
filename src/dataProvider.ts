@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import { minimatch } from 'minimatch';
-import { getTextDecoder } from './textEncoding';
 import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
 import type { PlotData, Layout } from 'plotly.js-basic-dist-min';
 import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
@@ -633,7 +632,9 @@ async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
         }
 
         // Read the content from a file. Use file encoding for the language ID (if "files.encoding" is set.)
-        text = getTextDecoder({ languageId, uri }).decode(await vscode.workspace.fs.readFile(uri));
+        const encoding = vscode.workspace.getConfiguration('files', { languageId, uri }).get<string>('encoding', 'utf8');
+        text = await vscode.workspace.decode(await vscode.workspace.fs.readFile(uri), { encoding });
+        // text = await vscode.workspace.decode(await vscode.workspace.fs.readFile(uri), { uri });
     }
 
     // Parse the document contents.
