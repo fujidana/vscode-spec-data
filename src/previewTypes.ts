@@ -1,4 +1,7 @@
+// @types/plotly.js contains DOM objects and thus
+// `tsc -p .` fails without `skipLibCheck`.
 import type { Template } from 'plotly.js-basic-dist-min';
+// type Template = any;
 
 export interface ScanDataState {
     xIndex: number;

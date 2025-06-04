@@ -128,7 +128,7 @@ const scriptConfig = {
           {
             loader: 'ts-loader',
             options: {
-              configFile: 'preview.tsconfig.json'
+              configFile: 'tsconfig-preview.json'
             }
           }
         ]
@@ -137,6 +137,7 @@ const scriptConfig = {
   },
   externals: {
     vscode: 'commonjs vscode', // ignored because it doesn't exist
+    Plotly: 'root Plotly',
   },
   performance: {
     hints: false

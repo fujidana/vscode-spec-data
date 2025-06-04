@@ -1,13 +1,11 @@
 /*
- * TypeScript script that is loaded by <script src="..."> in a webview html file.
- * The script is not directly executed in the main thread of the extension and thus, compiled separately 
- * from other sources.
+ * A JavaScript transpiled from this file is loaded by <script src="..."> in
+ * a webview HTML file.
  */
 
 /*
- * @types/plotly.js and @types/plotly.js-basic-dist-min distributed by npm does not contain `makeTemplate()` function
- * and thus, syntax error is thrown when used as type definitions. 
- * Therefore, `declare` is used instead.
+ * At run-time, Plotly is separately loaded by `<script src=""..."">` in a 
+ * HTML file and thus, is available in the global scope.
  */
 // import Plotly from 'plotly.js-basic-dist-min';
 declare const Plotly: any;

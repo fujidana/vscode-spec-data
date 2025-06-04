@@ -1,8 +1,13 @@
 import * as vscode from 'vscode';
 import { minimatch } from 'minimatch';
-import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
-import type { PlotData, Layout } from 'plotly.js-basic-dist-min';
 import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
+
+// @types/plotly.js contains DOM objects and thus
+// `tsc -p .` fails without `skipLibCheck`.
+import type { PlotData, Layout } from 'plotly.js-basic-dist-min';
+// type PlotData = any;
+// type Layout = any;
+import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
 
 const SPEC_DATA_FILTER = { language: 'spec-data' };
 const CSV_COLUMNS_FILTER = { language: 'csv-column' };
