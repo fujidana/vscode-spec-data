@@ -30,7 +30,7 @@ Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs
 _cited from [CSS - Certified Scientific Software](https://www.certif.com) homepage._
 
 Note that the extension is not the official one developed by Certified Scientific Software.
-Use [GitHub issues](https://github.com/fujidana/vscode-spec-data/issues) for bug reports and feature requests about the extension.
+Use [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues) for bug reports and feature requests about the extension.
 
 ## Features
 
@@ -102,35 +102,26 @@ For example, with the following settings the graph is drawn in the default manne
 
 ## Known Issues
 
-### Limitation due to rendering resource
-
-VS Code provides [Webview API](https://code.visualstudio.com/api/extension-guides/webview) for extension authors to implement graphically rich contents.
-As its name suggests, the content may be prepared as a webpage, i.e., an aggregate of HTML/CSS/JavaScript.
-This extension employs [Plotly.js](https://plotly.com/javascript/) to plot graphs in the HTML body.
-When data in a file is separated in several blocks (depending on the file format but) typically with two or more empty lines, the extension creates a page consisting of multiple graphs.
-While Plotly.js looks performant as an interactive and nice-looking graph generator, to render a preview consisting of a large number of graphs cosumues both CPU and memory resources.
-For this reason, the maximum number of graphs is limited to 25 by default; a user can change the this limitation in the _Settings_ window.
-
-### Download button in Plotly.js graph unfunctions
-
-The download button in the Plotly.js mode bar, which appears at the top right corner when the cursor is on the graph, does not function.
-Read GitHub Issue #1 for more details.
-
-### Unsupported text encodings for not-in-editor documents
-
-When a preview whose source editor has been closed is reloaded, the extension tries to load the file contents using the value for `files.encoding` setting ID as the text encoding.
-The current implementation does not support several text encodings in this situation and defaults to UTF-8 in such cases.
-See GitHub issue [fujidana/vscode-spec-command#6](https://github.com/fujidana/vscode-spec-command/issues/6) (another extension) for more details.
+See [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues) for a list of known issues.
 
 ## Release Notes
 
 See [CHANGELOG.md](CHANGELOG.md).
 
+## Contributing
+
+If you find a bug or have a feature request, please open an issue at [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues).
+Pull requests from a forked repository are also welcome but I recommend opening an issue beforehand to discuss the change you want to make.
+
+## Acknowledgements
+
+- [Plotly.js](https://plotly.com/javascript/): Thanks for providing a powerful graphing library.
+
 ## Tips
 
 ### File associations using the file contents
 
-In addition to a file extension and file pattter, VS Code refers to the first line of a file in order to associate the file with a language (IOW, editor mode).
+In addition to a file extension, VS Code refers to the first line of a file in order to associate the file with a language (IOW, editor mode).
 A text file starting with `# mode: csv-row` and `# mode: csv-column` is automatically associated with `csv-row` and `csv-column`, respectively.
 
 ### Make __spec__ output a row-wise CSV file

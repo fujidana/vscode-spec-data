@@ -4,17 +4,24 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [1.7.4] -- 2025-06-05
+
 ### Changed
 
-- Update Node.js packages.
+- Migrate the bundler from `webpack` to `esbuild`.
+- Bump `plotly.js-basic-dist-min` dependency to 3.0.1.
 - Raise the minimum VS Code version to 1.100.0.
+- Use newly added `vscode.workspace.decode()` function instead of `util.TextDecoder` to decode file contents, which will dissolve a rare problem that may occur when a user sets a minor encoding in `files.encoding` settings. See fujidana/vscode-spec-command#6.
+
+### Fixed
+
+- Fixed an issue where the visibility of graphs in a preview was not retained when the pane was hidden and shown again. #12
 
 ## [1.7.3] -- 2025-02-17
 
 ### Changed
 
 - Bump `plotly.js-basic-dist-min` dependency to 3.0.0.
-- Update other Node.js packages, including a vulnerable dependency.
 - Raise the minimum VS Code version to 1.97.0.
 
 ## [1.7.2] -- 2024-11-06
@@ -28,7 +35,6 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Changed
 
 - Bump `plotly.js-basic-dist-min` dependency to 2.35.2.
-- Update other Node.js packages, including a vulnerable dependency.
 - Raise the minimum VS Code version to 1.95.0.
 - Cease marking up numeric values in a CSV file for syntax highlighting. When a file contains thousands of colorized elements per line, responce of the editor such as scrolling becomes laggy (and the extension author often handles such files).
 
@@ -71,7 +77,6 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Changed
 
 - Bump `plotly.js-basic-dist-min` dependency to 2.34.0.
-- Update Node.js packages, including a vulnerable dependency.
 - Raise the minimum VS Code version to 1.91.0.
 - Rename several scope names used in syntax highlighting, based on reference: [Sublime Text / Scope Naming](https://www.sublimetext.com/docs/scope_naming.html).
 
@@ -80,7 +85,6 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Changed
 
 - Bump `plotly.js-basic-dist-min` dependency to 2.27.1.
-- Update other Node.js packages, including a vulnerable dependency.
 - Raise the minimum VS Code version to 1.85.0.
 
 ## [1.5.4] -- 2023-08-20
@@ -89,7 +93,6 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 - Let VS Code know first line patterns for `spec-data` and `chiplot`. VS Code judges the file association by the first line if its file extension is unknown.
 - Bump `plotly.js-basic-dist-min` dependency to 2.25.2 and `minimatch` dependency to 9.0.3.
-- Update other Node.js packages, including a vulnerable dependency.
 - Raise the minimum VS Code version to 1.78.0.
 
 ## [1.5.3] -- 2023-05-22
@@ -151,7 +154,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Changed
 
 - Migrate the package manager to `pnpm`.
-- Bump `plotly.js-basic-dist-min` dependency to 2.14.0 and update other Node.js packages.
+- Bump `plotly.js-basic-dist-min` dependency to 2.14.0.
 - Raise the minimum VS Code version to 1.71.0.
 
 ### Fixed
@@ -166,14 +169,14 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Changed
 
-- Bump `plotly.js-basic-dist-min` and `minimatch` dependencies to 2.12.1 and 5.1.0, respectively, and update other Node.js packages.
+- Bump `plotly.js-basic-dist-min` and `minimatch` dependencies to 2.12.1 and 5.1.0, respectively.
 - Raise the minimum VS Code version to 1.68.0.
 
 ## [1.4.1] -- 2022-03-29
 
 ### Changed
 
-- Bump `plotly.js-basic-dist-min` and `minimatch` dependencies to 2.11.1 and 5.0.1, respectively, and update other Node.js packages.
+- Bump `plotly.js-basic-dist-min` and `minimatch` dependencies to 2.11.1 and 5.0.1, respectively.
 - Raise the minimum VS Code version to 1.65.0.
 
 ## [1.4.0] -- 2021-12-02
@@ -342,7 +345,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.3...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.4...HEAD
+[1.7.4]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.3...v1.7.4
 [1.7.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.2...v1.7.3
 [1.7.2]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.1...v1.7.2
 [1.7.1]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.0...v1.7.1
