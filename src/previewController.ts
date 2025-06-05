@@ -112,7 +112,7 @@ const showPlotInputChangeHandler = function (event: Event) {
 
             // save the current state
             const newScanData: Required<ScanDataState> = {
-                xIndex, y1Indexes, y2Indexes, y1Log: y1LogInput.checked, y2Log: y2LogInput.checked, hidden: showPlotInput.checked
+                xIndex, y1Indexes, y2Indexes, y1Log: y1LogInput.checked, y2Log: y2LogInput.checked, hidden: !showPlotInput.checked
             };
             state.scanData[occurance] = newScanData;
             vscode.setState(state);
@@ -369,7 +369,8 @@ window.addEventListener('DOMContentLoaded', _event => {
 
         if (occuranceString && showValueListInputs.length === 1 && valueListTables.length === 1) {
             const occurance = parseInt(occuranceString);
-            const hideTable: boolean = occurance in state.valueList && state.valueList[occurance].hidden !== undefined ? state.valueList[occurance].hidden : hideTableGlobal;
+            const hideTable = state.valueList[occurance]?.hidden ?? hideTableGlobal;
+            // const hideTable: boolean = occurance in state.valueList && state.valueList[occurance].hidden !== undefined ? state.valueList[occurance].hidden : hideTableGlobal;
 
             // register a handler.
             showValueListInputs[0].onchange = showValueListInputChangeHandler;
@@ -405,6 +406,7 @@ window.addEventListener('DOMContentLoaded', _event => {
 
             // set the initial state.
             const hidesPlot = state.scanData[occurance]?.hidden ?? occurance >= maximumPlots;
+            // const hidesPlot: boolean = occurance in state.scanData && state.scanData[occurance].hidden !== undefined ? state.scanData[occurance].hidden : occurance >= maximumPlots;
             showPlotInput.checked = !hidesPlot;
 
             // axis selectors and log checkboxes
