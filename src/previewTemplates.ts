@@ -1,17 +1,34 @@
 /**
-* Template of traces in Plotly.js graphs for the respective color themes.
-* 
-* The right value of the assignment, i.e., a string between `=` and `;`, is
-* wrtten in a JSON-compatible format. The extension allows a user to override
-* the template via `spec-data.preview.plot.traceTemplate` key in setting.json
-* and a user can use the following JSON-compatible part as a base of the setting.
-* one specified in settings.json.
-* See https://plotly.com/javascript/reference/scatter/ for details about 
-* parameters.
-* It seems the color format Plotly.js can accept is the same as that of CSS. 
-* Shorthand such as "marker.color" is not available as a key of the object.
-* Trace templates are applied cyclically.
-*/
+ * This file defines default template objects passed to Plotly.js graphs.
+ * 
+ * Users can override the appearance defined in this file using the following
+ * settings:
+ * - `spec-data.preview.plot.traceTemplate`
+ * - `spec-data.preview.plot.layoutTemplate`
+ * 
+ * The values for the respective color theme keys (such as `light`) in this
+ * objects are passed to Plotly.js graphs as template, unless a user defined
+ * the settings above.
+ * The right value of the constant definition, i.e., a string between `=` and
+ * `;`, in this file is wrtten in a JSON-compatible format, which allows a 
+ * user to use this part as the base of value for the setting key above.
+ * 
+ * Color can be defined in various ways: it seems the color format Plotly.js
+ * accepts in a template is the same as that of CSS. 
+ * 
+ * Shorthand such as "marker.color" is not available as a key of the object.
+ */
+
+/**
+ * Template of traces in Plotly.js graphs for the respective color themes.
+ * 
+ * The structure is the same as `spec-data.preview.plot.traceTemplate` key 
+ * in setting.json.
+ * See https://plotly.com/javascript/reference/scatter/ for details about 
+ * parameters.
+ * Trace templates are applied cyclically in case the graph contains multiple
+ * traces.
+ */
 export const defaultTraceTemplate = {
     "light": [
     ],
@@ -30,16 +47,12 @@ export const defaultTraceTemplate = {
 };
 
 /**
-* Template of the layout in Plotly.js graphs for the respective color themes.
-* 
-* The right value of the assignment, i.e., a string between `=` and `;`, is
-* wrtten in a JSON-compatible format. The extension allows a user to override
-* the template via `spec-data.preview.plot.layoutTemplate` key in setting.json
-* and a user can use the following JSON-compatible part as a base of the setting.
+ * Template of the layout in Plotly.js graphs for the respective color themes.
+ * 
+ * The structure is the same as `spec-data.preview.plot.layoutTemplate` key 
+ * in setting.json.
 * See https://plotly.com/javascript/reference/layout/ for details about 
 * parameters.
-* It seems the color format Plotly.js can accept is the same as that of CSS. 
-* Shorthand such as "font.color" is not available as a key of the object.
 */
 export const defaultLayoutTemplate = {
     "light": {
