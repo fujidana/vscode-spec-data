@@ -160,7 +160,7 @@ const plotAxisSelectChangeHandler = function (event: Event) {
 };
 
 // a handler for a checkbox to select the axis scale from log or linear.
-const logAxisInputChangeHander = function (event: Event) {
+const logAxisInputChangeHandler = function (event: Event) {
     if (event.target && event.target instanceof HTMLInputElement && event.target.parentElement?.parentElement) {
         const div = event.target.parentElement.parentElement;
         const occuranceString = div.dataset.occurance;
@@ -369,15 +369,15 @@ window.addEventListener('DOMContentLoaded', _event => {
 
         if (occuranceString && showValueListInputs.length === 1 && valueListTables.length === 1) {
             const occurance = parseInt(occuranceString);
-            const hideTable = state.valueList[occurance]?.hidden ?? hideTableGlobal;
-            // const hideTable: boolean = occurance in state.valueList && state.valueList[occurance].hidden !== undefined ? state.valueList[occurance].hidden : hideTableGlobal;
+            const hidesTable = state.valueList[occurance]?.hidden ?? hideTableGlobal;
+            // const hidesTable: boolean = occurance in state.valueList && state.valueList[occurance].hidden !== undefined ? state.valueList[occurance].hidden : hideTableGlobal;
+
+            // set the initial state
+            showValueListInputs[0].checked = !hidesTable;
+            valueListTables[0].hidden = hidesTable;
 
             // register a handler.
             showValueListInputs[0].onchange = showValueListInputChangeHandler;
-
-            // set the initial state
-            showValueListInputs[0].checked = !hideTable;
-            valueListTables[0].hidden = hideTable;
         }
     }
 
@@ -401,22 +401,12 @@ window.addEventListener('DOMContentLoaded', _event => {
             const y2LogInput = y2LogInputs[0];
 
             // Show Plot checkboxes
-            // register a handler
-            showPlotInput.onchange = showPlotInputChangeHandler;
-
             // set the initial state.
             const hidesPlot = state.scanData[occurance]?.hidden ?? occurance >= maximumPlots;
             // const hidesPlot: boolean = occurance in state.scanData && state.scanData[occurance].hidden !== undefined ? state.scanData[occurance].hidden : occurance >= maximumPlots;
             showPlotInput.checked = !hidesPlot;
 
             // axis selectors and log checkboxes
-            // register a handler
-            xAxisSelect.onchange = plotAxisSelectChangeHandler;
-            y1AxisSelect.onchange = plotAxisSelectChangeHandler;
-            y2AxisSelect.onchange = plotAxisSelectChangeHandler;
-            y1LogInput.onchange = logAxisInputChangeHander;
-            y2LogInput.onchange = logAxisInputChangeHander;
-
             // set the initial state.
             xAxisSelect.disabled = hidesPlot;
             y1AxisSelect.disabled = hidesPlot;
@@ -470,6 +460,14 @@ window.addEventListener('DOMContentLoaded', _event => {
 
             y1LogInput.checked = state.scanData[occurance]?.y1Log ?? false;
             y2LogInput.checked = state.scanData[occurance]?.y2Log ?? false;
+
+            // register a handler
+            showPlotInput.onchange = showPlotInputChangeHandler;
+            xAxisSelect.onchange = plotAxisSelectChangeHandler;
+            y1AxisSelect.onchange = plotAxisSelectChangeHandler;
+            y2AxisSelect.onchange = plotAxisSelectChangeHandler;
+            y1LogInput.onchange = logAxisInputChangeHandler;
+            y2LogInput.onchange = logAxisInputChangeHandler;
         }
     }
 
@@ -503,7 +501,7 @@ window.addEventListener("scroll", event => {
     }
     timer2 = setTimeout(() => {
         // Send 'scrollEditor' command.
-        // Currently thie preview controller always sends message whether the setting for scroll synchronization is on or off
+        // Currently the preview controller always sends message whether the setting for scroll synchronization is on or off
         // and the main controller determines whether the editor is scrolled or not.
         if (event.timeStamp - lastScrollPreviewTimeStamp > 1500) {
             // Refrain from sending 'scrollEditor' message soon ( < 1.5 sec) after receiving 'scrollPreview' message.
