@@ -110,8 +110,8 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing
 
-If you find a bug or have a feature request, please open an issue at [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues).
-Pull requests from a forked repository are also welcome but I recommend opening an issue beforehand to discuss the change you want to make.
+The extension is open to contributions. Create an issue in [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues) for a bug report or a feature request.
+If you want to contribute code, please read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Acknowledgements
 
