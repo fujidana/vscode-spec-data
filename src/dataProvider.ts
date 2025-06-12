@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { minimatch } from 'minimatch';
 import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
+import { parseDocument, type ParsedData } from './dataParser';
 
 // @types/plotly.js contains DOM objects and thus
 // `tsc -p .` fails without `skipLibCheck`.
@@ -56,6 +57,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     readonly extensionUri;
     readonly subscriptions;
     readonly previews: Preview[] = [];
+    readonly parsedDataMap = new Map<string, Promise<ParsedData | undefined>>();
 
     livePreview: Preview | undefined = undefined;
     colorThemeKind: vscode.ColorThemeKind;
@@ -176,6 +178,30 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
+        // a hander invoked when the document is opened
+        // this is also invoked after the user manually changed the language id
+        const textDocumentDidOpenListener = (document: vscode.TextDocument) => {
+            if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
+                this.parsedDataMap.set(document.uri.toString(), parseDocument(document));
+            }
+        };
+
+        // a hander invoked when the document is changed
+        const textDocumentDidChangeListener = (event: vscode.TextDocumentChangeEvent) => {
+            const document = event.document;
+            if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
+                this.parsedDataMap.set(document.uri.toString(), parseDocument(document));
+            }
+        };
+
+        // a hander invoked when the document is closed
+        // this is also invoked after the user manually changed the language id
+        const textDocumentDidCloseListener = (document: vscode.TextDocument) => {
+            if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
+                this.parsedDataMap.delete(document.uri.toString());
+            }
+        };
+
         const activeTextEditorChangeListener = (editor: vscode.TextEditor | undefined) => {
             if (editor) {
                 const document = editor.document;
@@ -245,6 +271,13 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             this.colorThemeKind = colorTheme.kind;
         };
 
+        // When the extension is activated by opening a file for this extension.
+        for (const document of vscode.workspace.textDocuments) {
+            if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
+                this.parsedDataMap.set(document.uri.toString(), parseDocument(document));
+            }
+        }
+
         // register providers and commands
         context.subscriptions.push(
             vscode.commands.registerCommand('spec-data.showPreview', showPreviewCallback),
@@ -259,6 +292,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.languages.registerFoldingRangeProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.languages.registerDocumentSymbolProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.window.registerWebviewPanelSerializer('spec-data.preview', this),
+            vscode.workspace.onDidOpenTextDocument(textDocumentDidOpenListener),
+            vscode.workspace.onDidChangeTextDocument(textDocumentDidChangeListener),
+            vscode.workspace.onDidCloseTextDocument(textDocumentDidCloseListener),
             vscode.window.onDidChangeActiveTextEditor(activeTextEditorChangeListener),
             vscode.window.onDidChangeTextEditorVisibleRanges(textEditorVisibleRangesChangeListener),
             vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
@@ -272,43 +308,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     public provideFoldingRanges(document: vscode.TextDocument, context: vscode.FoldingContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
         if (token.isCancellationRequested) { return; }
 
-        const ranges: vscode.FoldingRange[] = [];
-
-        if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
-            const lineCount = document.lineCount;
-            let prevLineIndex = -1;
-
-            for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-                if (document.lineAt(lineIndex).isEmptyOrWhitespace) {
-                    if (lineIndex !== prevLineIndex + 1) {
-                        ranges.push(new vscode.FoldingRange(prevLineIndex + 1, lineIndex));
-                    }
-                    prevLineIndex = lineIndex;
-                }
-            }
-        } else if (vscode.languages.match(DPPMCA_FILTER, document)) {
-            const lineCount = document.lineCount;
-            let prevLineIndex = -1;
-
-            for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-                const lineText = document.lineAt(lineIndex).text;
-                if (DPPMCA_BLOCK_REGEXP.test(lineText)) {
-                    // console.log(lineText, prevLineIndex + 1, lineIndex);
-                    if (lineText.endsWith('END>>')) {
-                        if (prevLineIndex !== -1) {
-                            ranges.push(new vscode.FoldingRange(prevLineIndex, lineIndex));
-                        }
-                        prevLineIndex = -1;
-                    } else {
-                        if (prevLineIndex !== -1) {
-                            ranges.push(new vscode.FoldingRange(prevLineIndex, lineIndex - 1));
-                        }
-                        prevLineIndex = lineIndex;
-                    }
-                }
-            }
-        }
-        return ranges;
+        return this.parsedDataMap.get(document.uri.toString())?.then(parsedData => parsedData?.foldingRanges);
     }
 
     /**
@@ -317,54 +317,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     public provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.SymbolInformation[] | vscode.DocumentSymbol[]> {
         if (token.isCancellationRequested) { return; }
 
-        const symbols: vscode.DocumentSymbol[] = [];
-
-        if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
-            const lineCount = document.lineCount;
-            const scanLineRegex = /^(#S [0-9]+)\s*(\S.*)?$/;
-            const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
-            let prevLineIndex = -1;
-
-            for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-                if (document.lineAt(lineIndex).isEmptyOrWhitespace) {
-                    if (lineIndex !== prevLineIndex + 1) {
-                        const lineTextAtBlockStart = document.lineAt(prevLineIndex + 1).text;
-                        let matches: RegExpMatchArray | null;
-                        if ((matches = lineTextAtBlockStart.match(scanLineRegex)) || (matches = lineTextAtBlockStart.match(otherLineRegex))) {
-                            const range = new vscode.Range(prevLineIndex + 1, 0, lineIndex, 0);
-                            const selectedRange = new vscode.Range(prevLineIndex + 1, 0, prevLineIndex + 1, matches[0].length);
-                            symbols.push(new vscode.DocumentSymbol(matches[1], matches[2], vscode.SymbolKind.Key, range, selectedRange));
-                        }
-                    }
-                    prevLineIndex = lineIndex;
-                }
-            }
-        } else if (vscode.languages.match(DPPMCA_FILTER, document)) {
-            const lineCount = document.lineCount;
-            let prevBlock: [string, vscode.Range] | undefined;
-
-            for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-                const line = document.lineAt(lineIndex);
-                let matches: RegExpMatchArray | null;
-
-                if (matches = line.text.match(DPPMCA_BLOCK_REGEXP)) {
-                    if (matches[1].endsWith('END')) {
-                        if (prevBlock) {
-                            const range = new vscode.Range(prevBlock[1].start, line.range.end);
-                            symbols.push(new vscode.DocumentSymbol(prevBlock[0], '', vscode.SymbolKind.Object, range, prevBlock[1]));
-                        }
-                        prevBlock = undefined;
-                    } else {
-                        if (prevBlock) {
-                            const range = new vscode.Range(prevBlock[1].start, document.lineAt(lineIndex - 1).range.end);
-                            symbols.push(new vscode.DocumentSymbol(prevBlock[0], '', vscode.SymbolKind.Object, range, prevBlock[1]));
-                        }
-                        prevBlock = [matches[1], line.range];
-                    }
-                }
-            }
-        }
-        return symbols;
+        return this.parsedDataMap.get(document.uri.toString())?.then(parsedData => parsedData?.documentSymbols);
     }
 
     /**
