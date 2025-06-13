@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { minimatch } from 'minimatch';
 import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
-import { parseDocument, type ParsedData } from './dataParser';
+import { parseDocument, parseFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './dataParser';
+import type { ParsedData, Node } from './dataParser';
 
 // @types/plotly.js contains DOM objects and thus
 // `tsc -p .` fails without `skipLibCheck`.
@@ -9,26 +9,6 @@ import type { PlotData, Layout } from 'plotly.js-basic-dist-min';
 // type PlotData = any;
 // type Layout = any;
 import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
-
-const SPEC_DATA_FILTER = { language: 'spec-data' };
-const CSV_COLUMNS_FILTER = { language: 'csv-column' };
-const CSV_ROWS_FILTER = { language: 'csv-row' };
-const DPPMCA_FILTER = { language: 'dppmca' };
-const CHIPLOT_FILTER = { language: 'chiplot' };
-const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER];
-
-const DPPMCA_BLOCK_REGEXP = /^<<([a-zA-Z0-9_ ]+)>>$/;
-
-type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
-interface BaseNode { type: string, lineStart: number, lineEnd: number, occurance?: number }
-interface FileNode extends BaseNode { type: 'file', value: string }
-interface DateNode extends BaseNode { type: 'date', value: string }
-interface CommentNode extends BaseNode { type: 'comment', value: string }
-interface NameListNode extends BaseNode { type: 'nameList', kind: string, values: string[], mnemonic: boolean }
-interface ValueListNode extends BaseNode { type: 'valueList', kind: string, values: number[] }
-interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
-interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], xAxisSelectable: boolean }
-interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
 /** 
  * While the `scrollEditorWithPreview` and `scrollPreviewWithEditor` configuration values
@@ -57,7 +37,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     readonly extensionUri;
     readonly subscriptions;
     readonly previews: Preview[] = [];
-    readonly parsedDataMap = new Map<string, Promise<ParsedData | undefined>>();
+    readonly parsedDataMap = new Map<string, ParsedData | undefined>();
 
     livePreview: Preview | undefined = undefined;
     colorThemeKind: vscode.ColorThemeKind;
@@ -119,7 +99,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const refreshPreviewCallback = async (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
             if (activePreview) {
-                this.reloadPreview(activePreview, activePreview.uri);
+                this.reloadPreview(activePreview, activePreview.uri, true);
             } else {
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
             }
@@ -205,10 +185,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const activeTextEditorChangeListener = (editor: vscode.TextEditor | undefined) => {
             if (editor) {
                 const document = editor.document;
-                if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
-                    if (this.livePreview && this.livePreview.uri.toString() !== document.uri.toString()) {
-                        this.reloadPreview(this.livePreview, document);
-                    }
+                if (vscode.languages.match(DOCUMENT_SELECTOR, document) && this.livePreview) {
+                    this.reloadPreview(this.livePreview, document.uri, false);
                 }
             }
         };
@@ -308,7 +286,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     public provideFoldingRanges(document: vscode.TextDocument, context: vscode.FoldingContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
         if (token.isCancellationRequested) { return; }
 
-        return this.parsedDataMap.get(document.uri.toString())?.then(parsedData => parsedData?.foldingRanges);
+        return this.parsedDataMap.get(document.uri.toString())?.foldingRanges;
     }
 
     /**
@@ -317,7 +295,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     public provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.SymbolInformation[] | vscode.DocumentSymbol[]> {
         if (token.isCancellationRequested) { return; }
 
-        return this.parsedDataMap.get(document.uri.toString())?.then(parsedData => parsedData?.documentSymbols);
+        return this.parsedDataMap.get(document.uri.toString())?.documentSymbols;
     }
 
     /**
@@ -346,13 +324,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      */
     private async showPreview(uri: vscode.Uri, lockPreview: boolean, showToSide: boolean) {
         if (!lockPreview && this.livePreview) {
-            // If a live preview panel exists and new panel is not locked...
-            if (this.livePreview.uri.toString() !== uri.toString()) {
-                // Update the content if the URIs are different.
-                if (!(await this.reloadPreview(this.livePreview, uri))) {
-                    return undefined;
-                }
-            }
+            // Update the content if the URIs are different.
+            await this.reloadPreview(this.livePreview, uri, false);
             this.livePreview.panel.reveal();
             return this.livePreview;
         } else {
@@ -371,7 +344,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      * @returns Preview object if succeeded in parsing a file or `undefined`.
      */
     private async initPreview(panel: vscode.WebviewPanel | undefined, uri: vscode.Uri, previewConfig: Partial<PreviewConfig>, lockPreview: boolean, showToSide = false) {
-        const tree = await parseDocumentContent(uri);
+        const tree = this.parsedDataMap.has(uri.toString()) ? this.parsedDataMap.get(uri.toString())?.nodes : await parseFromUri(uri);
         if (!tree) {
             const message = `Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`;
             vscode.window.showErrorMessage(message);
@@ -463,7 +436,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                             action: messageIn.callback
                         };
                         panel2.webview.postMessage(messageOut);
-
                     }
                 }
             } else if (messageIn.type === 'contentLoaded') {
@@ -486,15 +458,19 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     }
 
     /**
-     * Reuse the panel in `preview` and update a content from source.
+     * Reuse the panel in `preview` and update a content from source if the URI is changed.
      * @param preview Preview object
      * @param source URI or document.
-     * @returns Preview object if succeeded in parsing a file or `undefined`.
+     * @param forcesReload Flag whether the preview should be reloaded regardless of the source URI.
+     * @returns boolean value indicating whether the preview was reloaded or not.
      */
-    private async reloadPreview(preview: Preview, source: vscode.Uri | vscode.TextDocument) {
-        const uri = source instanceof vscode.Uri ? source : source.uri;
+    private async reloadPreview(preview: Preview, uri: vscode.Uri, forcesReload = false) {
+        // If the source URI is the same as the preview URI, do not reload.
+        if (forcesReload === false && preview.uri.toString() === uri.toString()) {
+            return preview;
+        }
 
-        const tree = await parseDocumentContent(source);
+        const tree = this.parsedDataMap.has(uri.toString()) ? this.parsedDataMap.get(uri.toString())?.nodes : await parseFromUri(uri);
         if (!tree) {
             const message = `Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`;
             vscode.window.showErrorMessage(message);
@@ -545,470 +521,6 @@ function getTargetFileUris(args: unknown[]): vscode.Uri[] {
     return [];
 }
 
-async function parseDocumentContent(source: vscode.Uri | vscode.TextDocument) {
-    let uri: vscode.Uri;
-    let document: vscode.TextDocument | undefined;
-
-    if (source instanceof vscode.Uri) {
-        uri = source;
-        document = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === uri.toString());
-    } else {
-        document = source;
-        uri = document.uri;
-    }
-
-    let text: string;
-    let languageId: string | undefined;
-
-    if (document) {
-        // If `document` is provided or found, use its values.
-        if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
-            languageId = document.languageId;
-            text = document.getText();
-        } else {
-            return undefined;
-        }
-    } else {
-        // If `document` is not found, read contents from the file.
-
-        // Determine the file type (language ID) for a file.
-        // First, compare the filename with a user-defined setting ("files.associations"), 
-        // then with default extension patterns.
-        const associations = Object.entries(
-            vscode.workspace.getConfiguration('files', uri).get<Record<string, string>>('associations', {}),
-        ).concat([['*.spec', 'spec-data'], ['*.mca', 'dppmca'], ['*.chi', 'chiplot']]);
-
-        for (const [key, value] of associations) {
-            if (minimatch(uri.path, key, { matchBase: true })) {
-                languageId = DOCUMENT_SELECTOR.map(filter => filter.language).includes(value) ? value : undefined;
-                break;
-            }
-        }
-
-        if (languageId === undefined) {
-            return undefined;
-        }
-
-        // Read the content from a file. Use file encoding for the language ID (if "files.encoding" is set.)
-        const encoding = vscode.workspace.getConfiguration('files', { languageId, uri }).get<string>('encoding', 'utf8');
-        text = await vscode.workspace.decode(await vscode.workspace.fs.readFile(uri), { encoding });
-        // text = await vscode.workspace.decode(await vscode.workspace.fs.readFile(uri), { uri });
-    }
-
-    // Parse the document contents.
-    const lines = text.split(/\r\n|\n/);
-    if (lines.length === 0) {
-        return undefined;
-    } else if (languageId === SPEC_DATA_FILTER.language) {
-        return parseSpecDataContent(lines);
-    } else if (languageId === CSV_COLUMNS_FILTER.language) {
-        return parseCsvContent(lines, true);
-    } else if (languageId === CSV_ROWS_FILTER.language) {
-        return parseCsvContent(lines, false);
-    } else if (languageId === DPPMCA_FILTER.language) {
-        return parseDppmcaContent(lines);
-    } else if (languageId === CHIPLOT_FILTER.language) {
-        return parseChiplotContent(lines);
-        // } else {
-        //     // Guess the file type from the first line
-        //     // if language ID is not provided (or not one of SupportedLanguage).
-        //     const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
-        //     return lines[0].match(otherLineRegex) ? parseSpecDataContent(lines) : parseChiplotContent(lines);
-    } else {
-        return undefined;
-    }
-}
-
-function parseSpecDataContent(lines: string[]): Node[] | undefined {
-    const lineCount = lines.length;
-
-    const fileRegex = /^(#F) (.*)$/;
-    const dateRegex = /^(#D) (.*)$/;
-    const commentRegex = /^(#C) (.*)$/;
-    const nameListRegex = /^(?:#([OJoj])([0-9]+)) (.*)$/;
-    const valueListRegex = /^(?:#([P])([0-9]+)) (.*)$/;
-    const scanHeadRegex = /^(#S) ([0-9]+) (.*)$/;
-    const scanNumberRegex = /^(#N) ([0-9]+)$/;
-    const scanDataRegex = /^(#L) (.*)$/;
-    const unknownRegex = /^#(?:([a-zA-Z][0-9]*) (.*)|.*)$/;
-    const emptyLineRegex = /^\s*$/;
-
-    let matches: RegExpMatchArray | null;
-    let prevNodeIndex = -1;
-    let columnNumberInHeader = -1;
-    let columnNumberInBody = -1;
-    const nodes: Node[] = [];
-
-    let fileOccurance = 0;
-    let dateOccurance = 0;
-    let commentOccurance = 0;
-    // let nameListOccurance = 0;
-    let valueListOccuracne = 0;
-    let scanHeadOccurance = 0;
-    // let scanNumberOccurance = 0;
-    let scanDataOccurance = 0;
-    // let  unknownOccurance = 0;
-
-    for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-        const lineText = lines[lineIndex];
-        if ((matches = lineText.match(fileRegex)) !== null) {
-            nodes.push({ type: 'file', lineStart: lineIndex, lineEnd: lineIndex, occurance: fileOccurance, value: matches[2] });
-            fileOccurance++;
-        } else if ((matches = lineText.match(dateRegex)) !== null) {
-            nodes.push({ type: 'date', lineStart: lineIndex, lineEnd: lineIndex, occurance: dateOccurance, value: matches[2] });
-            dateOccurance++;
-        } else if ((matches = lineText.match(commentRegex)) !== null) {
-            nodes.push({ type: 'comment', lineStart: lineIndex, lineEnd: lineIndex, occurance: commentOccurance, value: matches[2] });
-            commentOccurance++;
-        } else if ((matches = lineText.match(nameListRegex)) !== null) {
-            let kind, isMnemonic, separator;
-            if (matches[1] === matches[1].toLowerCase()) {
-                isMnemonic = true;
-                separator = ' ';
-            } else {
-                isMnemonic = false;
-                separator = '  ';
-            }
-            if (matches[1].toLowerCase() === 'o') {
-                kind = 'motor';
-            } else if (matches[1].toLowerCase() === 'j') {
-                kind = 'counter';
-            } else {
-                kind = matches[1];
-            }
-            const listIndex = parseInt(matches[2]);
-            const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
-            if (prevNode && prevNode.type === 'nameList' && prevNode.kind === kind && prevNode.mnemonic === isMnemonic) {
-                if (prevNodeIndex !== listIndex - 1) {
-                    vscode.window.showErrorMessage(`Inconsequent index of the name list: line ${lineIndex + 1}`);
-                    return undefined;
-                }
-                prevNode.values.push(...(matches[3].trimEnd().split(separator)));
-                prevNode.lineEnd = lineIndex;
-                prevNodeIndex = listIndex;
-            } else {
-                if (listIndex !== 0) {
-                    vscode.window.showErrorMessage(`The name list not starding with 0: line ${lineIndex + 1}`);
-                    return undefined;
-                }
-                nodes.push({ type: 'nameList', lineStart: lineIndex, lineEnd: lineIndex, kind: kind, values: matches[3].trimEnd().split(separator), mnemonic: isMnemonic });
-                prevNodeIndex = 0;
-            }
-        } else if ((matches = lineText.match(valueListRegex)) !== null) {
-            let kind;
-            if (matches[1] === 'P') {
-                kind = 'motor';
-            } else {
-                kind = matches[1];
-            }
-            const listIndex = parseInt(matches[2]);
-            const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
-            if (prevNode && prevNode.type === 'valueList' && prevNode.kind === kind) {
-                if (prevNodeIndex !== listIndex - 1) {
-                    vscode.window.showErrorMessage(`Inconsequent index of the value list: line ${lineIndex + 1}`);
-                    return undefined;
-                }
-                prevNode.values.push(...(matches[3].trimEnd().split(' ').map(value => parseFloat(value))));
-                prevNode.lineEnd = lineIndex;
-                prevNodeIndex = listIndex;
-            } else {
-                if (listIndex !== 0) {
-                    vscode.window.showErrorMessage(`The value list not starding with 0: line ${lineIndex + 1}`);
-                    return undefined;
-                }
-                nodes.push({ type: 'valueList', lineStart: lineIndex, lineEnd: lineIndex, occurance: valueListOccuracne, kind: kind, values: matches[3].trimEnd().split(' ').map(value => parseFloat(value)) });
-                valueListOccuracne++;
-                prevNodeIndex = 0;
-            }
-        } else if ((matches = lineText.match(scanHeadRegex)) !== null) {
-            nodes.push({ type: 'scanHead', lineStart: lineIndex, lineEnd: lineIndex, occurance: scanHeadOccurance, index: parseInt(matches[2]), code: matches[3] });
-            scanHeadOccurance++;
-        } else if ((matches = lineText.match(scanNumberRegex)) !== null) {
-            columnNumberInHeader = parseInt(matches[2]);
-        } else if ((matches = lineText.match(scanDataRegex)) !== null) {
-            // The separator between motors and counters are 4 whitespaces (in old spec version only?).
-            // The separator between respective motors and counters are 2 whitespaces.
-            // const headers = matches[2].split('    ', 2).map(a => a.split('  ')).reduce((a, b) => a.concat(b));
-            const headers = matches[2].trim().split(/ {2,}|\t/);
-            if (columnNumberInHeader === -1) {
-                // for lazy format in which "#N" line does not exit.
-                columnNumberInHeader = headers.length;
-            } else if (headers.length !== columnNumberInHeader) {
-                vscode.window.showErrorMessage(`mismatch in the number of columns. (line ${lineIndex + 1}). #N: ${columnNumberInHeader}, #L: ${headers.length}`);
-                return undefined;
-            }
-            const lineStart = lineIndex;
-
-            // read succeeding lines until EOF or non-data line.
-            const data: number[][] = [];
-            for (; lineIndex + 1 < lineCount; lineIndex++) {
-                const blockLineText = lines[lineIndex + 1];
-                if (blockLineText.match(unknownRegex) || blockLineText.match(emptyLineRegex)) {
-                    break;
-                }
-                // The separator between motors and counters are 2 whitespaces.
-                // The separator between respective motors and counters are 1 whitespace.
-                // const rows = blockLineText.split('  ', 2).map(a => a.split(' ')).reduce((a, b) => a.concat(b));
-                const rows = blockLineText.trim().split(/ {1,}|\t/);
-                if (columnNumberInBody === -1) {
-                    // In case the first line of the scan body, compare the line number of the header part.
-                    // This mismatch can happen owing to spec's bug around `roisetup` and `disable` commands.
-                    // So in this case, just show a message and do not stop parsing.
-                    if (rows.length !== columnNumberInHeader) {
-                        vscode.window.showWarningMessage(`mismatch in the number of columns (line ${lineIndex + 2}). header: ${columnNumberInHeader}), body: ${rows.length}.`);
-                    }
-                    columnNumberInBody = rows.length;
-                } else if (rows.length !== columnNumberInBody) {
-                    // In case the second or any later lines, compare with the first line.
-                    vscode.window.showErrorMessage(`mismatch in the number of columns (line ${lineIndex + 2}). expected: ${columnNumberInBody},  ${rows.length}.`);
-                    return undefined;
-                }
-                data.push(rows.map(item => parseFloat(item)));
-            }
-            // transpose the two-dimensional data array
-            const data2 = data.length > 0 ? data[0].map((_, colIndex) => data.map(row => row[colIndex])) : data;
-
-            nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineIndex, occurance: scanDataOccurance, headers: headers, data: data2, xAxisSelectable: true });
-            scanDataOccurance++;
-            columnNumberInHeader = -1;
-            columnNumberInBody = -1;
-        } else if ((matches = lineText.match(unknownRegex)) !== null) {
-            nodes.push({ type: 'unknown', lineStart: lineIndex, lineEnd: lineIndex, kind: matches[1], value: matches[2] });
-        }
-    }
-    return nodes.length !== 0 ? nodes : undefined;
-}
-
-// character-separated values. The delimiter is auto-detected from a horizontal tab, a whitespace, or a comma. 
-function parseCsvContent(lines: string[], columnWise: boolean): Node[] | undefined {
-    const lineCount = lines.length;
-    const nodes: Node[] = [];
-    let dataOccurrance = 0, commentOccurance = 0;
-
-    for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-        let delimRegexp: RegExp | undefined;
-        let rowNumber = 0;
-        let headers: string[] | undefined;
-        let data: number[][] = [];
-        let dataStartIndex = 0;
-        let isEsrfMca = false;
-        // let columnNumber = 0;
-
-        // skip lines until data array.
-        for (; lineIndex < lineCount; lineIndex++) {
-            const lineText = lines[lineIndex];
-
-            if (lineText.trim().length === 0) {
-                // Skip an empty line.
-                continue;
-            } else if (lineText.startsWith('#')) {
-                // Skip a comment line after appending the text to the nodes.
-                nodes.push({ type: 'comment', lineStart: lineIndex, lineEnd: lineIndex, occurance: commentOccurance, value: lineText.substring(1) });
-                commentOccurance++;
-                continue;
-            } else if (!columnWise && lineText.startsWith('@A ')) {
-                // If the line starts with "@A", it is data in ESRF's MCA format.
-                // Trim the prefix: "@A ".
-                isEsrfMca = true;
-
-                // Concatenate the lines that ends with a backslash.
-                let lineText2 = lineText.substring(3);
-                while (lineText2.endsWith('\\') && lineIndex + 1 < lineCount) {
-                    lineText2 = lineText2.slice(0, -1) + lines[lineIndex + 1];
-                    lineIndex++;
-                }
-                const firstRowCells = lineText2.trim().split(/\s+/);
-                delimRegexp = new RegExp(/\s+/);
-                rowNumber = firstRowCells.length;
-                data.push(firstRowCells.map(cell => parseFloat(cell)));
-                dataStartIndex = lineIndex;
-                lineIndex++;
-                break;
-            } else {
-                let firstCell: string;
-                let delimMatch: RegExpExecArray | null;
-                if ((delimMatch = /[\t, ]/.exec(lineText)) !== null) {
-                    // If the first cell delimited by a delimiter (a tab, comma, or whitespace) is a number, go to the next step.
-                    firstCell = lineText.slice(0, delimMatch.index);
-                    if (delimMatch[0] === ' ') {
-                        delimRegexp = / +/;
-                    } else {
-                        delimRegexp = new RegExp(delimMatch[0]);
-                    }
-                } else {
-                    firstCell = lineText;
-                    delimRegexp = /[\t, ]/;
-                }
-
-                if (firstCell.toLowerCase() === 'nan' || !isNaN(Number(firstCell))) {
-                    const firstRowCells = lineText.split(delimRegexp);
-                    rowNumber = firstRowCells.length;
-                    data.push(firstRowCells.map(cell => parseFloat(cell)));
-
-                    // if the previous line has the same number of cells, treat it as a column header.
-                    if (lineIndex > 0) {
-                        const prevLineText = lines[lineIndex - 1];
-                        const prevLineText2 = prevLineText.startsWith('#') ? prevLineText.substring(1).trimStart() : prevLineText;
-                        const colLabels = prevLineText2.split(delimRegexp);
-                        if (colLabels.length === rowNumber) {
-                            headers = colLabels;
-                        }
-                    }
-
-                    dataStartIndex = lineIndex;
-                    lineIndex++;
-                    break;
-                }
-            }
-        }
-
-        // If no numeric cell is found, exit.
-        if (data.length === 0 || !delimRegexp) {
-            break;
-        }
-
-        // Read the rest of lines and append numeric cells to `data`.
-        for (; lineIndex < lineCount; lineIndex++) {
-            const lineText = lines[lineIndex];
-            if (lineText.length === 0) {
-                break;
-            } else if (lineText.startsWith('#')) {
-                lineIndex--;
-                break;
-            } else if (isEsrfMca) {
-                lineIndex--;
-                break;
-            } else {
-                const currentRowCells = lineText.split(delimRegexp);
-                if (currentRowCells.length !== rowNumber) {
-                    // mismatch of column number
-                    return undefined;
-                }
-                data.push(currentRowCells.map(cell => parseFloat(cell)));
-            }
-        }
-
-        // Add the read data to the nodes.
-        if (columnWise) {
-            data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
-            if (!headers) {
-                headers = Array(data.length).fill(0).map((_x, i) => `column ${i}`);
-            }
-        } else {
-            headers = Array(data.length).fill(0).map((_x, i) => `row ${i}`);
-        }
-        nodes.push({ type: 'scanData', lineStart: dataStartIndex, lineEnd: lineIndex - 1, occurance: dataOccurrance, headers: headers, data: data, xAxisSelectable: columnWise });
-        dataOccurrance++;
-    }
-
-    if (nodes.some(node => node.type === 'scanData')) {
-        return nodes;
-    }
-}
-
-function parseDppmcaContent(lines: string[]): Node[] | undefined {
-    type Block = { label: string, items: string[], lineStart: number, lineEnd: number };
-    let prevBlock: Block | undefined;
-    const blocks: Block[] = [];
-    const lineCount = lines.length;
-
-    // serparate lines by block headers (e.g., "<<PMCA SPECTRUM>>")
-    for (let lineIndex = 0; lineIndex < lineCount; lineIndex++) {
-        const lineText = lines[lineIndex];
-        let matches: RegExpMatchArray | null;
-
-        if (matches = lineText.match(DPPMCA_BLOCK_REGEXP)) {
-            prevBlock = { label: matches[1], items: [], lineStart: lineIndex + 1, lineEnd: lineIndex + 1 };
-            blocks.push(prevBlock);
-        } else if (prevBlock) {
-            prevBlock.lineEnd = lineIndex;
-            prevBlock.items.push(lineText);
-        }
-    }
-
-    // use data in "<<DATA>>" block for a graph.
-    const nodes: Node[] = [];
-    let occurance = 0;
-    for (const block of blocks) {
-        if (block.label === 'DATA') {
-            const data1d = block.items.map(lineText => parseInt(lineText));
-            nodes.push({ type: 'scanData', lineStart: block.lineStart, lineEnd: block.lineEnd, occurance: occurance, headers: ['count'], data: [data1d], xAxisSelectable: false });
-            occurance++;
-        }
-    }
-
-    return nodes;
-}
-
-function parseChiplotContent(lines: string[]): Node[] | undefined {
-    // chiplot format:
-    // 
-    // 1st line: title
-    // 2nd line: x-axis
-    // 3rd line: y-axis
-    // 4th line: number of point per data-set and optionally number of data-set
-    // following lines: data
-    // 
-    // The separator at 4th line and data rows is one or more spaces or a comma.
-    const lineCount = lines.length;
-    if (lineCount < 6) {
-        return undefined;
-    }
-
-    const title = lines[0].trim();
-    const headers = lines[1].trim().split(/\s*,\s*|\s{2,}/).concat(lines[2].trim().split(/\s*,\s*|\s{2,}/));
-    const matches = lines[3].match(/^\s*([0-9]+)((\s*,\s*|\s+)([0-9]+))?/);
-    if (!matches) {
-        return undefined;
-    }
-    const rowNumber = parseInt(matches[1]);
-    if (isNaN(rowNumber) || rowNumber < 1) {
-        return undefined;
-    }
-
-    // const emptyLineRegex = /^\s*$/;
-    const separatorRegex = /\s*,\s*|\s+/;
-
-    const data: number[][] = [];
-    let lineIndex;
-    for (lineIndex = 4; lineIndex < lineCount; lineIndex++) {
-        const lineText = lines[lineIndex];
-        if (lineText.length === 0) {
-            break;
-        }
-        const cells = lineText.trim().split(separatorRegex);
-        data.push(cells.map(cell => parseFloat(cell)));
-    }
-
-    const columnNumber = data[0].length;
-
-    if (data.length !== rowNumber) {
-        // row number mismatch with the header (4th line).
-        return undefined;
-    } else if (data.some(columns => columns.length !== columnNumber)) {
-        // column number not equal with the first data row (5th line)
-        return undefined;
-    }
-    // transpose the two-dimensional data array
-    const data2 = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
-
-    // adjust the number of headers (axis labels) to that of data columns
-    let headers2;
-    if (headers.length < columnNumber) {
-        headers2 = headers;
-        for (let index = headers.length; index < columnNumber; index++) {
-            headers2.push(`[${index.toString()}]`);
-        }
-    } else {
-        headers2 = headers.slice(0, columnNumber);
-    }
-
-    const nodes: Node[] = [];
-    nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, occurance: 0, value: title });
-    nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineIndex, occurance: 0, headers: headers2, data: data2, xAxisSelectable: true });
-
-    return nodes;
-}
 
 function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri: vscode.Uri, controllerJsJri: vscode.Uri, nodes: Node[], enableMultipleSelection: boolean, enableRightAxis: boolean): string {
     const nameLists: { [name: string]: string[] } = {};
