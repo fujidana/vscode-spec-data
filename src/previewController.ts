@@ -44,8 +44,12 @@ if (state === undefined) {
     vscode.setState(state);
 }
 
+let enableEditorScroll = false;
 let lastScrollEditorTimeStamp = 0;
 let lastScrollPreviewTimeStamp = 0;
+
+let timer1: NodeJS.Timeout | undefined;
+let timer2: NodeJS.Timeout | undefined;
 
 // a handler for a checkbox to control the table visibility
 const showValueListInputChangeHandler = function (event: Event) {
@@ -355,9 +359,11 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         [...y2Elements].forEach(element => element.hidden = !messageIn.flag);
         state.enableRightAxis = messageIn.flag;
         vscode.setState(state);
+    } else if (messageIn.type === 'enableEditorScroll') {
+        enableEditorScroll = messageIn.flag;
     } else if (messageIn.type === 'setScrollBehavior') {
         document.documentElement.style.scrollBehavior = messageIn.value;
-    }
+   }
 });
 
 window.addEventListener('DOMContentLoaded', _event => {
@@ -481,12 +487,8 @@ window.addEventListener('DOMContentLoaded', _event => {
     }
 });
 
-let timer1: NodeJS.Timeout | undefined;
-let timer2: NodeJS.Timeout | undefined;
-
-const idPattern = /^l(\d+)*/;
-
 window.addEventListener("scroll", event => {
+    const idPattern = /^l(\d+)*/;
     // The scroll position is stored 1 sec after a user stops scrolloing.
     if (timer1) {
         clearTimeout(timer1);
@@ -495,6 +497,10 @@ window.addEventListener("scroll", event => {
         state.scrollY = window.scrollY;
         vscode.setState(state);
     }, 1000);
+
+    if (!enableEditorScroll) {
+        return;
+    }
 
     if (timer2 && event.timeStamp - lastScrollEditorTimeStamp < 50) {
         clearTimeout(timer2);

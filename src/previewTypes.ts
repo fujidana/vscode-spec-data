@@ -36,6 +36,7 @@ export type MessageToWebview =
     | UpdatePlotMessage
     | EnableMultipleSelectionMessage
     | EnableRightAxisMessage
+    | EnableEditorScrollMessage
     | SetScrollBehaviorMessage;
 
 interface LockPreviewMessage extends BaseMessage {
@@ -70,6 +71,11 @@ interface EnableMultipleSelectionMessage extends BaseMessage {
 
 interface EnableRightAxisMessage extends BaseMessage {
     type: 'enableRightAxis';
+    flag: boolean;
+}
+
+interface EnableEditorScrollMessage extends BaseMessage {
+    type: 'enableEditorScroll';
     flag: boolean;
 }
 
