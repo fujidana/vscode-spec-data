@@ -369,6 +369,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     retainContextWhenHidden: retainContextWhenHidden,
                 }
             );
+            if (showToSide && config.get<boolean>('autoLockGroup', true)) {
+                vscode.commands.executeCommand('workbench.action.lockEditorGroup');
+            }
         }
 
         const preview: Preview = {

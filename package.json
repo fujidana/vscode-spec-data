@@ -308,6 +308,12 @@
 					"scope": "resource",
 					"description": "Applies a content security policy (CSP) to a preview, which enhances security against cross site scripting and data injection attacks caused by malicious source files. One may be able to avoid several Plotly.js errors when the option is disabled. In a future release, a CSP may be always active and this option may be removed."
 				},
+				"spec-data.preview.autoLockGroup": {
+					"type": "boolean",
+					"default": true,
+					"scope": "window",
+					"markdownDescription": "Locks the editor group when a preview is created in a new editor group. See `#workbench.editor.autoLockGroups#` about how locking works."
+				},
 				"spec-data.preview.plot.maximumNumberOfPlots": {
 					"type": "integer",
 					"default": 25,
