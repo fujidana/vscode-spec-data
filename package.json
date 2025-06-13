@@ -281,25 +281,25 @@
 				"spec-data.preview.scrollEditorWithPreview": {
 					"type": "boolean",
 					"default": true,
-					"scope": "resource",
+					"scope": "window",
 					"description": "Synchronizes page scroll of a editor with that of the corresoinding preview."
 				},
 				"spec-data.preview.scrollPreviewWithEditor": {
 					"type": "boolean",
 					"default": true,
-					"scope": "resource",
+					"scope": "window",
 					"description": "Synchronizes page scroll of a preview with that of the corresoinding editor."
 				},
 				"spec-data.preview.smoothScrolling": {
 					"type": "boolean",
 					"default": false,
-					"scope": "resource",
+					"scope": "window",
 					"markdownDescription": "Controls whether the preview will scroll using an animation. Use `#editor.smoothScrolling#` to control the scroll behavior of the editor."
 				},
 				"spec-data.preview.retainContextWhenHidden": {
 					"type": "boolean",
 					"default": false,
-					"scope": "resource",
+					"scope": "window",
 					"description": "Controls whether preview contents remain in memory when the preview tab is hidden. Enabling this option potentially requires high memory overhead. A change in this option does not affect previews already open."
 				},
 				"spec-data.preview.applyContentSecurityPolicy": {
@@ -318,14 +318,14 @@
 					"type": "integer",
 					"default": 25,
 					"minimum": 0,
-					"scope": "resource",
+					"scope": "language-overridable",
 					"description": "Maximum number of graphs to be drawn when a preview is opened. Drawing a large number of plots requires both long time and vast memory footprint."
 				},
 				"spec-data.preview.plot.height": {
 					"type": "number",
 					"default": 400,
 					"minimum": 200,
-					"scope": "resource",
+					"scope": "language-overridable",
 					"description": "Height of the respective graphs."
 				},
 				"spec-data.preview.plot.templates": {
@@ -336,7 +336,7 @@
 				},
 				"spec-data.preview.plot.traceTemplate": {
 					"type": "object",
-					"scope": "resource",
+					"scope": "language-overridable",
 					"markdownDescription": "Overrides the built-in trace appearances such as a trace color. The key shall be either `\"light\"`, `\"dark\"`, `\"highContrast\"`, or `\"highContrastLight\"` and the value shall be an array of Plotly.js scatter templates. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in [Plotly.js Reference](https://plotly.com/javascript/reference/index/).",
 					"properties": {
 						"light": {
@@ -356,7 +356,7 @@
 				},
 				"spec-data.preview.plot.layoutTemplate": {
 					"type": "object",
-					"scope": "resource",
+					"scope": "language-overridable",
 					"markdownDescription": "Overrides the built-in layout appearances such as a background color. The key shall be either `\"light\"`, `\"dark\"`, `\"highContrast\"`, or `\"highContrastLight\"` and the value shall be a Plotly.js layout template. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in [Plotly.js Reference](https://plotly.com/javascript/reference/index/).",
 					"additionalProperties": false,
 					"properties": {
@@ -377,27 +377,27 @@
 				"spec-data.preview.plot.enableMultipleSelection": {
 					"type": "boolean",
 					"default": false,
-					"scope": "resource",
+					"scope": "window",
 					"description": "Makes multiple data arrays selectable for plotting a graph when a preview is created."
 				},
 				"spec-data.preview.plot.enableRightAxis": {
 					"type": "boolean",
 					"default": false,
-					"scope": "resource",
+					"scope": "window",
 					"description": "Makes the right axis available for plotting a graph when a preview is created."
 				},
 				"spec-data.preview.table.hide": {
 					"type": "boolean",
 					"default": true,
-					"scope": "resource",
-					"description": "Hides motor-position tables in a preview when a preview is opened."
+					"scope": "language-overridable",
+					"description": "Hides motor-position tables in a preview when a preview i s opened."
 				},
 				"spec-data.preview.table.columnsPerLine": {
 					"type": "number",
 					"default": 8,
 					"minimum": 1,
-					"scope": "resource",
-					"description": "Maximum column number of motor-potision tables. Overflowed columns are folded in the next row."
+					"scope": "language-overridable",
+					"description": "Maximum column number of motor-position tables. Overflowed columns are folded in the next row."
 				},
 				"spec-data.preview.table.headerType": {
 					"type": "string",
@@ -407,7 +407,7 @@
 						"Mnemonic",
 						"None"
 					],
-					"scope": "resource",
+					"scope": "language-overridable",
 					"description": "Header type of data cells of motor-potision tables."
 				}
 			}
