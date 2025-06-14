@@ -10,15 +10,9 @@ import type { PlotData, Layout } from 'plotly.js-basic-dist-min';
 // type Layout = any;
 import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
 
-/** 
- * While the `scrollEditorWithPreview` and `scrollPreviewWithEditor` configuration values
- * are very frequently referred to for scrolling synchronization, 
- * and the values may not be unique when multiple workspaces are used.
- * Therefore, the setting value for URI is prefetched and stored here.
- */
 type Preview = {
-    uri: vscode.Uri
-    panel: vscode.WebviewPanel;
+    readonly panel: vscode.WebviewPanel;
+    uri: vscode.Uri;
     config: PreviewConfig;
     tree?: Node[];
 };
@@ -26,9 +20,10 @@ type Preview = {
 type PreviewConfig = {
     enableMultipleSelection: boolean;
     enableRightAxis: boolean;
-    scrollEditorWithPreview: boolean;
-    scrollPreviewWithEditor: boolean;
 };
+
+interface Session { type: 'session', panel: vscode.WebviewPanel, state: State };
+interface WebviewInitParam { type: 'param', uri: vscode.Uri, lockPreview: boolean, showToSide: boolean }
 
 /**
  * Provider class for "spec-data" language
@@ -39,6 +34,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     readonly previews: Preview[] = [];
     readonly parsedDataMap = new Map<string, ParsedData | undefined>();
 
+    enablePreviewScroll: boolean;
     livePreview: Preview | undefined = undefined;
     colorThemeKind: vscode.ColorThemeKind;
 
@@ -49,6 +45,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         this.extensionUri = context.extensionUri;
         this.subscriptions = context.subscriptions;
         this.colorThemeKind = vscode.window.activeColorTheme.kind;
+
+        const config = vscode.workspace.getConfiguration('spec-data.preview');
+        this.enablePreviewScroll = config.get<boolean>('scrollPreviewWithEditor', true);
 
         // callback of 'spec-data.showPreview'.
         const showPreviewCallback = async (...args: unknown[]) => {
@@ -104,6 +103,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 vscode.window.showErrorMessage('Failed in finding active preview tab.');
             }
         };
+
         // callback of 'spec-data.toggleMultipleSelection'.
         const toggleMultipleSelectionCallback = (..._args: unknown[]) => {
             const activePreview = this.getActivePreview();
@@ -194,11 +194,11 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const textEditorVisibleRangesChangeListener = (event: vscode.TextEditorVisibleRangesChangeEvent) => {
             const now = Date.now();
             const document = event.textEditor.document;
-            if (vscode.languages.match(DOCUMENT_SELECTOR, document) && now - this.lastScrollEditorTimeStamp > 1500 && event.visibleRanges.length > 0) {
+            if (this.enablePreviewScroll && vscode.languages.match(DOCUMENT_SELECTOR, document) && now - this.lastScrollEditorTimeStamp > 1500 && event.visibleRanges.length > 0) {
                 // Refrain from sending 'scrollPreview' message soon ( < 1.5 sec) after receiving 'scrollEditor' message.
 
                 const line = event.visibleRanges[0].start.line;
-                const previews = this.previews.filter(preview => preview.config.scrollPreviewWithEditor && preview.uri.toString() === document.uri.toString());
+                const previews = this.previews.filter(preview => preview.uri.toString() === document.uri.toString());
                 for (const preview of previews) {
                     const node = preview.tree?.find(node => (node.lineEnd >= line));
                     if (node) {
@@ -212,19 +212,19 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         const configurationChangeListner = (event: vscode.ConfigurationChangeEvent) => {
             if (event.affectsConfiguration('spec-data.preview.scrollEditorWithPreview')) {
+                const flag = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollEditorWithPreview', true);
+                const messageOut: MessageToWebview = { type: 'enableEditorScroll', flag: flag };
                 for (const preview of this.previews) {
-                    preview.config.scrollEditorWithPreview = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('scrollEditorWithPreview', true);
+                    preview.panel.webview.postMessage(messageOut);
                 }
             }
             if (event.affectsConfiguration('spec-data.preview.scrollPreviewWithEditor')) {
-                for (const preview of this.previews) {
-                    preview.config.scrollPreviewWithEditor = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('scrollPreviewWithEditor', true);
-                }
+                this.enablePreviewScroll = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollPreviewWithEditor', true);
             }
             if (event.affectsConfiguration('spec-data.preview.smoothScrolling')) {
+                const flag = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('smoothScrolling', true);
+                const messageOut: MessageToWebview = { type: 'setScrollBehavior', value: flag ? 'smooth' : 'auto' };
                 for (const preview of this.previews) {
-                    const flag = vscode.workspace.getConfiguration('spec-data.preview', preview.uri).get<boolean>('smoothScrolling', true);
-                    const messageOut: MessageToWebview = { type: 'setScrollBehavior', value: flag ? 'smooth' : 'auto' };
                     preview.panel.webview.postMessage(messageOut);
                 }
             }
@@ -307,11 +307,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.window.showErrorMessage(message, 'OK').then(() => panel.dispose());
             return;
         }
-        const config: Partial<PreviewConfig> = {
-            enableRightAxis: state.enableRightAxis,
-            enableMultipleSelection: state.enableMultipleSelection
-        };
-        this.initPreview(panel, vscode.Uri.parse(state.sourceUri), config, state.lockPreview);
+        this.initPreview({ type: 'session', panel, state });
     }
 
     /**
@@ -330,20 +326,22 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return this.livePreview;
         } else {
             // Else create a new panel as a live panel.
-            return await this.initPreview(undefined, uri, {}, lockPreview, showToSide);
+            return await this.initPreview({ type: 'param', uri, lockPreview, showToSide });
         }
     }
 
     /**
      * Register event handlers and then make a content from source.
      * Create a webview panel if `panel` parameter is undefined. 
-     * @param panel Webveiw panel or `undefined`.
-     * @param uri Source file URI.
-     * @param lockPreview Flag whether the new preview panel is locked.
-     * @param showToSide Flag whether the new preview panel is shown to side (`true`) or in the active editor (`false`).
+     * 
+     * The panel is reused after `uri` is changed. Thus, the configuration
+     * applied to the panel is window-wide, not file- or workspace-specific.
+     * @param sessionOrParam `Session` for deserialization with a reused panel and `WebviewInitParam` for newly created panel.
      * @returns Preview object if succeeded in parsing a file or `undefined`.
      */
-    private async initPreview(panel: vscode.WebviewPanel | undefined, uri: vscode.Uri, previewConfig: Partial<PreviewConfig>, lockPreview: boolean, showToSide = false) {
+    private async initPreview(sessionOrParam: Session | WebviewInitParam) {
+        const uri: vscode.Uri = (sessionOrParam.type === 'session') ? vscode.Uri.parse(sessionOrParam.state.sourceUri) : sessionOrParam.uri;
+
         const tree = this.parsedDataMap.has(uri.toString()) ? this.parsedDataMap.get(uri.toString())?.nodes : await parseFromUri(uri);
         if (!tree) {
             const message = `Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`;
@@ -351,76 +349,74 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return undefined;
         }
 
-        const config = vscode.workspace.getConfiguration('spec-data.preview', uri);
-
         // If panel is not provided, create a new panel.
-        let panel2: vscode.WebviewPanel;
-        if (panel) {
-            panel2 = panel;
+        let panel: vscode.WebviewPanel;
+        let enableMultipleSelection: boolean;
+        let enableRightAxis: boolean;
+        let lockPreview: boolean;
+        if (sessionOrParam.type === 'session') {
+            // Preexistent panel is reused. This is the case web view is restored from the previous session.
+            panel = sessionOrParam.panel;
+            enableMultipleSelection = sessionOrParam.state.enableMultipleSelection;
+            enableRightAxis = sessionOrParam.state.enableRightAxis;
+            lockPreview = sessionOrParam.state.lockPreview;
         } else {
-            const retainContextWhenHidden = config.get<boolean>('retainContextWhenHidden', false);
-            panel2 = vscode.window.createWebviewPanel(
+            const config = vscode.workspace.getConfiguration('spec-data.preview');
+            panel = vscode.window.createWebviewPanel(
                 'spec-data.preview',
                 'Preview spec data',
-                showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
+                sessionOrParam.showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
                 {
                     // localResourceRoots: [this.extensionUri],
                     enableScripts: true,
-                    retainContextWhenHidden: retainContextWhenHidden,
+                    retainContextWhenHidden: config.get<boolean>('retainContextWhenHidden', false),
                 }
             );
-            if (showToSide && config.get<boolean>('autoLockGroup', true)) {
+            enableMultipleSelection = config.get<boolean>('plot.enableMultipleSelection', false);
+            enableRightAxis = config.get<boolean>('plot.enableRightAxis', false);
+            lockPreview = sessionOrParam.lockPreview;
+
+            if (sessionOrParam.showToSide && config.get<boolean>('autoLockGroup', true)) {
                 vscode.commands.executeCommand('workbench.action.lockEditorGroup');
             }
         }
 
         const preview: Preview = {
-            uri: uri,
-            panel: panel2,
-            config: {
-                enableMultipleSelection: previewConfig.enableMultipleSelection ?? config.get<boolean>('plot.enableMultipleSelection', false),
-                enableRightAxis: previewConfig.enableRightAxis ?? config.get<boolean>('plot.enableRightAxis', false),
-                scrollEditorWithPreview: config.get<boolean>('scrollEditorWithPreview', true),
-                scrollPreviewWithEditor: config.get<boolean>('scrollPreviewWithEditor', true)
-            }
+            uri, panel, config: { enableMultipleSelection, enableRightAxis },
         };
         this.previews.push(preview);
         if (!lockPreview) {
             this.livePreview = preview;
         }
 
-        panel2.onDidDispose(() => {
+        panel.onDidDispose(() => {
             // remove the closed preview from the array.
-            const index = this.previews.findIndex(preview => preview.panel === panel2);
+            const index = this.previews.findIndex(preview => preview.panel === panel);
             if (index >= 0) {
                 this.previews.splice(index, 1);
             }
 
             // clear the live preview reference if the closed preview is the live preview.
-            if (this.livePreview && this.livePreview.panel === panel2) {
+            if (this.livePreview?.panel === panel) {
                 this.livePreview = undefined;
             }
         }, null, this.subscriptions);
 
-        panel2.webview.onDidReceiveMessage((messageIn: MessageFromWebview) => {
+        panel.webview.onDidReceiveMessage((messageIn: MessageFromWebview) => {
             if (messageIn.type === 'scrollEditor') {
-                const preview = this.previews.find(preview => preview.panel === panel2);
-                if (preview && preview.config.scrollEditorWithPreview === true) {
-                    const now = Date.now();
-                    if (now - this.lastScrollPreviewTimeStamp > 1500) {
-                        // Ignore 'scrollEditor' message soon ( < 1.5 sec) after sending 'scrollPreview' command.
-                        for (const editor of vscode.window.visibleTextEditors) {
-                            if (editor.document.uri.toString() === preview.uri.toString()) {
-                                editor.revealRange(new vscode.Range(messageIn.line, 0, messageIn.line, 0), vscode.TextEditorRevealType.AtTop);
-                            }
+                const now = Date.now();
+                if (now - this.lastScrollPreviewTimeStamp > 1500) {
+                    // Ignore 'scrollEditor' message soon ( < 1.5 sec) after sending 'scrollPreview' command.
+                    for (const editor of vscode.window.visibleTextEditors) {
+                        if (editor.document.uri.toString() === preview.uri.toString()) {
+                            editor.revealRange(new vscode.Range(messageIn.line, 0, messageIn.line, 0), vscode.TextEditorRevealType.AtTop);
                         }
-                        this.lastScrollEditorTimeStamp = now;
                     }
+                    this.lastScrollEditorTimeStamp = now;
                 }
             } else if (messageIn.type === 'requestPlotData') {
-                const tree = this.previews.find(preview => preview.panel === panel2)?.tree;
-                if (tree) {
-                    const node = tree.find(node => node.occurance === messageIn.occurance && node.type === 'scanData');
+                if (preview.tree) {
+                    const node = preview.tree.find(node => node.occurance === messageIn.occurance && node.type === 'scanData');
                     if (node && node.type === 'scanData' && node.data.length) {
                         const { x: xIndex, y1: y1Indexes, y2: y2Indexes } = messageIn.indexes;
 
@@ -438,22 +434,27 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                             y2: y2Data,
                             action: messageIn.callback
                         };
-                        panel2.webview.postMessage(messageOut);
+                        panel.webview.postMessage(messageOut);
                     }
                 }
             } else if (messageIn.type === 'contentLoaded') {
+                // This will be called not only when the webview is created but also when it is revealed after it is hidden.
+                const config = vscode.workspace.getConfiguration('spec-data.preview');
                 let messageOut: MessageToWebview;
-                messageOut = { type: 'lockPreview', flag: lockPreview };
+                messageOut = { type: 'lockPreview', flag: this.livePreview?.panel !== panel };
                 preview.panel.webview.postMessage(messageOut);
-
+                messageOut = { type: 'enableEditorScroll', flag: config.get<boolean>('scrollEditorWithPreview', true) };
+                preview.panel.webview.postMessage(messageOut);
                 messageOut = {
                     type: 'setTemplate',
                     template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, uri),
                     callback: 'newPlot'
                 };
-                panel2.webview.postMessage(messageOut);
+                panel.webview.postMessage(messageOut);
+                messageOut = { type: 'setScrollBehavior', value: config.get<boolean>('smoothScrolling', true) ? 'smooth' : 'auto' };
+                preview.panel.webview.postMessage(messageOut);
             }
-        }, undefined, this.subscriptions);
+        }, null, this.subscriptions);
 
         this.updatePreviewWithTree(preview, tree);
 
@@ -535,7 +536,6 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     const headerType = config.get<string>('table.headerType', 'mnemonic');
     const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
     const plotHeight = config.get<number>('plot.height', 400);
-    const smoothScrolling = config.get<boolean>('smoothScrolling', false);
 
     // Apply CSP regardless of user settings when in untrusted workspaces.
     const metaCspStr = !vscode.workspace.isTrusted || config.get<boolean>('applyContentSecurityPolicy', true)
@@ -585,11 +585,6 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="${plotlyJsUri}"></script>
     <script src="${controllerJsJri}"></script>
-    <style>
-html {
-    scroll-behavior: ${smoothScrolling ? 'smooth' : 'auto'};
-}
-    </style>
 </head>
 <body>
 `;
