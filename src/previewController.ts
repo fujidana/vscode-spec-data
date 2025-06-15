@@ -363,7 +363,26 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         enableEditorScroll = messageIn.flag;
     } else if (messageIn.type === 'setScrollBehavior') {
         document.documentElement.style.scrollBehavior = messageIn.value;
-   }
+    } else if (messageIn.type === 'restoreScroll') {
+        if (messageIn.delay) {
+            // TODO: restore the scroll position after Plotly draws all graphs (if possible).
+            // Plotly starts to draw graphs after "DOMContentLoaded" event is fired.
+            // Currently just a short delay is inserted before restoring the scroll position.
+
+            // // The delay time is calculated from the number of plots (`== !(hidesPlot)`).
+            // const delay = 0 + 50 * Object.entries(state.scanData).filter(([occurance, scanDataState]) => {
+            //     return !(scanDataState?.hidden ?? Number(occurance) >= maximumPlots);
+            // }).length;
+
+            // The delay time is roughly estimated from the position.
+            const delay = state.scrollY / 20 > 500 ? 500 : state.scrollY / 20; // 1 sec or less
+            setTimeout(() => {
+                window.scrollTo({ top: state.scrollY, left: 0, behavior: 'instant' });
+            }, delay);
+        } else {
+            window.scrollTo({ top: state.scrollY, left: 0, behavior: 'instant' });
+        }
+    }
 });
 
 window.addEventListener('DOMContentLoaded', _event => {
@@ -481,14 +500,19 @@ window.addEventListener('DOMContentLoaded', _event => {
         type: 'contentLoaded',
     };
     vscode.postMessage(messageOut);
+});
 
-    if (state.scrollY > 0) {
-        window.scrollTo({ top: state.scrollY, left: 0, behavior: 'instant' });
-    }
+
+// It is enough to store scroll position only when the page is being closed.
+// However, Safari does not support 'scrollend' or `beforeunload` event.
+// Considering the case that Visual Studio Code for the Web is used on Safari, 
+// the scroll position is also stored in "scroll" event.
+window.addEventListener('scrollend', _event => {
+    state.scrollY = window.scrollY;
+    vscode.setState(state);
 });
 
 window.addEventListener("scroll", event => {
-    const idPattern = /^l(\d+)*/;
     // The scroll position is stored 1 sec after a user stops scrolloing.
     if (timer1) {
         clearTimeout(timer1);
@@ -501,6 +525,7 @@ window.addEventListener("scroll", event => {
     if (!enableEditorScroll) {
         return;
     }
+    const idPattern = /^l(\d+)*/;
 
     if (timer2 && event.timeStamp - lastScrollEditorTimeStamp < 50) {
         clearTimeout(timer2);
