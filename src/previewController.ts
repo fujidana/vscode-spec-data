@@ -36,7 +36,7 @@ if (state === undefined) {
     state.tableParams = {};
     state.graphParams = {};
     state.sourceUri = headDataset.sourceUri ?? '';
-    scrollY = 0;
+    state.scrollY = 0;
     vscode.setState(state);
 }
 
