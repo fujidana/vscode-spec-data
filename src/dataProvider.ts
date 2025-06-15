@@ -453,6 +453,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 panel.webview.postMessage(messageOut);
                 messageOut = { type: 'setScrollBehavior', value: config.get<boolean>('smoothScrolling', true) ? 'smooth' : 'auto' };
                 preview.panel.webview.postMessage(messageOut);
+                messageOut = { type: 'restoreScroll', delay: true };
+                preview.panel.webview.postMessage(messageOut);
             }
         }, null, this.subscriptions);
 

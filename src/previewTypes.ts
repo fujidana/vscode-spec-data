@@ -37,7 +37,8 @@ export type MessageToWebview =
     | EnableMultipleSelectionMessage
     | EnableRightAxisMessage
     | EnableEditorScrollMessage
-    | SetScrollBehaviorMessage;
+    | SetScrollBehaviorMessage
+    | RestoreScrallMessage;
 
 interface LockPreviewMessage extends BaseMessage {
     type: 'lockPreview';
@@ -82,6 +83,11 @@ interface EnableEditorScrollMessage extends BaseMessage {
 interface SetScrollBehaviorMessage extends BaseMessage {
     type: 'setScrollBehavior';
     value: 'auto' | 'smooth';
+}
+
+interface RestoreScrallMessage extends BaseMessage {
+    type: 'restoreScroll';
+    delay: boolean;
 }
 
 export type MessageFromWebview =
