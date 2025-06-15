@@ -3,7 +3,7 @@
 import type { Template } from 'plotly.js-basic-dist-min';
 // type Template = any;
 
-export interface ScanDataState {
+export interface GraphParam {
     xIndex: number;
     y1Indexes: number[];
     y2Indexes: number[];
@@ -14,8 +14,8 @@ export interface ScanDataState {
 
 export interface State {
     template: Template | undefined;
-    valueList: { [occurance: number]: { hidden: boolean } };
-    scanData: { [occurance: number]: Partial<ScanDataState> };
+    tableParams: { [occurance: number]: { hidden: boolean } };
+    graphParams: { [occurance: number]: Partial<GraphParam> };
     sourceUri: string;
     lockPreview: boolean;
     enableMultipleSelection: boolean;

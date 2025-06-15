@@ -10,25 +10,21 @@
 // import Plotly from 'plotly.js-basic-dist-min';
 declare const Plotly: any;
 
-import type { MessageFromWebview, MessageToWebview, CallbackType, State, ScanDataState } from './previewTypes';
-// type MessageFromWebview = any;
-// type MessageToWebview = any;
-// type CallbackType = any;
-// type State = any;
+import type { MessageFromWebview, MessageToWebview, CallbackType, State, GraphParam } from './previewTypes';
 
 const vscode = acquireVsCodeApi<State>();
 
 const headDataset = document.head.dataset;
 const maximumPlots = parseInt(headDataset.maximumPlots ?? "0");
 const plotHeight = parseInt(headDataset.plotHeight ?? "100");
-const hideTableGlobal = Boolean(parseInt(headDataset.hideTable ?? "0"));
+const hidesTableGlobal = Boolean(parseInt(headDataset.hideTable ?? "0"));
 
 let state = vscode.getState();
 if (state === undefined) {
     state = {
         template: undefined,
-        valueList: {},
-        scanData: {},
+        tableParams: {},
+        graphParams: {},
         sourceUri: headDataset.sourceUri ?? '',
         lockPreview: false,
         enableMultipleSelection: Boolean(parseInt(headDataset.enableMultipleSelection ?? "0")),
@@ -37,14 +33,14 @@ if (state === undefined) {
     };
     vscode.setState(state);
 } else if (state.sourceUri !== headDataset.sourceUri) {
-    state.valueList = {};
-    state.scanData = {};
+    state.tableParams = {};
+    state.graphParams = {};
     state.sourceUri = headDataset.sourceUri ?? '';
     scrollY = 0;
     vscode.setState(state);
 }
 
-let enableEditorScroll = false;
+let scrollsEditor = false;
 let lastScrollEditorTimeStamp = 0;
 let lastScrollPreviewTimeStamp = 0;
 
@@ -64,7 +60,7 @@ const showValueListInputChangeHandler = function (event: Event) {
             valueListTables[0].hidden = !showValueListInput.checked;
 
             // save the current state.
-            state.valueList[parseInt(occuranceString)] = { hidden: !showValueListInput.checked };
+            state.tableParams[parseInt(occuranceString)] = { hidden: !showValueListInput.checked };
             vscode.setState(state);
         }
     }
@@ -115,10 +111,10 @@ const showPlotInputChangeHandler = function (event: Event) {
             y2LogInput.disabled = !showPlotInput.checked;
 
             // save the current state
-            const newScanData: Required<ScanDataState> = {
+            const newGraphParam: Required<GraphParam> = {
                 xIndex, y1Indexes, y2Indexes, y1Log: y1LogInput.checked, y2Log: y2LogInput.checked, hidden: !showPlotInput.checked
             };
-            state.scanData[occurance] = newScanData;
+            state.graphParams[occurance] = newGraphParam;
             vscode.setState(state);
         }
     }
@@ -152,12 +148,12 @@ const plotAxisSelectChangeHandler = function (event: Event) {
             vscode.postMessage(messageOut);
 
             // save the current state
-            const newScanDataStatus: Partial<ScanDataState> = {
+            const newGraphParam: Partial<GraphParam> = {
                 xIndex,
                 y1Indexes,
                 y2Indexes,
             };
-            state.scanData[occurance] = occurance in state.scanData ? { ...state.scanData[occurance], ...newScanDataStatus } : newScanDataStatus;
+            state.graphParams[occurance] = occurance in state.graphParams ? { ...state.graphParams[occurance], ...newGraphParam } : newGraphParam;
             vscode.setState(state);
         }
     }
@@ -174,18 +170,18 @@ const logAxisInputChangeHandler = function (event: Event) {
             const occurance = parseInt(occuranceString);
 
             let layout: any; // Partial<Plotly.Layout>;
-            let newScanDataStatus: Partial<ScanDataState>;
+            let newGraphParam: Partial<GraphParam>;
             const axisTypeValue = logAxisInput.checked ? 'log' : 'linear';
             if (logAxisInput.id.startsWith('y2LogInput')) {
                 layout = { 'yaxis2.type': axisTypeValue };
-                newScanDataStatus = { y2Log: logAxisInput.checked };
+                newGraphParam = { y2Log: logAxisInput.checked };
             } else {
                 layout = { 'yaxis.type': axisTypeValue };
-                newScanDataStatus = { y1Log: logAxisInput.checked };
+                newGraphParam = { y1Log: logAxisInput.checked };
             }
 
             Plotly.relayout(plotDivs[0], layout);
-            state.scanData[occurance] = occurance in state.scanData ? { ...state.scanData[occurance], ...newScanDataStatus } : newScanDataStatus;
+            state.graphParams[occurance] = occurance in state.graphParams ? { ...state.graphParams[occurance], ...newGraphParam } : newGraphParam;
             vscode.setState(state);
         }
     }
@@ -241,9 +237,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         const element = document.getElementById(messageIn.elementId);
         if (event.timeStamp - lastScrollEditorTimeStamp > 1500 && element) {
             // Ignore 'scrollPreview' message soon (< 1.5 sec) after sending 'scrollEditor' message.
-            element.scrollIntoView({
-                block: 'start'
-            });
+            element.scrollIntoView({ block: 'start' });
             lastScrollPreviewTimeStamp = event.timeStamp;
         }
     } else if (messageIn.type === 'updatePlot') {
@@ -360,7 +354,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         state.enableRightAxis = messageIn.flag;
         vscode.setState(state);
     } else if (messageIn.type === 'enableEditorScroll') {
-        enableEditorScroll = messageIn.flag;
+        scrollsEditor = messageIn.flag;
     } else if (messageIn.type === 'setScrollBehavior') {
         document.documentElement.style.scrollBehavior = messageIn.value;
     } else if (messageIn.type === 'restoreScroll') {
@@ -370,8 +364,8 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
             // Currently just a short delay is inserted before restoring the scroll position.
 
             // // The delay time is calculated from the number of plots (`== !(hidesPlot)`).
-            // const delay = 0 + 50 * Object.entries(state.scanData).filter(([occurance, scanDataState]) => {
-            //     return !(scanDataState?.hidden ?? Number(occurance) >= maximumPlots);
+            // const delay = 0 + 50 * Object.entries(state.graphParams).filter(([occurance, graphParam]) => {
+            //     return !(graphParam?.hidden ?? Number(occurance) >= maximumPlots);
             // }).length;
 
             // The delay time is roughly estimated from the position.
@@ -394,8 +388,8 @@ window.addEventListener('DOMContentLoaded', _event => {
 
         if (occuranceString && showValueListInputs.length === 1 && valueListTables.length === 1) {
             const occurance = parseInt(occuranceString);
-            const hidesTable = state.valueList[occurance]?.hidden ?? hideTableGlobal;
-            // const hidesTable: boolean = occurance in state.valueList && state.valueList[occurance].hidden !== undefined ? state.valueList[occurance].hidden : hideTableGlobal;
+            const hidesTable = state.tableParams[occurance]?.hidden ?? hidesTableGlobal;
+            // const hidesTable: boolean = occurance in state.tableParams && state.tableParams[occurance].hidden !== undefined ? state.tableParams[occurance].hidden : hidesTableGlobal;
 
             // set the initial state
             showValueListInputs[0].checked = !hidesTable;
@@ -427,8 +421,8 @@ window.addEventListener('DOMContentLoaded', _event => {
 
             // Show Plot checkboxes
             // set the initial state.
-            const hidesPlot = state.scanData[occurance]?.hidden ?? occurance >= maximumPlots;
-            // const hidesPlot: boolean = occurance in state.scanData && state.scanData[occurance].hidden !== undefined ? state.scanData[occurance].hidden : occurance >= maximumPlots;
+            const hidesPlot = state.graphParams[occurance]?.hidden ?? occurance >= maximumPlots;
+            // const hidesPlot: boolean = occurance in state.graphParams && state.graphParams[occurance].hidden !== undefined ? state.graphParams[occurance].hidden : occurance >= maximumPlots;
             showPlotInput.checked = !hidesPlot;
 
             // axis selectors and log checkboxes
@@ -455,14 +449,14 @@ window.addEventListener('DOMContentLoaded', _event => {
             // toggle multiple slection: end
 
             // set the data selection.
-            // xAxisSelect.selectedIndex = state.scanData[occurance]?.xIndex ?? 0;
-            xAxisSelect.selectedIndex = state.scanData[occurance]?.xIndex ?? (xAxisSelect.length > 2 ? 0 : 1);
+            // xAxisSelect.selectedIndex = state.graphParams[occurance]?.xIndex ?? 0;
+            xAxisSelect.selectedIndex = state.graphParams[occurance]?.xIndex ?? (xAxisSelect.length > 2 ? 0 : 1);
 
-            const y1Indexes = state.scanData[occurance]?.y1Indexes ?? [y1AxisSelect.length - 1];
+            const y1Indexes = state.graphParams[occurance]?.y1Indexes ?? [y1AxisSelect.length - 1];
             // y1Indexes.forEach(i => y1AxisSelect.options[i].selected = true);
             [...y1AxisSelect.options].forEach(option => { option.selected = y1Indexes.includes(option.index); });
 
-            const y2Indexes = state.scanData[occurance]?.y2Indexes ?? [y2AxisSelect.length - 1];
+            const y2Indexes = state.graphParams[occurance]?.y2Indexes ?? [y2AxisSelect.length - 1];
             // y2Indexes.forEach(i => y2AxisSelect.options[i].selected = true);
             [...y2AxisSelect.options].forEach(option => { option.selected = y2Indexes.includes(option.index); });
 
@@ -483,8 +477,8 @@ window.addEventListener('DOMContentLoaded', _event => {
             [...y2Elements].forEach(element => element.hidden = !state.enableRightAxis);
             // toggle right axis: end
 
-            y1LogInput.checked = state.scanData[occurance]?.y1Log ?? false;
-            y2LogInput.checked = state.scanData[occurance]?.y2Log ?? false;
+            y1LogInput.checked = state.graphParams[occurance]?.y1Log ?? false;
+            y2LogInput.checked = state.graphParams[occurance]?.y2Log ?? false;
 
             // register a handler
             showPlotInput.onchange = showPlotInputChangeHandler;
@@ -522,7 +516,7 @@ window.addEventListener("scroll", event => {
         vscode.setState(state);
     }, 1000);
 
-    if (!enableEditorScroll) {
+    if (!scrollsEditor) {
         return;
     }
     const idPattern = /^l(\d+)*/;
