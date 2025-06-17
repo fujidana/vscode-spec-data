@@ -4,9 +4,11 @@ import type { Template } from 'plotly.js-basic-dist-min';
 // type Template = any;
 
 export interface GraphParam {
-    xIndex: number;
-    y1Indexes: number[];
-    y2Indexes: number[];
+    selections: {
+        x: number;
+        y1: number[];
+        y2: number[];
+    }
     hidden: boolean;
     y1Log: boolean;
     y2Log: boolean;
@@ -14,8 +16,8 @@ export interface GraphParam {
 
 export interface State {
     template: Template | undefined;
-    tableParams: { [occurance: number]: { hidden: boolean } };
-    graphParams: { [occurance: number]: Partial<GraphParam> };
+    tableParams: { [index: number]: { hidden: boolean } };
+    graphParams: { [index: number]: Partial<GraphParam> };
     sourceUri: string;
     lockPreview: boolean;
     enableMultipleSelection: boolean;
@@ -58,7 +60,7 @@ interface SetTemplateMessage extends BaseMessage {
 
 interface UpdatePlotMessage extends BaseMessage {
     type: 'updatePlot';
-    occurance: number;
+    graphNumber: number;
     x: { label: string, array: number[] };
     y1: { label: string, array: number[] }[];
     y2: { label: string, array: number[] }[];
@@ -102,8 +104,8 @@ interface ScrollEditorMessage extends BaseMessage {
 
 interface requestPlotDataMessage extends BaseMessage {
     type: 'requestPlotData';
-    occurance: number;
-    indexes: {
+    graphNumber: number;
+    selections: {
         x: number,
         y1: number[],
         y2: number[]

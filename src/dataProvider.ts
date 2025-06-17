@@ -416,9 +416,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 }
             } else if (messageIn.type === 'requestPlotData') {
                 if (preview.tree) {
-                    const node = preview.tree.find(node => node.occurance === messageIn.occurance && node.type === 'scanData');
+                    let index = 0;
+                    const node = preview.tree.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
                     if (node && node.type === 'scanData' && node.data.length) {
-                        const { x: xIndex, y1: y1Indexes, y2: y2Indexes } = messageIn.indexes;
+                        const { x: xIndex, y1: y1Indexes, y2: y2Indexes } = messageIn.selections;
 
                         const xData = (xIndex >= 0 && xIndex < node.data.length) ?
                             { label: node.headers[xIndex], array: node.data[xIndex] } :
@@ -428,7 +429,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
                         const messageOut: MessageToWebview = {
                             type: 'updatePlot',
-                            occurance: messageIn.occurance,
+                            graphNumber: messageIn.graphNumber,
                             x: xData,
                             y1: y1Data,
                             y2: y2Data,
@@ -441,18 +442,23 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 // This will be called not only when the webview is created but also when it is revealed after it is hidden.
                 const config = vscode.workspace.getConfiguration('spec-data.preview');
                 let messageOut: MessageToWebview;
+
                 messageOut = { type: 'lockPreview', flag: this.livePreview?.panel !== panel };
                 preview.panel.webview.postMessage(messageOut);
+
                 messageOut = { type: 'enableEditorScroll', flag: config.get<boolean>('scrollEditorWithPreview', true) };
                 preview.panel.webview.postMessage(messageOut);
+
                 messageOut = {
                     type: 'setTemplate',
                     template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, uri),
                     callback: 'newPlot'
                 };
                 panel.webview.postMessage(messageOut);
+
                 messageOut = { type: 'setScrollBehavior', value: config.get<boolean>('smoothScrolling', true) ? 'smooth' : 'auto' };
                 preview.panel.webview.postMessage(messageOut);
+
                 messageOut = { type: 'restoreScroll', delay: true };
                 preview.panel.webview.postMessage(messageOut);
             }
@@ -551,27 +557,30 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
     }
 
     function getAttributesForNode(node: Node) {
-        const occuranceStr = node.occurance !== undefined ? ` data-occurance="${node.occurance}"` : '';
-        return `id="l${node.lineStart}" class="${node.type}"${occuranceStr}`;
+        return `id="l${node.lineStart}" class="${node.type}"`;
     }
 
     /** create components to select arrays (<select>) and select log-linear <input> */
-    function getAxisSelectAndOptions(axis: string, occurance: number | undefined, headers: string[], size: number, useLogInput: boolean, hidden: boolean) {
+    function getAxisSelectAndOptions(axis: string, headers: string[], size: number, useLogInput: boolean, hidden: boolean) {
         const hiddenStr = hidden === true ? ' hidden' : '';
         const sizeStr = size !== undefined ? ` data-size-for-multiple="${size}"` : '';
         // const multipleStr = isMultiple ? ` multiple size="${size}"` : '';
         let tmpStr;
         tmpStr = `<span class="${axis}"${hiddenStr}>; </span>
-<label for="${axis}AxisSelect${occurance}" class="${axis}"${hiddenStr}><var>${axis}</var>:</label>
-<select id="${axis}AxisSelect${occurance}" class="${axis} ${axis}AxisSelect"${hiddenStr}${sizeStr}>
+<label class="${axis}"${hiddenStr}>
+<var>${axis}</var>:
+<select class="${axis} ${axis}AxisSelect"${hiddenStr}${sizeStr}>
 `;
         tmpStr += headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('\n');
         tmpStr += `</select>
+</label>
 `;
         if (useLogInput) {
             tmpStr += `<span class="${axis}"${hiddenStr}>,</span>
-<input type="checkbox" id="${axis}LogInput${occurance}" class="${axis} ${axis}LogInput"${hiddenStr}>
-<label for="${axis}LogInput${occurance}" class="${axis}"${hiddenStr}>log</label>
+<label class="${axis}"${hiddenStr}>
+<input type="checkbox" class="${axis} ${axis}LogInput"${hiddenStr}>
+log
+</label>
 `;
         }
 
@@ -610,16 +619,17 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
         } else if (node.type === 'valueList') {
             const valueList = node.values;
             const headerList = (headerType === 'Name') ? nameLists['motor'] : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : undefined;
-            const occurance = node.occurance;
             lines.push(`<div ${getAttributesForNode(node)}>`);
             if (headerList && (headerList.length !== valueList.length)) {
                 lines.push('<p><em>The number of scan headers and data columns mismatched.</em></p>');
             } else {
                 lines.push(`<p>
-<input type="checkbox" id="showValueListInput${occurance}" class="showValueListInput">
-<label for="showValueListInput${occurance}">Show Prescan Table</label>
+<label>
+<input type="checkbox" class="showValueListInput">
+Show Prescan Table
+</label>
 </p>
-<table id="valueListTable${occurance}" class="valueListTable">
+<table class="valueListTable">
 <caption>${getSanitizedString(node.kind)}</caption>`);
                 for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
                     if (headerList) {
@@ -635,24 +645,24 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri
         } else if (node.type === 'scanData') {
             const data = node.data;
             const headers = node.headers;
-            const occurance = node.occurance;
 
             lines.push(`<div ${getAttributesForNode(node)}>`);
             if (data.length) {
                 lines.push(`<p>
-<input type="checkbox" id="showPlotInput${occurance}" class="showPlotInput">
-<label for="showPlotInput${occurance}">Show Plot</label>`);
+<label>
+<input type="checkbox" class="showPlotInput">
+Show Plot
+</label>`);
                 const size = Math.min((node.xAxisSelectable ? headers.length + 1 : headers.length), 4);
-                lines.push(getAxisSelectAndOptions('x', occurance, [...headers, '[point]'], size, false, !node.xAxisSelectable));
-                lines.push(getAxisSelectAndOptions('y', occurance, headers, size, true, false));
-                // lines.push(getAxisSelectAndOptions('y2', occurance, [...headers, '[none]'], size, true, false));
-                lines.push(getAxisSelectAndOptions('y2', occurance, [...headers, '[none]'], size, true, !enableRightAxis));
+                lines.push(getAxisSelectAndOptions('x', [...headers, '[point]'], size, false, !node.xAxisSelectable));
+                lines.push(getAxisSelectAndOptions('y1', headers, size, true, false));
+                lines.push(getAxisSelectAndOptions('y2', [...headers, '[none]'], size, true, !enableRightAxis));
                 lines.push(`.</p>
-<div id="plotly${occurance}" class="scanDataPlot"></div>`);
+<div class="graphDiv"></div>`);
             }
             lines.push(`</div>`);
             // } else if (node.type === 'unknown') {
-            //     body += `<p> #${node.kind} ${node.value}`;
+            //     lines.push(`<p>#${node.kind} ${node.value}</p>`);
         }
     }
 

@@ -9,7 +9,7 @@ export const CHIPLOT_FILTER = { language: 'chiplot' };
 export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER];
 
 export type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
-interface BaseNode { type: string, lineStart: number, lineEnd: number, occurance?: number }
+interface BaseNode { type: string, lineStart: number, lineEnd: number }
 interface FileNode extends BaseNode { type: 'file', value: string }
 interface DateNode extends BaseNode { type: 'date', value: string }
 interface CommentNode extends BaseNode { type: 'comment', value: string }
@@ -116,16 +116,6 @@ function parseSpecDataContent(text: string): ParsedData | undefined {
     let columnCountInHeader = -1;
     let columnCountInBody = -1;
 
-    let fileOccurance = 0;
-    let dateOccurance = 0;
-    let commentOccurance = 0;
-    // let nameListOccurance = 0;
-    let valueListOccurance = 0;
-    let scanHeadOccurance = 0;
-    // let scanNumberOccurance = 0;
-    let scanDataOccurance = 0;
-    // let  unknownOccurance = 0;
-
     for (let lineNumber = 0; lineNumber < lineCount; lineNumber++) {
         const line = lines[lineNumber];
         let matches: RegExpMatchArray | null;
@@ -145,14 +135,11 @@ function parseSpecDataContent(text: string): ParsedData | undefined {
             }
             prevEmptyLineNumber = lineNumber;
         } else if ((matches = line.match(fileRegex)) !== null) {
-            nodes.push({ type: 'file', lineStart: lineNumber, lineEnd: lineNumber, occurance: fileOccurance, value: matches[2] });
-            fileOccurance++;
+            nodes.push({ type: 'file', lineStart: lineNumber, lineEnd: lineNumber, value: matches[2] });
         } else if ((matches = line.match(dateRegex)) !== null) {
-            nodes.push({ type: 'date', lineStart: lineNumber, lineEnd: lineNumber, occurance: dateOccurance, value: matches[2] });
-            dateOccurance++;
+            nodes.push({ type: 'date', lineStart: lineNumber, lineEnd: lineNumber, value: matches[2] });
         } else if ((matches = line.match(commentRegex)) !== null) {
-            nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, occurance: commentOccurance, value: matches[2] });
-            commentOccurance++;
+            nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: matches[2] });
         } else if ((matches = line.match(nameListRegex)) !== null) {
             let kind, isMnemonic, separator;
             if (matches[1] === matches[1].toLowerCase()) {
@@ -209,13 +196,11 @@ function parseSpecDataContent(text: string): ParsedData | undefined {
                     vscode.window.showErrorMessage(`The value list not starding with 0: line ${lineNumber + 1}`);
                     return undefined;
                 }
-                nodes.push({ type: 'valueList', lineStart: lineNumber, lineEnd: lineNumber, occurance: valueListOccurance, kind: kind, values: matches[3].trimEnd().split(' ').map(value => parseFloat(value)) });
-                valueListOccurance++;
+                nodes.push({ type: 'valueList', lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: matches[3].trimEnd().split(' ').map(value => parseFloat(value)) });
                 prevNodeIndex = 0;
             }
         } else if ((matches = line.match(scanHeadRegex)) !== null) {
-            nodes.push({ type: 'scanHead', lineStart: lineNumber, lineEnd: lineNumber, occurance: scanHeadOccurance, index: parseInt(matches[2]), code: matches[3] });
-            scanHeadOccurance++;
+            nodes.push({ type: 'scanHead', lineStart: lineNumber, lineEnd: lineNumber, index: parseInt(matches[2]), code: matches[3] });
         } else if ((matches = line.match(scanNumberRegex)) !== null) {
             columnCountInHeader = parseInt(matches[2]);
         } else if ((matches = line.match(scanDataRegex)) !== null) {
@@ -261,8 +246,7 @@ function parseSpecDataContent(text: string): ParsedData | undefined {
             // transpose the two-dimensional data array
             const data2 = data.length > 0 ? data[0].map((_, colIndex) => data.map(row => row[colIndex])) : data;
 
-            nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineNumber, occurance: scanDataOccurance, headers: headers, data: data2, xAxisSelectable: true });
-            scanDataOccurance++;
+            nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineNumber, headers: headers, data: data2, xAxisSelectable: true });
             columnCountInHeader = -1;
             columnCountInBody = -1;
         } else if ((matches = line.match(unknownRegex)) !== null) {
@@ -279,7 +263,6 @@ function parseCsvContent(text: string, columnWise: boolean): ParsedData | undefi
     const lineCount = lines.length;
 
     const nodes: Node[] = [];
-    let dataOccurrance = 0, commentOccurance = 0;
 
     for (let lineNumber = 0; lineNumber < lineCount; lineNumber++) {
         let delimRegexp: RegExp | undefined;
@@ -299,8 +282,7 @@ function parseCsvContent(text: string, columnWise: boolean): ParsedData | undefi
                 continue;
             } else if (line.startsWith('#')) {
                 // Skip a comment line after appending the text to the nodes.
-                nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, occurance: commentOccurance, value: line.substring(1) });
-                commentOccurance++;
+                nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: line.substring(1) });
                 continue;
             } else if (!columnWise && line.startsWith('@A ')) {
                 // If the line starts with "@A", it is data in ESRF's MCA format.
@@ -393,8 +375,7 @@ function parseCsvContent(text: string, columnWise: boolean): ParsedData | undefi
         } else {
             headers = Array(data.length).fill(0).map((_x, i) => `row ${i}`);
         }
-        nodes.push({ type: 'scanData', lineStart: dataStartIndex, lineEnd: lineNumber - 1, occurance: dataOccurrance, headers: headers, data: data, xAxisSelectable: columnWise });
-        dataOccurrance++;
+        nodes.push({ type: 'scanData', lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers: headers, data: data, xAxisSelectable: columnWise });
     }
 
     if (nodes.some(node => node.type === 'scanData')) {
@@ -410,7 +391,6 @@ function parseDppmcaContent(text: string): ParsedData {
     const documentSymbols: vscode.DocumentSymbol[] = [];
     const nodes: Node[] = [];
     let prevHeader: { name: string, range: vscode.Range, items: string[] } | undefined;
-    let occurance = 0;
 
     const headerRegexp = /^<<([a-zA-Z0-9_ ]+)>>$/;
 
@@ -433,8 +413,7 @@ function parseDppmcaContent(text: string): ParsedData {
                 }
                 if (prevHeader.name === 'DATA') {
                     const data1d = prevHeader.items.map(line => parseInt(line));
-                    nodes.push({ type: 'scanData', lineStart: prevHeader.range.start.line, lineEnd: lineNumber, occurance: occurance, headers: ['count'], data: [data1d], xAxisSelectable: false });
-                    occurance++;
+                    nodes.push({ type: 'scanData', lineStart: prevHeader.range.start.line, lineEnd: lineNumber, headers: ['count'], data: [data1d], xAxisSelectable: false });
                 }
             }
             if (matches[1].endsWith('END')) {
@@ -514,8 +493,8 @@ function parseChiplotContent(text: string): ParsedData | undefined {
     }
 
     const nodes: Node[] = [];
-    nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, occurance: 0, value: title });
-    nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineNumber, occurance: 0, headers: headers2, data: data2, xAxisSelectable: true });
+    nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, value: title });
+    nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineNumber, headers: headers2, data: data2, xAxisSelectable: true });
 
     return { nodes };
 }
