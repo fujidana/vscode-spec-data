@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
-import { parseDocument, parseFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './dataParser';
+import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './dataParser';
 import type { ParsedData, Node } from './dataParser';
 
 // @types/plotly.js contains DOM objects and thus
@@ -14,7 +14,7 @@ type Preview = {
     readonly panel: vscode.WebviewPanel;
     uri: vscode.Uri;
     config: PreviewConfig;
-    tree?: Node[];
+    nodes?: Node[];
 };
 
 type PreviewConfig = {
@@ -200,7 +200,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 const line = event.visibleRanges[0].start.line;
                 const previews = this.previews.filter(preview => preview.uri.toString() === document.uri.toString());
                 for (const preview of previews) {
-                    const node = preview.tree?.find(node => (node.lineEnd >= line));
+                    const node = preview.nodes?.find(node => (node.lineEnd >= line));
                     if (node) {
                         const messageOut: MessageToWebview = { type: 'scrollPreview', elementId: `l${node.lineStart}` };
                         preview.panel.webview.postMessage(messageOut);
@@ -342,8 +342,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     private async initPreview(sessionOrParam: Session | WebviewInitParam) {
         const uri: vscode.Uri = (sessionOrParam.type === 'session') ? vscode.Uri.parse(sessionOrParam.state.sourceUri) : sessionOrParam.uri;
 
-        const tree = this.parsedDataMap.has(uri.toString()) ? this.parsedDataMap.get(uri.toString())?.nodes : await parseFromUri(uri);
-        if (!tree) {
+        const parsedData = this.parsedDataMap.has(uri.toString()) ? this.parsedDataMap.get(uri.toString()) : await parseTextFromUri(uri);
+        if (!parsedData) {
             const message = `Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`;
             vscode.window.showErrorMessage(message);
             return undefined;
@@ -415,9 +415,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     this.lastScrollEditorTimeStamp = now;
                 }
             } else if (messageIn.type === 'requestPlotData') {
-                if (preview.tree) {
+                if (preview.nodes) {
                     let index = 0;
-                    const node = preview.tree.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
+                    const node = preview.nodes.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
                     if (node && node.type === 'scanData' && node.data.length) {
                         const { x: xIndex, y1: y1Indexes, y2: y2Indexes } = messageIn.selections;
 
@@ -464,7 +464,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         }, null, this.subscriptions);
 
-        this.updatePreviewWithTree(preview, tree);
+        this.updatePreviewWithNodes(preview, parsedData.language, parsedData.nodes);
 
         return preview;
     }
@@ -482,28 +482,28 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return preview;
         }
 
-        const tree = this.parsedDataMap.has(uri.toString()) ? this.parsedDataMap.get(uri.toString())?.nodes : await parseFromUri(uri);
-        if (!tree) {
+        const parsedData = this.parsedDataMap.has(uri.toString()) ? this.parsedDataMap.get(uri.toString()) : await parseTextFromUri(uri);
+        if (!parsedData) {
             const message = `Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`;
             vscode.window.showErrorMessage(message);
             return undefined;
         }
 
         preview.uri = uri;
-        this.updatePreviewWithTree(preview, tree);
+        this.updatePreviewWithNodes(preview, parsedData.language, parsedData.nodes);
 
         return preview;
     }
 
-    private updatePreviewWithTree(preview: Preview, tree: Node[]) {
+    private updatePreviewWithNodes(preview: Preview, language: string, nodes: Node[]) {
         const webview = preview.panel.webview;
         const label = this.livePreview === preview ? 'Preview' : '[Preview]';
-        const plotlyJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
-        const controllerJsUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewController.js'));
+        const plotlyUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
+        const controllerUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewController.js'));
 
-        preview.tree = tree;
+        preview.nodes = nodes;
         preview.panel.title = `${label} ${preview.uri.path.substring(preview.uri.path.lastIndexOf('/') + 1)}`;
-        preview.panel.webview.html = getWebviewContent(webview.cspSource, preview.uri, plotlyJsUri, controllerJsUri, tree, preview.config.enableMultipleSelection, preview.config.enableRightAxis);
+        preview.panel.webview.html = getWebviewContent(webview.cspSource, preview.uri, plotlyUri, controllerUri, language, nodes, preview.config);
     }
 
     private getActivePreview(): Preview | undefined {
@@ -534,11 +534,11 @@ function getTargetFileUris(args: unknown[]): vscode.Uri[] {
 }
 
 
-function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyJsUri: vscode.Uri, controllerJsJri: vscode.Uri, nodes: Node[], enableMultipleSelection: boolean, enableRightAxis: boolean): string {
+function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyUri: vscode.Uri, controllerUri: vscode.Uri, languageId: string, nodes: Node[], previewConfig: PreviewConfig): string {
     const nameLists: { [name: string]: string[] } = {};
     const mnemonicLists: { [name: string]: string[] } = {};
 
-    const config = vscode.workspace.getConfiguration('spec-data.preview', sourceUri);
+    const config = vscode.workspace.getConfiguration('spec-data.preview', { languageId, uri: sourceUri });
     const hideTable = config.get<boolean>('table.hide', true);
     const columnsPerLine = config.get<number>('table.columnsPerLine', 8);
     const headerType = config.get<string>('table.headerType', 'mnemonic');
@@ -589,13 +589,13 @@ log
 
     const header = `<!DOCTYPE html>
 <html lang="en">
-<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${sourceUri.toString()}" data-enable-multiple-selection="${Number(enableMultipleSelection)}" data-enable-right-axis="${Number(enableRightAxis)}">
+<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${sourceUri.toString()}" data-enable-multiple-selection="${Number(previewConfig.enableMultipleSelection)}" data-enable-right-axis="${Number(previewConfig.enableRightAxis)}">
 	<meta charset="UTF-8">
     ${metaCspStr}
     <title>Preview of spec-data</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="${plotlyJsUri}"></script>
-    <script src="${controllerJsJri}"></script>
+    <script src="${plotlyUri}"></script>
+    <script src="${controllerUri}"></script>
 </head>
 <body>
 `;
@@ -656,7 +656,7 @@ Show Plot
                 const size = Math.min((node.xAxisSelectable ? headers.length + 1 : headers.length), 4);
                 lines.push(getAxisSelectAndOptions('x', [...headers, '[point]'], size, false, !node.xAxisSelectable));
                 lines.push(getAxisSelectAndOptions('y1', headers, size, true, false));
-                lines.push(getAxisSelectAndOptions('y2', [...headers, '[none]'], size, true, !enableRightAxis));
+                lines.push(getAxisSelectAndOptions('y2', [...headers, '[none]'], size, true, !previewConfig.enableRightAxis));
                 lines.push(`.</p>
 <div class="graphDiv"></div>`);
             }

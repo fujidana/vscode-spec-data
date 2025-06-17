@@ -20,9 +20,10 @@ interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], d
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
 export type ParsedData = {
+    language: string,
     foldingRanges?: vscode.FoldingRange[],
     documentSymbols?: vscode.DocumentSymbol[],
-    nodes: Node[],
+    nodes: Node[]
 };
 
 export function parseDocument(document: vscode.TextDocument): ParsedData | undefined {
@@ -41,7 +42,7 @@ export function parseDocument(document: vscode.TextDocument): ParsedData | undef
     }
 }
 
-export async function parseFromUri(uri: vscode.Uri): Promise<Node[] | undefined> {
+export async function parseTextFromUri(uri: vscode.Uri): Promise<ParsedData | undefined> {
     let text: string;
     let languageId: string | undefined;
 
@@ -50,38 +51,37 @@ export async function parseFromUri(uri: vscode.Uri): Promise<Node[] | undefined>
         languageId = document.languageId;
         text = document.getText();
     } else {
-    }
-    // Determine the file type (language ID) for a file.
-    // First, compare the filename with a user-defined setting ("files.associations"), 
-    // then with default extension patterns.
-    const associations = Object.entries(
-        vscode.workspace.getConfiguration('files', uri).get<Record<string, string>>('associations', {}),
-    ).concat([['*.spec', 'spec-data'], ['*.mca', 'dppmca'], ['*.chi', 'chiplot']]);
-
-    for (const [key, value] of associations) {
-        if (minimatch(uri.path, key, { matchBase: true })) {
-            languageId = DOCUMENT_SELECTOR.map(filter => filter.language).includes(value) ? value : undefined;
-            break;
+        // Determine the file type (language ID) for a file.
+        // First, compare the filename with a user-defined setting ("files.associations"), 
+        // then with default extension patterns.
+        const associations = Object.entries(
+            vscode.workspace.getConfiguration('files', uri).get<Record<string, string>>('associations', {}),
+        ).concat([['*.spec', 'spec-data'], ['*.mca', 'dppmca'], ['*.chi', 'chiplot']]);
+        
+        for (const [key, value] of associations) {
+            if (minimatch(uri.path, key, { matchBase: true })) {
+                languageId = DOCUMENT_SELECTOR.map(filter => filter.language).includes(value) ? value : undefined;
+                break;
+            }
         }
+        
+        if (languageId === undefined) {
+            return undefined;
+        }
+        // Read the content from a file. Use file encoding for the language ID (if "files.encoding" is set.)
+        text = await vscode.workspace.decode(await vscode.workspace.fs.readFile(uri), { uri });
     }
-
-    if (languageId === undefined) {
-        return undefined;
-    }
-
-    // Read the content from a file. Use file encoding for the language ID (if "files.encoding" is set.)
-    text = await vscode.workspace.decode(await vscode.workspace.fs.readFile(uri), { uri });
 
     if (languageId === SPEC_DATA_FILTER.language) {
-        return parseSpecDataContent(text)?.nodes;
+        return parseSpecDataContent(text);
     } else if (languageId === CSV_COLUMNS_FILTER.language) {
-        return parseCsvContent(text, true)?.nodes;
+        return parseCsvContent(text, true);
     } else if (languageId === CSV_ROWS_FILTER.language) {
-        return parseCsvContent(text, false)?.nodes;
+        return parseCsvContent(text, false);
     } else if (languageId === DPPMCA_FILTER.language) {
-        return parseDppmcaContent(text)?.nodes;
+        return parseDppmcaContent(text);
     } else if (languageId === CHIPLOT_FILTER.language) {
-        return parseChiplotContent(text)?.nodes;
+        return parseChiplotContent(text);
     } else {
         return undefined;
     }
@@ -254,7 +254,7 @@ function parseSpecDataContent(text: string): ParsedData | undefined {
         }
     }
     // return nodes.length !== 0 ? nodes : undefined;
-    return { foldingRanges, documentSymbols, nodes };
+    return { language: SPEC_DATA_FILTER.language, foldingRanges, documentSymbols, nodes };
 }
 
 // character-separated values. The delimiter is auto-detected from a horizontal tab, a whitespace, or a comma. 
@@ -378,8 +378,9 @@ function parseCsvContent(text: string, columnWise: boolean): ParsedData | undefi
         nodes.push({ type: 'scanData', lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers: headers, data: data, xAxisSelectable: columnWise });
     }
 
+    const language = columnWise ? CSV_COLUMNS_FILTER.language : CSV_ROWS_FILTER.language;
     if (nodes.some(node => node.type === 'scanData')) {
-        return { nodes };
+        return { language, nodes };
     }
 }
 
@@ -425,7 +426,7 @@ function parseDppmcaContent(text: string): ParsedData {
             prevHeader.items.push(line);
         }
     }
-    return { foldingRanges, documentSymbols, nodes };
+    return { language: DPPMCA_FILTER.language, foldingRanges, documentSymbols, nodes };
 }
 
 function parseChiplotContent(text: string): ParsedData | undefined {
@@ -496,5 +497,5 @@ function parseChiplotContent(text: string): ParsedData | undefined {
     nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, value: title });
     nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineNumber, headers: headers2, data: data2, xAxisSelectable: true });
 
-    return { nodes };
+    return { language: CHIPLOT_FILTER.language, nodes };
 }
