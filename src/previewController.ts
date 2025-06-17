@@ -29,14 +29,14 @@ if (state === undefined) {
         lockPreview: false,
         enableMultipleSelection: Boolean(parseInt(headDataset.enableMultipleSelection ?? "0")),
         enableRightAxis: Boolean(parseInt(headDataset.enableRightAxis ?? "0")),
-        scrollY: 0
+        scrollPosition: [0, 0]
     };
     vscode.setState(state);
 } else if (state.sourceUri !== headDataset.sourceUri) {
     state.tableParams = {};
     state.graphParams = {};
     state.sourceUri = headDataset.sourceUri ?? '';
-    state.scrollY = 0;
+    state.scrollPosition = [0, 0];
     vscode.setState(state);
 }
 
@@ -360,13 +360,13 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
             //     return !(graphParam?.hidden ?? Number(occurance) >= maximumPlots);
             // }).length;
 
-            // The delay time is roughly estimated from the position.
-            const delay = state.scrollY / 20 > 500 ? 500 : state.scrollY / 20; // 1 sec or less
+            // The delay time is roughly estimated from the y-position.
+            const delay = state.scrollPosition[1] / 20 > 500 ? 500 : state.scrollPosition[1] / 20; // 1 sec or less
             setTimeout(() => {
-                window.scrollTo({ top: state.scrollY, left: 0, behavior: 'instant' });
+                window.scrollTo({ left: state.scrollPosition[0], top: state.scrollPosition[1], behavior: 'instant' });
             }, delay);
         } else {
-            window.scrollTo({ top: state.scrollY, left: 0, behavior: 'instant' });
+            window.scrollTo({ left: state.scrollPosition[0], top: state.scrollPosition[1], behavior: 'instant' });
         }
     }
 });
@@ -507,7 +507,7 @@ window.addEventListener('DOMContentLoaded', _event => {
 // Considering the case that Visual Studio Code for the Web is used on Safari, 
 // the scroll position is also stored in "scroll" event.
 window.addEventListener('scrollend', _event => {
-    state.scrollY = window.scrollY;
+    state.scrollPosition = [window.scrollX, window.scrollY];
     vscode.setState(state);
 });
 
@@ -517,7 +517,7 @@ window.addEventListener("scroll", event => {
         clearTimeout(timer1);
     }
     timer1 = setTimeout(() => {
-        state.scrollY = window.scrollY;
+        state.scrollPosition = [window.scrollX, window.scrollY];
         vscode.setState(state);
     }, 1000);
 

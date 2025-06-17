@@ -22,7 +22,7 @@ export interface State {
     lockPreview: boolean;
     enableMultipleSelection: boolean;
     enableRightAxis: boolean;
-    scrollY: number;
+    scrollPosition: [number, number];
 }
 
 export interface BaseMessage {
