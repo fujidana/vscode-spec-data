@@ -26,17 +26,17 @@ export type ParsedData = {
     nodes: Node[]
 };
 
-export function parseDocument(document: vscode.TextDocument): ParsedData | undefined {
+export  function parseDocument(document: vscode.TextDocument, token: vscode.CancellationToken): ParsedData | undefined {
     if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
-        return parseSpecDataContent(document.getText());
+        return parseSpecDataContent(document.getText(), token);
     } else if (vscode.languages.match(CSV_COLUMNS_FILTER, document)) {
-        return parseCsvContent(document.getText(), true);
+        return parseCsvContent(document.getText(), true, token);
     } else if (vscode.languages.match(CSV_ROWS_FILTER, document)) {
-        return parseCsvContent(document.getText(), false);
+        return parseCsvContent(document.getText(), false, token);
     } else if (vscode.languages.match(DPPMCA_FILTER, document)) {
-        return parseDppmcaContent(document.getText());
+        return parseDppmcaContent(document.getText(), token);
     } else if (vscode.languages.match(CHIPLOT_FILTER, document)) {
-        return parseChiplotContent(document.getText());
+        return parseChiplotContent(document.getText(), token);
     } else {
         return undefined;
     }
@@ -87,7 +87,7 @@ export async function parseTextFromUri(uri: vscode.Uri): Promise<ParsedData | un
     }
 }
 
-function parseSpecDataContent(text: string): ParsedData | undefined {
+function parseSpecDataContent(text: string, token?: vscode.CancellationToken): ParsedData | undefined {
     const lines = text.split(/\n|\r\n/);
     const lineCount = lines.length;
 
@@ -117,6 +117,8 @@ function parseSpecDataContent(text: string): ParsedData | undefined {
     let columnCountInBody = -1;
 
     for (let lineNumber = 0; lineNumber < lineCount; lineNumber++) {
+        if (token && token.isCancellationRequested === true) { return; }
+
         const line = lines[lineNumber];
         let matches: RegExpMatchArray | null;
 
@@ -258,13 +260,15 @@ function parseSpecDataContent(text: string): ParsedData | undefined {
 }
 
 // character-separated values. The delimiter is auto-detected from a horizontal tab, a whitespace, or a comma. 
-function parseCsvContent(text: string, columnWise: boolean): ParsedData | undefined {
+function parseCsvContent(text: string, columnWise: boolean, token?: vscode.CancellationToken): ParsedData | undefined {
     const lines = text.split(/\r\n|\n/);
     const lineCount = lines.length;
 
     const nodes: Node[] = [];
 
     for (let lineNumber = 0; lineNumber < lineCount; lineNumber++) {
+        if (token && token.isCancellationRequested === true) { return; }
+
         let delimRegexp: RegExp | undefined;
         let rowCount = 0;
         let headers: string[] | undefined;
@@ -384,7 +388,7 @@ function parseCsvContent(text: string, columnWise: boolean): ParsedData | undefi
     }
 }
 
-function parseDppmcaContent(text: string): ParsedData {
+function parseDppmcaContent(text: string, token?: vscode.CancellationToken): ParsedData | undefined {
     const lines = text.split(/\r\n|\n/);
     const lineCount = lines.length;
 
@@ -396,6 +400,8 @@ function parseDppmcaContent(text: string): ParsedData {
     const headerRegexp = /^<<([a-zA-Z0-9_ ]+)>>$/;
 
     for (let lineNumber = 0; lineNumber < lineCount; lineNumber++) {
+        if (token && token.isCancellationRequested === true) { return; }
+
         const line = lines[lineNumber];
 
         let matches: RegExpMatchArray | null;
@@ -429,16 +435,24 @@ function parseDppmcaContent(text: string): ParsedData {
     return { language: DPPMCA_FILTER.language, foldingRanges, documentSymbols, nodes };
 }
 
-function parseChiplotContent(text: string): ParsedData | undefined {
-    // chiplot format:
-    // 
-    // 1st line: title
-    // 2nd line: x-axis
-    // 3rd line: y-axis
-    // 4th line: number of point per data-set and optionally number of data-set
-    // following lines: data
-    // 
-    // The separator at 4th line and data rows is one or more spaces or a comma.
+/**
+ * Parse a Chiplot data file.
+ * A chiplot file is made of:
+ * 
+ * - 1st line: title
+ * - 2nd line: x-axis
+ * - 3rd line: y-axis
+ * - 4th line: number of point per data-set and optionally number of data-set
+ * - following lines: data
+ * 
+ * The separator at 4th line and data rows is one or more spaces or a comma.
+ * @param text Text content.
+ * @param token Cancellation token.
+ * @returns Parsed Data.
+ */
+function parseChiplotContent(text: string, token?: vscode.CancellationToken): ParsedData | undefined {
+    if (token && token.isCancellationRequested === true) { return; }
+
     const lines = text.split(/\n|\r\n/);
     const lineCount = lines.length;
     if (lineCount < 6) {
@@ -469,6 +483,8 @@ function parseChiplotContent(text: string): ParsedData | undefined {
         const cells = line.trim().split(separatorRegex);
         data.push(cells.map(cell => parseFloat(cell)));
     }
+
+    if (token && token.isCancellationRequested === true) { return; }
 
     const columnCount = data[0].length;
 
