@@ -22,17 +22,22 @@ type PreviewConfig = {
     enableRightAxis: boolean;
 };
 
-interface Session { type: 'session', panel: vscode.WebviewPanel, state: State };
-interface WebviewInitParam { type: 'param', uri: vscode.Uri, lockPreview: boolean, showToSide: boolean }
+interface WebviewSession { type: 'session', panel: vscode.WebviewPanel, state: State };
+interface WebviewSetting { type: 'setting', uri: vscode.Uri, lockPreview: boolean, showToSide: boolean }
+
+type ParserSession = {
+    promise: Promise<ParsedData | undefined>,
+    tokenSource: vscode.CancellationTokenSource | undefined,
+};
 
 /**
- * Provider class for "spec-data" language
+ * Provider class for "spec-data" language.
  */
 export class DataProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider, vscode.WebviewPanelSerializer<State> {
     readonly extensionUri;
     readonly subscriptions;
     readonly previews: Preview[] = [];
-    readonly parsedDataMap = new Map<string, ParsedData | undefined>();
+    readonly parserSessionMap: Map<string, ParserSession> = new Map();
 
     enablePreviewScroll: boolean;
     livePreview: Preview | undefined = undefined;
@@ -40,6 +45,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     lastScrollEditorTimeStamp = 0;
     lastScrollPreviewTimeStamp = 0;
+
+    private get activePreview(): Preview | undefined {
+        return this.previews.find(preview => preview.panel.active);
+    }
 
     constructor(context: vscode.ExtensionContext) {
         this.extensionUri = context.extensionUri;
@@ -50,7 +59,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         this.enablePreviewScroll = config.get<boolean>('scrollPreviewWithEditor', true);
 
         // callback of 'spec-data.showPreview'.
-        const showPreviewCallback = async (...args: unknown[]) => {
+        const showPreviewCallback = (...args: unknown[]) => {
             const uris = getTargetFileUris(args);
             if (uris.length) {
                 this.showPreview(uris[uris.length - 1], false, false);
@@ -58,7 +67,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         // callback of 'spec-data.showPreviewToSide'.
-        const showPreviewToSideCallback = async (...args: unknown[]) => {
+        const showPreviewToSideCallback = (...args: unknown[]) => {
             const uris = getTargetFileUris(args);
             if (uris.length) {
                 this.showPreview(uris[uris.length - 1], false, true);
@@ -66,14 +75,14 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         // callback of 'spec-data.showLockedPreview'.
-        const showLockedPreviewCallback = async (...args: unknown[]) => {
+        const showLockedPreviewCallback = (...args: unknown[]) => {
             for (const uri of getTargetFileUris(args)) {
                 this.showPreview(uri, true, false);
             }
         };
 
         // callback of 'spec-data.showLockedPreviewToSide'.
-        const showLockedPreviewToSideCallback = async (...args: unknown[]) => {
+        const showLockedPreviewToSideCallback = (...args: unknown[]) => {
             for (const uri of getTargetFileUris(args)) {
                 this.showPreview(uri, true, true);
             }
@@ -81,7 +90,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         // callback of 'spec-data.showSource'.
         const showSourceCallback = (..._args: unknown[]) => {
-            const activePreview = this.getActivePreview();
+            const activePreview = this.activePreview;
             if (activePreview) {
                 const document = vscode.workspace.textDocuments.find(document => document.uri.toString() === activePreview.uri.toString());
                 if (document) {
@@ -95,8 +104,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         };
 
         // callback of 'spec-data.refreshPreview'.
-        const refreshPreviewCallback = async (..._args: unknown[]) => {
-            const activePreview = this.getActivePreview();
+        const refreshPreviewCallback = (..._args: unknown[]) => {
+            const activePreview = this.activePreview;
             if (activePreview) {
                 this.reloadPreview(activePreview, activePreview.uri, true);
             } else {
@@ -106,7 +115,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         // callback of 'spec-data.toggleMultipleSelection'.
         const toggleMultipleSelectionCallback = (..._args: unknown[]) => {
-            const activePreview = this.getActivePreview();
+            const activePreview = this.activePreview;
             if (activePreview) {
                 const flag = !activePreview.config.enableMultipleSelection;
                 activePreview.config.enableMultipleSelection = flag;
@@ -119,7 +128,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         // callback of 'spec-data.toggleRightAxis'.
         const toggleRightAxisCallback = (..._args: unknown[]) => {
-            const activePreview = this.getActivePreview();
+            const activePreview = this.activePreview;
             if (activePreview) {
                 const flag = !activePreview.config.enableRightAxis;
                 activePreview.config.enableRightAxis = flag;
@@ -132,10 +141,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         // callback of 'spec-data.togglePreviewLock'.
         const togglePreviewLockCallback = (..._args: unknown[]) => {
-            const activePreview = this.getActivePreview();
+            const activePreview = this.activePreview;
             if (activePreview) {
                 const filePath = activePreview.uri.path;
-                if (this.livePreview && activePreview.panel === this.livePreview.panel) {
+                if (this.livePreview && activePreview === this.livePreview) {
                     // If the active view is a live preview, lock the view to the file.
                     this.livePreview = undefined;
                     const messageOut: MessageToWebview = { type: 'lockPreview', flag: true };
@@ -162,7 +171,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         // this is also invoked after the user manually changed the language id
         const textDocumentDidOpenListener = (document: vscode.TextDocument) => {
             if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
-                this.parsedDataMap.set(document.uri.toString(), parseDocument(document));
+                this.runParserSession(document);
             }
         };
 
@@ -170,7 +179,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const textDocumentDidChangeListener = (event: vscode.TextDocumentChangeEvent) => {
             const document = event.document;
             if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
-                this.parsedDataMap.set(document.uri.toString(), parseDocument(document));
+                this.runParserSession(document);
             }
         };
 
@@ -178,7 +187,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         // this is also invoked after the user manually changed the language id
         const textDocumentDidCloseListener = (document: vscode.TextDocument) => {
             if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
-                this.parsedDataMap.delete(document.uri.toString());
+                this.parserSessionMap.delete(document.uri.toString());
             }
         };
 
@@ -252,7 +261,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         // When the extension is activated by opening a file for this extension.
         for (const document of vscode.workspace.textDocuments) {
             if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
-                this.parsedDataMap.set(document.uri.toString(), parseDocument(document));
+                this.runParserSession(document);
             }
         }
 
@@ -286,7 +295,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     public provideFoldingRanges(document: vscode.TextDocument, context: vscode.FoldingContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
         if (token.isCancellationRequested) { return; }
 
-        return this.parsedDataMap.get(document.uri.toString())?.foldingRanges;
+        return this.parserSessionMap.get(document.uri.toString())?.promise.then(data => data?.foldingRanges);
     }
 
     /**
@@ -295,11 +304,11 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     public provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.SymbolInformation[] | vscode.DocumentSymbol[]> {
         if (token.isCancellationRequested) { return; }
 
-        return this.parsedDataMap.get(document.uri.toString())?.documentSymbols;
+        return this.parserSessionMap.get(document.uri.toString())?.promise.then(data => data?.documentSymbols);
     }
 
     /**
-     * Required implementation of vscode.WebviewPanelSerializer
+     * Required implementation of vscode.WebviewPanelSerializer.
      */
     public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: State): Promise<void> {
         if (!state) {
@@ -307,7 +316,30 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.window.showErrorMessage(message, 'OK').then(() => panel.dispose());
             return;
         }
-        this.initPreview({ type: 'session', panel, state });
+        await this.initPreview({ type: 'session', panel, state });
+        return;
+    }
+
+    /**
+     * Parse document contents.
+     * Cancellation token is integrated.
+     */
+    private runParserSession(document: vscode.TextDocument): void {
+        const uriString = document.uri.toString();
+
+        // Create a new update session.
+        const tokenSource = new vscode.CancellationTokenSource();
+        const promise = new Promise<ParsedData | undefined>(resolve => resolve(parseDocument(document, tokenSource.token)));
+        const newSession: ParserSession = { promise, tokenSource };
+        newSession.promise.finally(() => {
+            // Attach a callback that cleans up the cancellation token when update is finished.
+            tokenSource.dispose();
+            newSession.tokenSource = undefined;
+        });
+        // If the previous session exists and it is still running, cancel it.
+        this.parserSessionMap.get(uriString)?.tokenSource?.cancel();
+        // Update the map object with the latest session.
+        this.parserSessionMap.set(uriString, newSession);
     }
 
     /**
@@ -326,7 +358,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return this.livePreview;
         } else {
             // Else create a new panel as a live panel.
-            return await this.initPreview({ type: 'param', uri, lockPreview, showToSide });
+            return await this.initPreview({ type: 'setting', uri, lockPreview, showToSide });
         }
     }
 
@@ -336,13 +368,16 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      * 
      * The panel is reused after `uri` is changed. Thus, the configuration
      * applied to the panel is window-wide, not file- or workspace-specific.
-     * @param sessionOrParam `Session` for deserialization with a reused panel and `WebviewInitParam` for newly created panel.
+     * @param sessionOrSetting `Session` for deserialization with a reused panel and `WebviewSetting` for newly created panel.
      * @returns Preview object if succeeded in parsing a file or `undefined`.
      */
-    private async initPreview(sessionOrParam: Session | WebviewInitParam) {
-        const uri: vscode.Uri = (sessionOrParam.type === 'session') ? vscode.Uri.parse(sessionOrParam.state.sourceUri) : sessionOrParam.uri;
+    private async initPreview(sessionOrSetting: WebviewSession | WebviewSetting) {
+        const uri: vscode.Uri = (sessionOrSetting.type === 'session') ? vscode.Uri.parse(sessionOrSetting.state.sourceUri) : sessionOrSetting.uri;
+        const uriString = uri.toString();
 
-        const parsedData = this.parsedDataMap.has(uri.toString()) ? this.parsedDataMap.get(uri.toString()) : await parseTextFromUri(uri);
+        const parsedData = this.parserSessionMap.has(uriString) ?
+            await this.parserSessionMap.get(uriString)!.promise :
+            await parseTextFromUri(uri);
         if (!parsedData) {
             const message = `Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`;
             vscode.window.showErrorMessage(message);
@@ -354,18 +389,18 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         let enableMultipleSelection: boolean;
         let enableRightAxis: boolean;
         let lockPreview: boolean;
-        if (sessionOrParam.type === 'session') {
+        if (sessionOrSetting.type === 'session') {
             // Preexistent panel is reused. This is the case web view is restored from the previous session.
-            panel = sessionOrParam.panel;
-            enableMultipleSelection = sessionOrParam.state.enableMultipleSelection;
-            enableRightAxis = sessionOrParam.state.enableRightAxis;
-            lockPreview = sessionOrParam.state.lockPreview;
+            panel = sessionOrSetting.panel;
+            enableMultipleSelection = sessionOrSetting.state.enableMultipleSelection;
+            enableRightAxis = sessionOrSetting.state.enableRightAxis;
+            lockPreview = sessionOrSetting.state.lockPreview;
         } else {
             const config = vscode.workspace.getConfiguration('spec-data.preview');
             panel = vscode.window.createWebviewPanel(
                 'spec-data.preview',
                 'Preview spec data',
-                sessionOrParam.showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
+                sessionOrSetting.showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
                 {
                     // localResourceRoots: [this.extensionUri],
                     enableScripts: true,
@@ -374,9 +409,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             );
             enableMultipleSelection = config.get<boolean>('plot.enableMultipleSelection', false);
             enableRightAxis = config.get<boolean>('plot.enableRightAxis', false);
-            lockPreview = sessionOrParam.lockPreview;
+            lockPreview = sessionOrSetting.lockPreview;
 
-            if (sessionOrParam.showToSide && config.get<boolean>('autoLockGroup', true)) {
+            if (sessionOrSetting.showToSide && config.get<boolean>('autoLockGroup', true)) {
                 vscode.commands.executeCommand('workbench.action.lockEditorGroup');
             }
         }
@@ -444,10 +479,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 let messageOut: MessageToWebview;
 
                 messageOut = { type: 'lockPreview', flag: this.livePreview?.panel !== panel };
-                preview.panel.webview.postMessage(messageOut);
+                panel.webview.postMessage(messageOut);
 
                 messageOut = { type: 'enableEditorScroll', flag: config.get<boolean>('scrollEditorWithPreview', true) };
-                preview.panel.webview.postMessage(messageOut);
+                panel.webview.postMessage(messageOut);
 
                 messageOut = {
                     type: 'setTemplate',
@@ -457,10 +492,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 panel.webview.postMessage(messageOut);
 
                 messageOut = { type: 'setScrollBehavior', value: config.get<boolean>('smoothScrolling', true) ? 'smooth' : 'auto' };
-                preview.panel.webview.postMessage(messageOut);
+                panel.webview.postMessage(messageOut);
 
                 messageOut = { type: 'restoreScroll', delay: true };
-                preview.panel.webview.postMessage(messageOut);
+                panel.webview.postMessage(messageOut);
             }
         }, null, this.subscriptions);
 
@@ -482,7 +517,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return preview;
         }
 
-        const parsedData = this.parsedDataMap.has(uri.toString()) ? this.parsedDataMap.get(uri.toString()) : await parseTextFromUri(uri);
+        const uriString = uri.toString();
+        const parsedData = this.parserSessionMap.has(uriString) ?
+            await this.parserSessionMap.get(uriString)!.promise :
+            await parseTextFromUri(uri);
         if (!parsedData) {
             const message = `Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`;
             vscode.window.showErrorMessage(message);
@@ -504,10 +542,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.nodes = nodes;
         preview.panel.title = `${label} ${preview.uri.path.substring(preview.uri.path.lastIndexOf('/') + 1)}`;
         preview.panel.webview.html = getWebviewContent(webview.cspSource, preview.uri, plotlyUri, controllerUri, language, nodes, preview.config);
-    }
-
-    private getActivePreview(): Preview | undefined {
-        return this.previews.find(preview => preview.panel.active);
     }
 }
 
@@ -541,7 +575,7 @@ function getWebviewContent(cspSource: string, sourceUri: vscode.Uri, plotlyUri: 
     const config = vscode.workspace.getConfiguration('spec-data.preview', { languageId, uri: sourceUri });
     const hideTable = config.get<boolean>('table.hide', true);
     const columnsPerLine = config.get<number>('table.columnsPerLine', 8);
-    const headerType = config.get<string>('table.headerType', 'mnemonic');
+    const headerType = config.get<string>('table.headerType', 'Mnemonic');
     const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
     const plotHeight = config.get<number>('plot.height', 400);
 
