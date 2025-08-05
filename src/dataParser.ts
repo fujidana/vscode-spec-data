@@ -1,12 +1,14 @@
 import * as vscode from 'vscode';
 import { minimatch } from 'minimatch';
 
-export const SPEC_DATA_FILTER = { language: 'spec-data' };
-export const CSV_COLUMNS_FILTER = { language: 'csv-column' };
-export const CSV_ROWS_FILTER = { language: 'csv-row' };
-export const DPPMCA_FILTER = { language: 'dppmca' };
-export const CHIPLOT_FILTER = { language: 'chiplot' };
-export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER];
+export const SPEC_DATA_FILTER = { language: 'spec-data' } as const;
+export const CSV_COLUMNS_FILTER = { language: 'csv-column' } as const;
+export const CSV_ROWS_FILTER = { language: 'csv-row' } as const;
+export const DPPMCA_FILTER = { language: 'dppmca' } as const;
+export const CHIPLOT_FILTER = { language: 'chiplot' } as const;
+export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER] as const;
+export const LANGUAGE_IDS = DOCUMENT_SELECTOR.map(filter => filter.language);
+export type LanguageIds = typeof LANGUAGE_IDS[number];
 
 export type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
 interface BaseNode { type: string, lineStart: number, lineEnd: number }
@@ -26,7 +28,7 @@ export type ParsedData = {
     nodes: Node[]
 };
 
-export  function parseDocument(document: vscode.TextDocument, token: vscode.CancellationToken): ParsedData | undefined {
+export function parseDocument(document: vscode.TextDocument, token: vscode.CancellationToken): ParsedData | undefined {
     if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
         return parseSpecDataContent(document.getText(), token);
     } else if (vscode.languages.match(CSV_COLUMNS_FILTER, document)) {
@@ -57,18 +59,18 @@ export async function parseTextFromUri(uri: vscode.Uri): Promise<ParsedData | un
         const associations = Object.entries(
             vscode.workspace.getConfiguration('files', uri).get<Record<string, string>>('associations', {}),
         ).concat([['*.spec', 'spec-data'], ['*.mca', 'dppmca'], ['*.chi', 'chiplot']]);
-        
+
         for (const [key, value] of associations) {
             if (minimatch(uri.path, key, { matchBase: true })) {
-                languageId = DOCUMENT_SELECTOR.map(filter => filter.language).includes(value) ? value : undefined;
+                languageId = (LANGUAGE_IDS as string[]).includes(value) ? value : undefined;
                 break;
             }
         }
-        
+
         if (languageId === undefined) {
             return undefined;
         }
-        // Read the content from a file. Use file encoding for the language ID (if "files.encoding" is set.)
+        // Read the content from a file.
         text = await vscode.workspace.decode(await vscode.workspace.fs.readFile(uri), { uri });
     }
 
