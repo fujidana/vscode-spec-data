@@ -113,7 +113,7 @@ async function main() {
 			'src/previewController.ts'
 		],
 		bundle: false,
-		// format: 'iife',
+		format: 'iife',
 		minify: production,
 		sourcemap: !production,
 		sourcesContent: false,

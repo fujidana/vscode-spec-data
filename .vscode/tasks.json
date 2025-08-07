@@ -4,7 +4,25 @@
 	"version": "2.0.0",
 	"tasks": [
 		{
+			"label": "compile",
+			"detail": "Run tsc, eslint, and esbuild",
+			"icon": {
+				"id": "tools"
+			},
+			"type": "npm",
+			"script": "compile",
+			"problemMatcher": [
+				"$tsc",
+				"$eslint-stylish",
+				"$esbuild"
+			]
+		},
+		{
 			"label": "watch",
+			"detail": "Watch tsc and esbuild",
+			"icon": {
+				"id": "tools"
+			},
 			"dependsOn": [
 				"npm: watch:tsc",
 				"npm: watch:esbuild"
@@ -18,24 +36,24 @@
 			}
 		},
 		{
+			"label": "npm: watch:esbuild",
 			"type": "npm",
 			"script": "watch:esbuild",
 			"group": "build",
 			"problemMatcher": "$esbuild-watch",
 			"isBackground": true,
-			"label": "npm: watch:esbuild",
 			"presentation": {
 				"group": "watchers",
 				"reveal": "never"
 			}
 		},
 		{
+			"label": "npm: watch:tsc",
 			"type": "npm",
 			"script": "watch:tsc",
 			"group": "build",
 			"problemMatcher": "$tsc-watch",
 			"isBackground": true,
-			"label": "npm: watch:tsc",
 			"presentation": {
 				"group": "watchers",
 				"reveal": "never"
