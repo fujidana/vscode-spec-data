@@ -3,7 +3,7 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "1.8.0-alpha.1",
+	"version": "2.0.0",
 	"engines": {
 		"vscode": "^1.100.0"
 	},
@@ -306,13 +306,17 @@
 					"type": "boolean",
 					"default": true,
 					"scope": "resource",
-					"description": "Applies a content security policy (CSP) to a preview, which enhances security against cross site scripting and data injection attacks caused by malicious source files. One may be able to avoid several Plotly.js errors when the option is disabled. In a future release, a CSP may be always active and this option may be removed."
+					"description": "Applies a content security policy (CSP) to a preview, which enhances security against cross site scripting and data injection attacks caused by malicious source files. One may be able to avoid several Plotly.js errors when the option is disabled.",
+					"deprecationMessage": "**Deprecated**: This setting will be removed in a future release. The CSP will always be applied to the preview."
 				},
 				"spec-data.preview.autoLockGroup": {
 					"type": "boolean",
-					"default": true,
+					"default": false,
 					"scope": "window",
-					"markdownDescription": "Locks the editor group when a preview is created in a new editor group. See `#workbench.editor.autoLockGroups#` about how locking works."
+					"markdownDescription": "Locks the editor group when a preview is created in a new editor group. See `#workbench.editor.autoLockGroups#` about how locking works.",
+					"tags": [
+						"preview"
+					]
 				},
 				"spec-data.preview.plot.maximumNumberOfPlots": {
 					"type": "integer",
@@ -457,7 +461,7 @@
 		"js-yaml:csv": "js-yaml syntaxes/csv.tmLanguage.yaml > syntaxes/csv.tmLanguage.json",
 		"js-yaml:dppmca": "js-yaml syntaxes/dppmca.tmLanguage.yaml > syntaxes/dppmca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml syntaxes/chiplot.tmLanguage.yaml > syntaxes/chiplot.tmLanguage.json",
-		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@3.0.1"
+		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@3.0.3"
 	},
 	"devDependencies": {
 		"@esbuild-plugins/node-globals-polyfill": "^0.2.3",

@@ -10,9 +10,9 @@ The data file formats the exension supports are as follows:
   - A pair of columns in a `csv-column` file and that of rows in a `csv-row` file can be graphically plotted.
   - All cells must be numeric; string may appear only in a header line that starts with a hash character (`#`).
   - A delimiter may be either a whitespace, tab, or comma, and is auto-detected.
-  - The extension does not associate the file extensions such as `.csv`, `tsv`, or `dat` with and language ID by the following reasons:
+  - The extension does not associate file extensions such as `.csv`, `tsv`, or `dat` with the language ID for the following reasons:
     - The extension can not determine from the file extension which direction (column-wise or row-wise) an array should be extracted from a table.
-    - The extension do not intend to support all possible features for general CSV files. The main feature is drawing a graph and thus files consisting of number only are targeted.
+    - The extension does not support all possible formats of CSV files. The extension focuses on drawing a graph and thus files consisting of number only are targeted.
   - A data file exported by ESRF's __spec__ macro, [BLISS / mca.mac](https://www.esrf.fr/blissdb/macros/macdoc.py?macname=mca.mac), is also covered in `csv-row`.
 - __spec standard data file__ (ID: `spec-data`, extension: `.spec`): files the __spec__ software outputs during various scan commands.
   - Note that the __spec__ software does not specify a file extension for the data format. Use of `.spec` for __spec__ data file is just the preference of the extension author.
@@ -41,7 +41,7 @@ Use [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues) for bug
 - __Preview__
   - motor positions just before a scan in a table view (`spec-data` only)
   - scan data depicted in a graphical and interactive graph, powered by [Plotly.js](https://plotly.com/javascript/). A user can select a pair of columns to be drawn.
-  - scroll sync of the editor and preview (as of v.1.7.0 both _scroll-preview-with-editor_ and _scroll-editor-with-preview_ are supported.)
+  - scroll sync between an editor and a preview
 
 ![screenshot](resources/screenshot.png)
 
@@ -56,20 +56,21 @@ Read [Visual Studio Code User and Workspace Settings](https://code.visualstudio.
 
 ### Customization of Graph Appearances
 
-__note__: `spec-data.preview.plot.traceTemplate` was deprecated and the way to customize the templates was changed at v1.7.0.
-Read the following to migrate the settings.
+The extension switches the apparance of Plotly.js graphs according to the active color theme of VS Code.
+The default templates of the extension can be found in [src/previewTemplates.ts](src/previewTemplates.ts).
+A user can override the templates using the following _Settings_ keys:
 
-To the extension author's knowledge, Plotly.js does not provide a simple way to support so-called dark mode.
-Therefore, the extension has prepared its own Plotly.js templates for the four color themes of VS Code and switches them according to the active color theme of VS Code.
-These template objects can be found at [src/previewTemplates.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/previewTemplates.ts) in the GitHub repository.
+- `spec-data.preview.plot.traceTemplate`: for customization of trace appearances such as a line color.
+- `spec-data.preview.plot.layoutTemplate`: for customization of layout appearances such as a background color.
 
-A user can modify the appearance of graphs by overriding these templates via the `spec-data.preview.plot.traceTemplate` and `spec-data.preview.plot.layoutTemplate` settings.
-Both the settings shall be a JSON object having at most 4 keys, `"light"`, `"dark"`, `"highContrast"`, and `"highContrastLight"`. The template shall be defined with respect to each color theme.
+Both the setting values shall be a JSON object having at most 4 properties, `"light"`, `"dark"`, `"highContrast"`, and `"highContrastLight"`.
+As for the former setting, the value corresponding to each color theme shall be an array of template objects for scatter plots.
+As for the latter setting, the value corresponding to each color theme shall be an object (IOW, dictionary) of layout parameters.
+One can find parameter names typically used for customization in the default template file, [src/previewTemplates.ts](src/previewTemplates.ts).
+For more comprehensive list of the available parameters, see the documents in Plotly.com, [Scatter traces in JavaScript](https://plotly.com/javascript/reference/scatter/) and [Layout in JavaScript](https://plotly.com/javascript/reference/layout/).
 
-The former setting, `spec-data.preview.plot.traceTemplate`, is for customization of trace appearances such as a line color.
-The value corresponding to each color theme shall be an array of template objects for scatter plots.
-The templates are applied cyclically to multiple traces.
-With the following example, the extension draws traces in red and blue altenatively only when _light_ color theme is selected.
+The trace templates are applied cyclically to multiple traces.
+For example, with the following setting, the extension draws traces in red and blue altenatively only when _light_ color theme is selected.
 
 ```json
 {
@@ -82,16 +83,9 @@ With the following example, the extension draws traces in red and blue altenativ
 }
 ```
 
-One can find parameter names typically used for customization in the extension's default template file, [src/previewTemplates.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/previewTemplates.ts).
-For more comprehensive list of trace template parameters, see [Plotly.com - Scatter traces in JavaScript](https://plotly.com/javascript/reference/scatter/).
-
-The latter setting, `spec-data.preview.plot.layoutTemplate`, is for customization of layout appearances such as a background color.
-Unlike the former setting, the value for the color theme key in this setting is an object (IOW, dictionary), not an array.
-One can find parameter names typically used for customization in the extension's template file, [src/previewTemplates.ts](https://github.com/fujidana/vscode-spec-data/blob/master/src/previewTemplates.ts).
-For more comprehensive list of layout template parameters, see [Plotly.com - Layout in JavaScript](https://plotly.com/javascript/reference/layout/).
-
-When an empty array and object are passed for these settings, they overwrite the extension's settings and thus, graphs are drawn with vanilla Plotly.js's (i.e., not the extension's) template.
-For example, with the following settings the graph is drawn in the default manner of Plotly.js, with white background color even in dark mode.
+Override of template is done on a per color theme basis.
+This means that, when an empty array (for traces) or object (for layout) is set for these settings, graphs are drawn with vanilla Plotly.js's (i.e., not the extension's) template.
+For example, when the following settings is set, graphs are drawn in the default manner of Plotly.js, with white background color, in dark mode and graphs are drawn with the extension's built-in template in the other color modes.
 
 ```json
 {
@@ -115,7 +109,10 @@ If you want to contribute code, please read [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Acknowledgements
 
-- [Plotly.js](https://plotly.com/javascript/): Thanks for providing a powerful graphing library.
+The extension relies on various npm packages, including [Plotly.js](https://plotly.com/javascript/).
+Thanks to the authors of these packages.
+
+The licenses of the software embedded into the extension's code after minification by `esbuild` are shown in [ThirdPartyNotices.txt](ThirdPartyNotices.txt).
 
 ## Tips
 

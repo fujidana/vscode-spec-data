@@ -4,6 +4,23 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [2.0.0] -- 2025-08-07
+
+### Added
+
+- Enable to automatically lock a editor group when a preview panel is created. The feature can be enabled at newly added `spec-data.preview.autoLockGroup` setting. Issue [#14](https://github.com/fujidana/vscode-spec-data/issues/14).
+
+### Changed
+
+- Restructure the parser code for better performance. Issue [#21](https://github.com/fujidana/vscode-spec-data/issues/21), PR [#15](https://github.com/fujidana/vscode-spec-data/pull/15), [#18](https://github.com/fujidana/vscode-spec-data/pull/18).
+- The scopes of several configuration points are changed. Issue [#17](https://github.com/fujidana/vscode-spec-data/issues/17).
+- Deprecate `spec-data.preview.applyContentSecurityPolicy` setting. The content security policy (CSP) are now always applied to web contents.
+- Bump `plotly.js-basic-dist-min` dependency to 3.0.3.
+
+### Fix
+
+- Fix an issue where the scroll position of a preview was not correctly restored when reloaded. Issue [#19](https://github.com/fujidana/vscode-spec-data/issues/19).
+
 ## [1.7.4] -- 2025-06-05
 
 ### Changed
@@ -11,11 +28,11 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 - Migrate the bundler from `webpack` to `esbuild`.
 - Bump `plotly.js-basic-dist-min` dependency to 3.0.1.
 - Raise the minimum VS Code version to 1.100.0.
-- Use newly added `vscode.workspace.decode()` function instead of `util.TextDecoder` to decode file contents, which will dissolve a rare problem that may occur when a user sets a minor encoding in `files.encoding` settings. See fujidana/vscode-spec-command#6.
+- Use newly added `vscode.workspace.decode()` function instead of `util.TextDecoder` to decode file contents, which will dissolve a rare problem that may occur when a user sets a minor encoding in `files.encoding` settings. See [fujidana/vscode-spec-command#6](https://github.com/fujidana/vscode-spec-command/issues/6).
 
 ### Fixed
 
-- Fixed an issue where the visibility of graphs in a preview was not retained when the pane was hidden and shown again. #12
+- Fix an issue where the visibility of graphs in a preview was not retained when the pane was hidden and shown again. issue [#12](https://github.com/fujidana/vscode-spec-data/issues/12)
 
 ## [1.7.3] -- 2025-02-17
 
@@ -36,7 +53,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 - Bump `plotly.js-basic-dist-min` dependency to 2.35.2.
 - Raise the minimum VS Code version to 1.95.0.
-- Cease marking up numeric values in a CSV file for syntax highlighting. When a file contains thousands of colorized elements per line, responce of the editor such as scrolling becomes laggy (and the extension author often handles such files).
+- Cease marking up numeric values in a CSV file for syntax highlighting. When a file contains thousands of colorized elements per line, response of the editor such as scrolling becomes laggy (and the extension author often handles such files).
 
 ## [1.7.0] -- 2024-09-03
 
@@ -45,7 +62,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 - Enable to draw a graph using the right axis (_y2_), in addition to the normal left axis (_y_).
   - Add `spec-data.preview.plot.enableRightAxis` setting, which determines the UIs for right-axis selection hidden or not.
   - Add "spec-data: Toggle Right Axis" in the command pallete, which is selectable when the preview panel is active. Use this for ad-hoc switch from the original left-axis-only behavior.
-- Add preview-to-editor scroll synchronization feature, which is currently enabled by default. #2
+- Add preview-to-editor scroll synchronization feature, which is currently enabled by default. Issue [#2](https://github.com/fujidana/vscode-spec-data/issues/2).
   - Add `spec-data.preview.scrollEditorWithPreview` setting, which enables or disables this feature.
 - Make the scroll behavior of preview pane selectable, smooth or instant.
   - Add `spec-data.preview.smoothScrolling` setting to control this feature.
@@ -54,15 +71,15 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 - Apply many modifications on "Multiple Selection" feature.
   - Improve the behavior of "spec-command: Toggle Multiple Selection" command. Now the command updates the preview contents without reloading. As a result, the switch becomes faster and does not break the scroll position.
-  - Rename `spec-data.preview.plot.experimental.enableMulitpleSelection` to `spec-data.preview.plot.enableMultipleSelection`
+  - Rename `spec-data.preview.plot.experimental.enableMultipleSelection` to `spec-data.preview.plot.enableMultipleSelection` setting.
   - Apply other minor modifications.
-- Keep the scroll position of a preview when it is shown again after hidden behind other tabs. #7
+- Keep the scroll position of a preview when it is shown again after hidden behind other tabs. issue [#7](https://github.com/fujidana/vscode-spec-data/issues/7)
 - Redesign the mechanism for a user to specify Plotly.js templates for easier customization of graph appearance.
   - Deprecate `spec-data.preview.plot.templates` setting.
   - Instead introduce `spec-data.preview.plot.traceTemplate` and `spec-data.preview.plot.layoutTemplate` settings. Now the customization for traces and layout are separately specified.
   - When a user provides a template for a color theme, the extension's template for the coresppoinding color theme is overwritten. Previously it was merged (but then it was difficult to revert to Plotly's native behavior).
 - Change the default (i.e., extension's) Plotly.js templates so that multiple traces are depicted in different colors.
-- Make the following configuration options available from _Folder Settings_ in a multi-root workspace:
+- Make the following configuration setting available from _Folder Settings_ in a multi-root workspace:
   - `spec-data.preview.scrollPreviewWithEditor`
 
 ## [1.6.0] -- 2024-08-27
@@ -70,7 +87,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Added
 
 - Enable to select multiple data arrays in a graph. This feature is experimental and currently disabled by default.
-  - Add `spec-data.preview.plot.experimental.enableMulitpleSelection` setting, which determines the selection mode of new preview panes.
+  - Add `spec-data.preview.plot.experimental.enableMultipleSelection` setting, which determines the selection mode of new preview panes.
   - Add "spec-data: Toggle Multiple Selection" in the command pallete, which is selectable when the preview panel is active. Use this for ad-hoc switch from the original single-plot behavior.
 - Add _first-line_ matching patterns for file associations with: `csv-row` and `csv-column`; a text file starting with `# mode: csv-row` and `# mode: csv-column` are now automatically associated with these languages.
 
@@ -271,7 +288,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Security
 
-- Remove `unsafe-eval` from the `script-src` in the Content Security Policy so as to apply a stricter security rule. (Several partial bundles of Plotly.js including `basic` have been function-constructor-free, while the main Plotly.js bundle has not been yet. See GitHub Issue plotly/plotly.js#897 "Security warning: avoid using function constructor" issuecomment-781422217 for details.)
+- Remove `unsafe-eval` from the `script-src` in the Content Security Policy so as to apply a stricter security rule. (Several partial bundles of Plotly.js including `basic` have been function-constructor-free, while the main Plotly.js bundle has not been yet. See GitHub Issue [plotly/plotly.js#897](https://github.com/plotly/plotly.js/issues/897), especially [issuecomment-781422217](https://github.com/plotly/plotly.js/issues/897#issuecomment-781422217), for details.)
 
 ## [1.1.0] -- 2021-07-22
 
@@ -281,7 +298,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 - checkboxes in a preview to control y-axis scaling (linear or log) of the respective plots
 - persistence of state in a preview, such as checkbox and dropdown menu selections
   - Restore the state when a preview becomes visible after being moved into the background.
-    - By default the state inside graphs such as scaling is not stored. When one wants to keep this state, enable `spec-data.preview.retainContextWhenHidden` option (but keep it in mind that this increases memory usage).
+    - By default the state inside graphs such as scaling is not stored. When one wants to keep this state, enable `spec-data.preview.retainContextWhenHidden` setting (but keep it in mind that this increases memory usage).
   - Restore the state when VS Code restarts.
 
 ### Changed
@@ -329,7 +346,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 - Support _Workspace Trust_:
   - Preview feature is disabled in untrusted workspaces because protection against data injection has not been comprehensively surveyed.
   - The other features are allowed in untrusted workspaces.
-- Apply a content security policy to a preview. (This can be disabled by `spec-data.preview.applyContentSecurityPolicy` option)
+- Apply a content security policy to a preview. This can be disabled by `spec-data.preview.applyContentSecurityPolicy` setting.
 
 ## [0.1.0] -- 2021-06-16
 
@@ -345,7 +362,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.4...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.4...v2.0.0
 [1.7.4]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.3...v1.7.4
 [1.7.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.2...v1.7.3
 [1.7.2]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.1...v1.7.2

@@ -378,7 +378,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             const enableMultipleSelection = config.get<boolean>('plot.enableMultipleSelection', false);
             const enableRightAxis = config.get<boolean>('plot.enableRightAxis', false);
             const preview: Preview = { panel, uri, enableMultipleSelection, enableRightAxis };
-            if (showToSide && config.get<boolean>('autoLockGroup', true)) {
+            if (showToSide && config.get<boolean>('autoLockGroup', false)) {
                 vscode.commands.executeCommand('workbench.action.lockEditorGroup');
             }
             return await this.postCreatePreview(preview, parsedData, lockPreview);
@@ -606,8 +606,8 @@ log
     ${metaCspStr}
     <title>Preview of spec-data</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="${plotlyUri}"></script>
-    <script src="${controllerUri}"></script>
+    <script src="${plotlyUri}" defer></script>
+    <script src="${controllerUri}" defer></script>
 </head>
 <body>
 `;
