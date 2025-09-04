@@ -4,6 +4,17 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [2.0.1] -- 2025-09-04
+
+### Changed
+
+- Bump `plotly.js-basic-dist-min` dependency to 3.1.0.
+- Raise the minimum VS Code version to 1.102.0.
+
+### Fix
+
+- Fix an issue where unlocked preview is not updated when the selected file is changed. Issue [#23](https://github.com/fujidana/vscode-spec-data/issues/23).
+
 ## [2.0.0] -- 2025-08-07
 
 ### Added
@@ -362,7 +373,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.4...v2.0.0
 [1.7.4]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.3...v1.7.4
 [1.7.3]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.2...v1.7.3

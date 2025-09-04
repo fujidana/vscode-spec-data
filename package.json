@@ -3,9 +3,9 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "2.0.0",
+	"version": "2.0.1",
 	"engines": {
-		"vscode": "^1.100.0"
+		"vscode": "^1.102.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -461,36 +461,37 @@
 		"js-yaml:csv": "js-yaml syntaxes/csv.tmLanguage.yaml > syntaxes/csv.tmLanguage.json",
 		"js-yaml:dppmca": "js-yaml syntaxes/dppmca.tmLanguage.yaml > syntaxes/dppmca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml syntaxes/chiplot.tmLanguage.yaml > syntaxes/chiplot.tmLanguage.json",
-		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@3.0.3"
+		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@3.1.0"
 	},
 	"devDependencies": {
 		"@esbuild-plugins/node-globals-polyfill": "^0.2.3",
 		"@types/assert": "^1.5.11",
 		"@types/mocha": "^10.0.10",
-		"@types/node": "20.x",
+		"@types/node": "22.x",
 		"@types/plotly.js-basic-dist-min": "^2.12.4",
-		"@types/vscode": "^1.100.0",
+		"@types/vscode": "^1.102.0",
 		"@types/vscode-webview": "^1.57.5",
-		"@typescript-eslint/eslint-plugin": "^8.31.1",
-		"@typescript-eslint/parser": "^8.31.1",
+		"@typescript-eslint/eslint-plugin": "^8.39.0",
+		"@typescript-eslint/parser": "^8.39.0",
 		"@vscode/test-cli": "^0.0.11",
 		"@vscode/test-electron": "^2.5.2",
-		"@vscode/test-web": "^0.0.71",
+		"@vscode/test-web": "^0.0.72",
 		"assert": "^2.1.0",
-		"esbuild": "^0.25.3",
-		"eslint": "^9.25.1",
-		"glob": "^11.0.2",
+		"esbuild": "^0.25.8",
+		"eslint": "^9.32.0",
+		"glob": "^11.0.3",
 		"js-yaml": "^4.1.0",
-		"mocha": "^11.1.0",
+		"mocha": "^11.7.1",
 		"npm-run-all": "^4.1.5",
-		"typescript": "^5.8.3"
+		"typescript": "^5.9.2"
 	},
 	"dependencies": {
 		"minimatch": "^10.0.3"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
-			"@playwright/browser-chromium"
+			"@playwright/browser-chromium",
+			"esbuild"
 		]
 	}
 }
