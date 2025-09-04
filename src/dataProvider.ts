@@ -505,7 +505,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return undefined;
         }
 
-        await this.updatePreviewWithNodes(preview, parsedData.language, parsedData.nodes);
+        preview.uri = uri;
+        this.updatePreviewWithNodes(preview, parsedData.language, parsedData.nodes);
         return preview;
     }
 
