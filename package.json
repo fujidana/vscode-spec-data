@@ -485,7 +485,7 @@
 		"typescript-eslint": "^8.54.0"
 	},
 	"dependencies": {
-		"minimatch": "^10.1.1"
+		"minimatch": "^10.2.1"
 	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
