@@ -401,6 +401,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      */
     private async postCreatePreview(preview: Preview, parsedData: ParsedData, lockPreview: boolean) {
         this.previews.push(preview);
+        preview.panel.iconPath = new vscode.ThemeIcon('graph-line');
 
         if (!lockPreview) {
             this.livePreview = preview;
