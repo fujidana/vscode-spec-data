@@ -4,9 +4,14 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Added
+
+- Set the icon of preview tabs to `graph-line` codicon.
+
 ### Changed
 
-- Bump `plotly.js-basic-dist-min` dependency to 3.4.0.
+- Bump `plotly.js-basic-dist-min` dependency to 3.4.0 and `minimatch` dependency to 10.2.4.
+- Raise the minimum VS Code version to 1.110.0.
 
 ## [2.0.1] -- 2025-09-04
 
@@ -30,7 +35,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 - Restructure the parser code for better performance. Issue [#21](https://github.com/fujidana/vscode-spec-data/issues/21), PR [#15](https://github.com/fujidana/vscode-spec-data/pull/15), [#18](https://github.com/fujidana/vscode-spec-data/pull/18).
 - The scopes of several configuration points are changed. Issue [#17](https://github.com/fujidana/vscode-spec-data/issues/17).
 - Deprecate `spec-data.preview.applyContentSecurityPolicy` setting. The content security policy (CSP) are now always applied to web contents.
-- Bump `plotly.js-basic-dist-min` dependency to 3.0.3.
+- Bump `plotly.js-basic-dist-min` dependency to 3.0.3 and `minimatch` dependency to 10.0.3.
 
 ### Fix
 
@@ -108,7 +113,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Changed
 
-- Bump `plotly.js-basic-dist-min` dependency to 2.34.0.
+- Bump `plotly.js-basic-dist-min` dependency to 2.34.0 and `minimatch` dependency to 10.0.1.
 - Raise the minimum VS Code version to 1.91.0.
 - Rename several scope names used in syntax highlighting, based on reference: [Sublime Text / Scope Naming](https://www.sublimetext.com/docs/scope_naming.html).
 
