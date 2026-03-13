@@ -51,34 +51,45 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const config = vscode.workspace.getConfiguration('spec-data.preview');
         this.enablePreviewScroll = config.get<boolean>('scrollPreviewWithEditor', true);
 
-        // callback of 'spec-data.showPreview'.
-        const showPreviewCallback = (...args: unknown[]) => {
-            const uris = getTargetFileUris(args);
-            if (uris.length) {
-                this.showPreview(uris[uris.length - 1], false, false);
+        // Create a command handler function that shows a preview.
+        const makeShowPreviewCallback = (lockPreview: boolean, showToSide: boolean) => {
+            return (...args: unknown[]) => {
+                // Get the URIs of source files to be shown in the preview.
+                // The URI of the source file can be provided via the command arguments or 
+                // it can be inferred from the active editor.
+                let uris: vscode.Uri[];
+                if (args && args.length > 0) {
+                    // typically, the type of args is [vscode.Uri, vscode.Uri[]]
+                    if (args.length >= 2 && Array.isArray(args[1]) && args[1].every(item => item instanceof vscode.Uri)) {
+                        uris = args[1];
+                    } else if (args[0] instanceof vscode.Uri) {
+                        uris = [args[0]];
+                    } else {
+                        vscode.window.showErrorMessage('Unknown command arguments.');
+                        return;
+                    }
+                } else {
+                    // If the URI is not provided via the arguments, returns the URI and contents of the active editor.
+                    const editor = vscode.window.activeTextEditor;
+                    if (editor) {
+                        uris = [editor.document.uri];
+                    } else {
+                        vscode.window.showErrorMessage('Active editor is not found.');
+                        return;
             }
-        };
+                }
 
-        // callback of 'spec-data.showPreviewToSide'.
-        const showPreviewToSideCallback = (...args: unknown[]) => {
-            const uris = getTargetFileUris(args);
-            if (uris.length) {
-                this.showPreview(uris[uris.length - 1], false, true);
+                // Show the preview(s).
+                if (lockPreview) {
+                    for (const uri of uris) {
+                        this.showPreview(uri, lockPreview, showToSide);
+                    }
+                } else {
+                    if (uris.length > 0) {
+                        this.showPreview(uris[uris.length - 1], lockPreview, showToSide);
             }
-        };
-
-        // callback of 'spec-data.showLockedPreview'.
-        const showLockedPreviewCallback = (...args: unknown[]) => {
-            for (const uri of getTargetFileUris(args)) {
-                this.showPreview(uri, true, false);
-            }
-        };
-
-        // callback of 'spec-data.showLockedPreviewToSide'.
-        const showLockedPreviewToSideCallback = (...args: unknown[]) => {
-            for (const uri of getTargetFileUris(args)) {
-                this.showPreview(uri, true, true);
-            }
+                }
+            };
         };
 
         // callback of 'spec-data.showSource'.
@@ -260,10 +271,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         // register providers and commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('spec-data.showPreview', showPreviewCallback),
-            vscode.commands.registerCommand('spec-data.showPreviewToSide', showPreviewToSideCallback),
-            vscode.commands.registerCommand('spec-data.showLockedPreview', showLockedPreviewCallback),
-            vscode.commands.registerCommand('spec-data.showLockedPreviewToSide', showLockedPreviewToSideCallback),
+            vscode.commands.registerCommand('spec-data.showPreview', makeShowPreviewCallback(false, false)),
+            vscode.commands.registerCommand('spec-data.showPreviewToSide', makeShowPreviewCallback(false, true)),
+            vscode.commands.registerCommand('spec-data.showLockedPreview', makeShowPreviewCallback(true, false)),
+            vscode.commands.registerCommand('spec-data.showLockedPreviewToSide', makeShowPreviewCallback(true, true)),
             vscode.commands.registerCommand('spec-data.showSource', showSourceCallback),
             vscode.commands.registerCommand('spec-data.refreshPreview', refreshPreviewCallback),
             vscode.commands.registerCommand('spec-data.toggleMultipleSelection', toggleMultipleSelectionCallback),
@@ -522,29 +533,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         preview.panel.webview.html = getWebviewContent(preview, webview.cspSource, plotlyUri, controllerUri, language);
     }
 }
-
-function getTargetFileUris(args: unknown[]): vscode.Uri[] {
-    if (args && args.length > 0) {
-        // typically, the type of args is [vscode.Uri, vscode.Uri[]]
-        if (args.length >= 2 && Array.isArray(args[1])) {
-            return args[1].filter(arg => arg instanceof vscode.Uri);
-        } else if (args[0] instanceof vscode.Uri) {
-            return [args[0]];
-        } else {
-            vscode.window.showErrorMessage('Unknown command arguments.');
-        }
-    } else {
-        // If the URI is not provided via the arguments, returns the URI and contents of the active editor.
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-            return [editor.document.uri];
-        } else {
-            vscode.window.showErrorMessage('Active editor is not found.');
-        }
-    }
-    return [];
-}
-
 
 function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscode.Uri, controllerUri: vscode.Uri, languageId: string): string {
     if (!preview.nodes) { return ''; }
