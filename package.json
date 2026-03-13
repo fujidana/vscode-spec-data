@@ -37,6 +37,7 @@
 	],
 	"main": "./dist/node/extension.js",
 	"browser": "./dist/web/extension.js",
+	"l10n": "./l10n",
 	"contributes": {
 		"languages": [
 			{
@@ -461,6 +462,7 @@
 		"js-yaml:csv": "js-yaml syntaxes/csv.tmLanguage.yaml > syntaxes/csv.tmLanguage.json",
 		"js-yaml:dppmca": "js-yaml syntaxes/dppmca.tmLanguage.yaml > syntaxes/dppmca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml syntaxes/chiplot.tmLanguage.yaml > syntaxes/chiplot.tmLanguage.json",
+		"l10n-export": "npx @vscode/l10n-dev export -o ./l10n ./src",
 		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@3.4.0"
 	},
 	"devDependencies": {

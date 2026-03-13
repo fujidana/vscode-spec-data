@@ -6,6 +6,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Added
 
+- Add Japanese localization.
 - Set the icon of preview tabs to `graph-line` codicon.
 
 ### Changed

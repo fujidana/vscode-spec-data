@@ -164,7 +164,8 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
             const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
             if (prevNode && prevNode.type === 'nameList' && prevNode.kind === kind && prevNode.mnemonic === isMnemonic) {
                 if (prevNodeIndex !== listIndex - 1) {
-                    vscode.window.showErrorMessage(`Inconsequent index of the name list: line ${lineNumber + 1}`);
+                    const message = vscode.l10n.t('Inconsequent index of the name list: line {0}', lineNumber + 1);
+                    vscode.window.showErrorMessage(message);
                     return undefined;
                 }
                 prevNode.values.push(...(matches[3].trimEnd().split(separator)));
@@ -172,7 +173,8 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                 prevNodeIndex = listIndex;
             } else {
                 if (listIndex !== 0) {
-                    vscode.window.showErrorMessage(`The name list not starding with 0: line ${lineNumber + 1}`);
+                    const message = vscode.l10n.t('The name list not starting with 0: line {0}', lineNumber + 1);
+                    vscode.window.showErrorMessage(message);
                     return undefined;
                 }
                 nodes.push({ type: 'nameList', lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: matches[3].trimEnd().split(separator), mnemonic: isMnemonic });
@@ -189,7 +191,8 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
             const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
             if (prevNode && prevNode.type === 'valueList' && prevNode.kind === kind) {
                 if (prevNodeIndex !== listIndex - 1) {
-                    vscode.window.showErrorMessage(`Inconsequent index of the value list: line ${lineNumber + 1}`);
+                    const message = vscode.l10n.t('Inconsequent index of the value list: line {0}', lineNumber + 1);
+                    vscode.window.showErrorMessage(message);
                     return undefined;
                 }
                 prevNode.values.push(...(matches[3].trimEnd().split(' ').map(value => parseFloat(value))));
@@ -197,7 +200,8 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                 prevNodeIndex = listIndex;
             } else {
                 if (listIndex !== 0) {
-                    vscode.window.showErrorMessage(`The value list not starding with 0: line ${lineNumber + 1}`);
+                    const message = vscode.l10n.t('The value list not starting with 0: line {0}', lineNumber + 1);
+                    vscode.window.showErrorMessage(message);
                     return undefined;
                 }
                 nodes.push({ type: 'valueList', lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: matches[3].trimEnd().split(' ').map(value => parseFloat(value)) });
@@ -216,7 +220,8 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                 // for lazy format in which "#N" line does not exit.
                 columnCountInHeader = headers.length;
             } else if (headers.length !== columnCountInHeader) {
-                vscode.window.showErrorMessage(`mismatch in the number of columns. (line ${lineNumber + 1}). #N: ${columnCountInHeader}, #L: ${headers.length}`);
+                const message = vscode.l10n.t('Mismatch in the number of columns: line {0}. #N: {1}, #L: {2}', lineNumber + 1, columnCountInHeader, headers.length);
+                vscode.window.showErrorMessage(message);
                 return undefined;
             }
             const lineStart = lineNumber;
@@ -237,12 +242,14 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                     // This mismatch can happen owing to spec's bug around `roisetup` and `disable` commands.
                     // So in this case, just show a message and do not stop parsing.
                     if (rows.length !== columnCountInHeader) {
-                        vscode.window.showWarningMessage(`mismatch in the number of columns (line ${lineNumber + 2}). header: ${columnCountInHeader}), body: ${rows.length}.`);
+                        const message = vscode.l10n.t('Mismatch in the number of columns (line {0}). header: {1}, body: {2}', lineNumber + 2, columnCountInHeader, rows.length);
+                        vscode.window.showWarningMessage(message);
                     }
                     columnCountInBody = rows.length;
                 } else if (rows.length !== columnCountInBody) {
                     // In case the second or any later lines, compare with the first line.
-                    vscode.window.showErrorMessage(`mismatch in the number of columns (line ${lineNumber + 2}). expected: ${columnCountInBody},  ${rows.length}.`);
+                    const message = vscode.l10n.t('Mismatch in the number of columns (line {0}). expected: {1}, actual: {2}', lineNumber + 2, columnCountInBody, rows.length);
+                    vscode.window.showErrorMessage(message);
                     return undefined;
                 }
                 data.push(rows.map(item => parseFloat(item)));
