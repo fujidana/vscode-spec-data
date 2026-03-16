@@ -37,6 +37,7 @@
 	],
 	"main": "./dist/node/extension.js",
 	"browser": "./dist/web/extension.js",
+	"l10n": "./l10n",
 	"contributes": {
 		"languages": [
 			{
@@ -116,53 +117,53 @@
 		"commands": [
 			{
 				"command": "spec-data.showPreview",
-				"title": "Open Preview",
+				"title": "%spec-data.commands.showPreview.title%",
 				"category": "spec data",
 				"icon": "$(graph-line)"
 			},
 			{
 				"command": "spec-data.showPreviewToSide",
-				"title": "Open Preview to the Side",
+				"title": "%spec-data.commands.showPreviewToSide.title%",
 				"category": "spec data",
 				"icon": "$(open-preview)"
 			},
 			{
 				"command": "spec-data.showLockedPreview",
-				"title": "Open Locked Preview",
+				"title": "%spec-data.commands.showLockedPreview.title%",
 				"category": "spec data"
 			},
 			{
 				"command": "spec-data.showLockedPreviewToSide",
-				"title": "Open Locked Preview to the Side",
+				"title": "%spec-data.commands.showLockedPreviewToSide.title%",
 				"category": "spec data"
 			},
 			{
 				"command": "spec-data.showSource",
-				"title": "Show Source",
+				"title": "%spec-data.commands.showSource.title%",
 				"category": "spec data",
 				"icon": "$(go-to-file)"
 			},
 			{
 				"command": "spec-data.refreshPreview",
-				"title": "Refresh Preview",
+				"title": "%spec-data.commands.refreshPreview.title%",
 				"category": "spec data",
 				"icon": "$(refresh)"
 			},
 			{
 				"command": "spec-data.toggleMultipleSelection",
-				"title": "Toggle Multiple Selection",
+				"title": "%spec-data.commands.toggleMultipleSelection.title%",
 				"category": "spec data",
 				"icon": "$(list-unordered)"
 			},
 			{
 				"command": "spec-data.toggleRightAxis",
-				"title": "Toggle Right Axis",
+				"title": "%spec-data.commands.toggleRightAxis.title%",
 				"category": "spec data",
 				"icon": "$(list-selection)"
 			},
 			{
 				"command": "spec-data.togglePreviewLock",
-				"title": "Toggle Preview Locking",
+				"title": "%spec-data.commands.togglePreviewLock.title%",
 				"category": "spec data",
 				"icon": "$(lock)"
 			}
@@ -282,38 +283,38 @@
 					"type": "boolean",
 					"default": true,
 					"scope": "window",
-					"description": "Synchronizes page scroll of a editor with that of the corresoinding preview."
+					"description": "%spec-data.configuration.preview.scrollEditorWithPreview.description%"
 				},
 				"spec-data.preview.scrollPreviewWithEditor": {
 					"type": "boolean",
 					"default": true,
 					"scope": "window",
-					"description": "Synchronizes page scroll of a preview with that of the corresoinding editor."
+					"description": "%spec-data.configuration.preview.scrollPreviewWithEditor.description%"
 				},
 				"spec-data.preview.smoothScrolling": {
 					"type": "boolean",
 					"default": false,
 					"scope": "window",
-					"markdownDescription": "Controls whether the preview will scroll using an animation. Use `#editor.smoothScrolling#` to control the scroll behavior of the editor."
+					"markdownDescription": "%spec-data.configuration.preview.smoothScrolling.description%"
 				},
 				"spec-data.preview.retainContextWhenHidden": {
 					"type": "boolean",
 					"default": false,
 					"scope": "window",
-					"description": "Controls whether preview contents remain in memory when the preview tab is hidden. Enabling this option potentially requires high memory overhead. A change in this option does not affect previews already open."
+					"description": "%spec-data.configuration.preview.retainContextWhenHidden.description%"
 				},
 				"spec-data.preview.applyContentSecurityPolicy": {
 					"type": "boolean",
 					"default": true,
 					"scope": "resource",
-					"description": "Applies a content security policy (CSP) to a preview, which enhances security against cross site scripting and data injection attacks caused by malicious source files. One may be able to avoid several Plotly.js errors when the option is disabled.",
+					"description": "%spec-data.configuration.preview.applyContentSecurityPolicy.description%",
 					"deprecationMessage": "**Deprecated**: This setting will be removed in a future release. The CSP will always be applied to the preview."
 				},
 				"spec-data.preview.autoLockGroup": {
 					"type": "boolean",
 					"default": false,
 					"scope": "window",
-					"markdownDescription": "Locks the editor group when a preview is created in a new editor group. See `#workbench.editor.autoLockGroups#` about how locking works.",
+					"markdownDescription": "%spec-data.configuration.preview.autoLockGroup.description%",
 					"tags": [
 						"preview"
 					]
@@ -323,25 +324,25 @@
 					"default": 25,
 					"minimum": 0,
 					"scope": "language-overridable",
-					"description": "Maximum number of graphs to be drawn when a preview is opened. Drawing a large number of plots requires both long time and vast memory footprint."
+					"description": "%spec-data.configuration.preview.plot.maximumNumberOfPlots.description%"
 				},
 				"spec-data.preview.plot.height": {
 					"type": "number",
 					"default": 400,
 					"minimum": 200,
 					"scope": "language-overridable",
-					"description": "Height of the respective graphs."
+					"description": "%spec-data.configuration.preview.plot.height.description%"
 				},
 				"spec-data.preview.plot.templates": {
 					"type": "object",
 					"scope": "resource",
 					"markdownDeprecationMessage": "**Deprecated**: Please use `#spec-data.preview.plot.traceTemplate#` and `#spec-data.preview.plot.layoutTemplate#` instead.",
-					"markdownDescription": "Overrides the built-in plot appearance such as line color. The key of this setting object is either `\"light\"`, `\"dark\"`, `\"highContrast\"`, or `\"highContrastLight\"` and the value is a Plotly.js template object for the color theme the corresponding key represents. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in the [Plotly.js Reference](https://plotly.com/javascript/reference/index/) page."
+					"markdownDescription": "%spec-data.configuration.preview.plot.templates.description%"
 				},
 				"spec-data.preview.plot.traceTemplate": {
 					"type": "object",
 					"scope": "language-overridable",
-					"markdownDescription": "Overrides the built-in trace appearances such as a trace color. The key shall be either `\"light\"`, `\"dark\"`, `\"highContrast\"`, or `\"highContrastLight\"` and the value shall be an array of Plotly.js scatter templates. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in [Plotly.js Reference](https://plotly.com/javascript/reference/index/).",
+					"markdownDescription": "%spec-data.configuration.preview.plot.traceTemplate.description%",
 					"properties": {
 						"light": {
 							"type": "array"
@@ -361,7 +362,7 @@
 				"spec-data.preview.plot.layoutTemplate": {
 					"type": "object",
 					"scope": "language-overridable",
-					"markdownDescription": "Overrides the built-in layout appearances such as a background color. The key shall be either `\"light\"`, `\"dark\"`, `\"highContrast\"`, or `\"highContrastLight\"` and the value shall be a Plotly.js layout template. See the _Extension Settings_ section in README.md. One can find the complete list of the template attributes in [Plotly.js Reference](https://plotly.com/javascript/reference/index/).",
+					"markdownDescription": "%spec-data.configuration.preview.plot.layoutTemplate.description%",
 					"additionalProperties": false,
 					"properties": {
 						"light": {
@@ -382,26 +383,26 @@
 					"type": "boolean",
 					"default": false,
 					"scope": "window",
-					"description": "Makes multiple data arrays selectable for plotting a graph when a preview is created."
+					"description": "%spec-data.configuration.preview.plot.enableMultipleSelection.description%"
 				},
 				"spec-data.preview.plot.enableRightAxis": {
 					"type": "boolean",
 					"default": false,
 					"scope": "window",
-					"description": "Makes the right axis available for plotting a graph when a preview is created."
+					"description": "%spec-data.configuration.preview.plot.enableRightAxis.description%"
 				},
 				"spec-data.preview.table.hide": {
 					"type": "boolean",
 					"default": true,
 					"scope": "language-overridable",
-					"description": "Hides motor-position tables in a preview when a preview is opened."
+					"description": "%spec-data.configuration.preview.table.hide.description%"
 				},
 				"spec-data.preview.table.columnsPerLine": {
 					"type": "number",
 					"default": 8,
 					"minimum": 1,
 					"scope": "language-overridable",
-					"description": "Maximum column number of motor-position tables. Overflowed columns are folded in the next row."
+					"description": "%spec-data.configuration.preview.table.columnsPerLine.description%"
 				},
 				"spec-data.preview.table.headerType": {
 					"type": "string",
@@ -412,7 +413,7 @@
 						"None"
 					],
 					"scope": "language-overridable",
-					"description": "Header type of data cells of motor-potision tables."
+					"description": "%spec-data.configuration.preview.table.headerType.description%"
 				}
 			}
 		},
@@ -432,7 +433,7 @@
 		"virtualWorkspaces": true,
 		"untrustedWorkspaces": {
 			"supported": "limited",
-			"description": "In untrusted workspaces, the content security policy is forcibly applied to the preview and Plotly templates in workspace settings are ignored.",
+			"description": "%spec-data.capabilities.untrustedWorkspaces.description%",
 			"restrictedConfigurations": [
 				"spec-data.preview.plot.traceTemplate",
 				"spec-data.preview.plot.layoutTemplate",
@@ -461,6 +462,7 @@
 		"js-yaml:csv": "js-yaml syntaxes/csv.tmLanguage.yaml > syntaxes/csv.tmLanguage.json",
 		"js-yaml:dppmca": "js-yaml syntaxes/dppmca.tmLanguage.yaml > syntaxes/dppmca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml syntaxes/chiplot.tmLanguage.yaml > syntaxes/chiplot.tmLanguage.json",
+		"l10n-export": "npx @vscode/l10n-dev export -o ./l10n ./src",
 		"bundle-plotly": "npm install --prefix ./dist/preview --no-save plotly.js-basic-dist-min@3.4.0"
 	},
 	"devDependencies": {

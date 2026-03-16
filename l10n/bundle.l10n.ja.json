@@ -1,0 +1,16 @@
+{
+  "Failed to parse URIs from the command arguments.": "コマンド引数を展開できませんでした。",
+  "Failed to find an active editor.": "アクティブなエディタが見つかりませんでした。",
+  "Failed to find an active preview.": "アクティブなプレビューが見つかりませんでした。",
+  "[Preview] {0}": "[プレビュー] {0}",
+  "Preview {0}": "プレビュー {0}",
+  "Failed to restore the preview content because the previous state is not recorded. The tab will be closed.": "以前の状態が記録されていないため、プレビューの内容を復元できませんでした。タブは閉じられます。",
+  "Failed to parse file: \"{0}\"": "ファイルの解析に失敗しました: \"{0}\"",
+  "Inconsequent index of the name list: line {0}": "名前リストのインデックスが一貫していません: 行{0}",
+  "The name list not starting with 0: line {0}": "名前リストが0で始まっていません: 行 {0}",
+  "Inconsequent index of the value list: line {0}": "値リストのインデックスが一貫していません: 行{0}",
+  "The value list not starting with 0: line {0}": "値リストが0で始まっていません: 行 {0}",
+  "Mismatch in the number of columns: line {0}. #N: {1}, #L: {2}": "列の数に不一致があります: 行 {0}. #N: {1}, #L: {2}",
+  "Mismatch in the number of columns: line {0}. header: {1}, body: {2}": "列の数に不一致があります: 行 {0}. ヘッダー: {1}, ボディ: {2}",
+  "Mismatch in the number of columns: line {0}. expected: {1}, actual: {2}": "列の数に不一致があります: 行 {0}. 期待値: {1}, 実際の値: {2}"
+}

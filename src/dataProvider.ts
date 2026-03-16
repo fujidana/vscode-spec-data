@@ -51,34 +51,45 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const config = vscode.workspace.getConfiguration('spec-data.preview');
         this.enablePreviewScroll = config.get<boolean>('scrollPreviewWithEditor', true);
 
-        // callback of 'spec-data.showPreview'.
-        const showPreviewCallback = (...args: unknown[]) => {
-            const uris = getTargetFileUris(args);
-            if (uris.length) {
-                this.showPreview(uris[uris.length - 1], false, false);
-            }
-        };
+        // Create a command handler function that shows a preview.
+        const makeShowPreviewCallback = (lockPreview: boolean, showToSide: boolean) => {
+            return (...args: unknown[]) => {
+                // Get the URIs of source files to be shown in the preview.
+                // The URI of the source file can be provided via the command arguments or 
+                // it can be inferred from the active editor.
+                let uris: vscode.Uri[];
+                if (args && args.length > 0) {
+                    // typically, the type of args is [vscode.Uri, vscode.Uri[]]
+                    if (args.length >= 2 && Array.isArray(args[1]) && args[1].every(item => item instanceof vscode.Uri)) {
+                        uris = args[1];
+                    } else if (args[0] instanceof vscode.Uri) {
+                        uris = [args[0]];
+                    } else {
+                        vscode.window.showErrorMessage(vscode.l10n.t('Failed to parse URIs from the command arguments.'));
+                        return;
+                    }
+                } else {
+                    // If the URI is not provided via the arguments, returns the URI and contents of the active editor.
+                    const editor = vscode.window.activeTextEditor;
+                    if (editor) {
+                        uris = [editor.document.uri];
+                    } else {
+                        vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active editor.'));
+                        return;
+                    }
+                }
 
-        // callback of 'spec-data.showPreviewToSide'.
-        const showPreviewToSideCallback = (...args: unknown[]) => {
-            const uris = getTargetFileUris(args);
-            if (uris.length) {
-                this.showPreview(uris[uris.length - 1], false, true);
-            }
-        };
-
-        // callback of 'spec-data.showLockedPreview'.
-        const showLockedPreviewCallback = (...args: unknown[]) => {
-            for (const uri of getTargetFileUris(args)) {
-                this.showPreview(uri, true, false);
-            }
-        };
-
-        // callback of 'spec-data.showLockedPreviewToSide'.
-        const showLockedPreviewToSideCallback = (...args: unknown[]) => {
-            for (const uri of getTargetFileUris(args)) {
-                this.showPreview(uri, true, true);
-            }
+                // Show the preview(s).
+                if (lockPreview) {
+                    for (const uri of uris) {
+                        this.showPreview(uri, lockPreview, showToSide);
+                    }
+                } else {
+                    if (uris.length > 0) {
+                        this.showPreview(uris[uris.length - 1], lockPreview, showToSide);
+                    }
+                }
+            };
         };
 
         // callback of 'spec-data.showSource'.
@@ -92,7 +103,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     vscode.window.showTextDocument(activePreview.uri);
                 }
             } else {
-                vscode.window.showErrorMessage('Failed in finding active preview tab.');
+                vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
         };
 
@@ -102,7 +113,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             if (activePreview) {
                 this.reloadPreview(activePreview, activePreview.uri, true);
             } else {
-                vscode.window.showErrorMessage('Failed in finding active preview tab.');
+                vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
         };
 
@@ -115,7 +126,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 const messageOut: MessageToWebview = { type: 'enableMultipleSelection', flag: flag };
                 activePreview.panel.webview.postMessage(messageOut);
             } else {
-                vscode.window.showErrorMessage('Failed in finding active preview tab.');
+                vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
         };
 
@@ -128,7 +139,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 const messageOut: MessageToWebview = { type: 'enableRightAxis', flag: flag };
                 activePreview.panel.webview.postMessage(messageOut);
             } else {
-                vscode.window.showErrorMessage('Failed in finding active preview tab.');
+                vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
         };
 
@@ -142,7 +153,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     this.livePreview = undefined;
                     const messageOut: MessageToWebview = { type: 'lockPreview', flag: true };
                     activePreview.panel.webview.postMessage(messageOut);
-                    activePreview.panel.title = `[Preview] ${filePath.substring(filePath.lastIndexOf('/') + 1)}`;
+                    activePreview.panel.title = vscode.l10n.t('[Preview] {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
                 } else {
                     // If the active view is not a live preview...
                     if (this.livePreview) {
@@ -153,10 +164,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     this.livePreview = activePreview;
                     const messageOut: MessageToWebview = { type: 'lockPreview', flag: false };
                     activePreview.panel.webview.postMessage(messageOut);
-                    activePreview.panel.title = `Preview ${filePath.substring(filePath.lastIndexOf('/') + 1)}`;
+                    activePreview.panel.title = vscode.l10n.t('Preview {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
                 }
             } else {
-                vscode.window.showErrorMessage('Failed in finding active preview tab.');
+                vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
         };
 
@@ -260,10 +271,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         // register providers and commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('spec-data.showPreview', showPreviewCallback),
-            vscode.commands.registerCommand('spec-data.showPreviewToSide', showPreviewToSideCallback),
-            vscode.commands.registerCommand('spec-data.showLockedPreview', showLockedPreviewCallback),
-            vscode.commands.registerCommand('spec-data.showLockedPreviewToSide', showLockedPreviewToSideCallback),
+            vscode.commands.registerCommand('spec-data.showPreview', makeShowPreviewCallback(false, false)),
+            vscode.commands.registerCommand('spec-data.showPreviewToSide', makeShowPreviewCallback(false, true)),
+            vscode.commands.registerCommand('spec-data.showLockedPreview', makeShowPreviewCallback(true, false)),
+            vscode.commands.registerCommand('spec-data.showLockedPreviewToSide', makeShowPreviewCallback(true, true)),
             vscode.commands.registerCommand('spec-data.showSource', showSourceCallback),
             vscode.commands.registerCommand('spec-data.refreshPreview', refreshPreviewCallback),
             vscode.commands.registerCommand('spec-data.toggleMultipleSelection', toggleMultipleSelectionCallback),
@@ -305,14 +316,15 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      */
     public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: State): Promise<void> {
         if (!state) {
-            const message = 'Unable to restore the preview content because the previous state is not recorded. Probably the content had not been displayed at all in the previous session. The tab will be closed.';
+            const message = vscode.l10n.t('Failed to restore the preview content because the previous state is not recorded. The tab will be closed.');
             vscode.window.showErrorMessage(message, 'OK').then(() => panel.dispose());
             return;
         }
         const uri = vscode.Uri.parse(state.sourceUri);
         const parsedData = await this.parseDataOfFileUri(uri);
         if (!parsedData) {
-            vscode.window.showErrorMessage(`Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`);
+            const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
+            vscode.window.showErrorMessage(message);
             return;
         }
 
@@ -349,7 +361,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      * @param uri Source file URI.
      * @param lockPreview Flag whether the new preview panel is locked.
      * @param showToSide Flag whether the new preview panel is shown to side (`true`) or in the active editor (`false`).
-     * @returns Preview object or `undefined` if failed to parse a file.
+     * @returns Preview object or `undefined` if failed to parse the file.
      */
     private async showPreview(uri: vscode.Uri, lockPreview: boolean, showToSide: boolean) {
         if (!lockPreview && this.livePreview) {
@@ -361,7 +373,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             // Else create a new webview panel.
             const parsedData = await this.parseDataOfFileUri(uri);
             if (!parsedData) {
-                return vscode.window.showErrorMessage(`Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`);
+                const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
+                vscode.window.showErrorMessage(message);
+                return;
             }
 
             const config = vscode.workspace.getConfiguration('spec-data.preview');
@@ -502,7 +516,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         const parsedData = await this.parseDataOfFileUri(uri);
         if (!parsedData) {
-            vscode.window.showErrorMessage(`Failed in parsing the file: ${vscode.workspace.asRelativePath(uri)}.`);
+            const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
+            vscode.window.showErrorMessage(message);
             return undefined;
         }
 
@@ -513,38 +528,17 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
     private updatePreviewWithNodes(preview: Preview, language: string, nodes: Node[]) {
         const webview = preview.panel.webview;
-        const label = this.livePreview === preview ? 'Preview' : '[Preview]';
+        const filePath = preview.uri.path;
         const plotlyUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
         const controllerUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewController.js'));
 
         preview.nodes = nodes;
-        preview.panel.title = `${label} ${preview.uri.path.substring(preview.uri.path.lastIndexOf('/') + 1)}`;
+        preview.panel.title = this.livePreview === preview ?
+            vscode.l10n.t('Preview {0}', filePath.substring(filePath.lastIndexOf('/') + 1)) :
+            vscode.l10n.t('[Preview] {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
         preview.panel.webview.html = getWebviewContent(preview, webview.cspSource, plotlyUri, controllerUri, language);
     }
 }
-
-function getTargetFileUris(args: unknown[]): vscode.Uri[] {
-    if (args && args.length > 0) {
-        // typically, the type of args is [vscode.Uri, vscode.Uri[]]
-        if (args.length >= 2 && Array.isArray(args[1])) {
-            return args[1].filter(arg => arg instanceof vscode.Uri);
-        } else if (args[0] instanceof vscode.Uri) {
-            return [args[0]];
-        } else {
-            vscode.window.showErrorMessage('Unknown command arguments.');
-        }
-    } else {
-        // If the URI is not provided via the arguments, returns the URI and contents of the active editor.
-        const editor = vscode.window.activeTextEditor;
-        if (editor) {
-            return [editor.document.uri];
-        } else {
-            vscode.window.showErrorMessage('Active editor is not found.');
-        }
-    }
-    return [];
-}
-
 
 function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscode.Uri, controllerUri: vscode.Uri, languageId: string): string {
     if (!preview.nodes) { return ''; }
@@ -716,5 +710,5 @@ function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.Configura
             layoutTemplate = {};
     }
 
-    return { data: { "scatter": traceTemplate }, "layout": layoutTemplate };
+    return { data: { scatter: traceTemplate }, layout: layoutTemplate };
 }
