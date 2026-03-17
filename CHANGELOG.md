@@ -4,10 +4,13 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [2.1.0] -- 2026-03-17
+
 ### Added
 
-- Add Japanese localization.
-- Set the icon of preview tabs to `graph-line` codicon.
+- Use _Problems_ view to report finer information about parsing errors and warnings. Issue [#33](https://github.com/fujidana/vscode-spec-data/issues/33).
+- Restruct the code for multilingual support (i.e, internationalization) and add Japanese localization. Issue [#31](https://github.com/fujidana/vscode-spec-data/issues/31).
+- Set the icon of preview tabs to `graph-line` codicon. Issue [#29](https://github.com/fujidana/vscode-spec-data/issues/29).
 
 ### Changed
 
@@ -383,7 +386,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.4...v2.0.0
 [1.7.4]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.3...v1.7.4

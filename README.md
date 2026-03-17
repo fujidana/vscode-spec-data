@@ -35,8 +35,9 @@ Use [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues) for bug
 ## Features
 
 - __Syntax highlighting__
+- __Diagnostics__: show parsing errors and warnings in the _Problems_ view.
 - __Code navigation__ (`spec-data` and `dppmca` only)
-  - __Listing symbols in the active editor__: the list shown in the _outline_ view in the _Explorer_ viewlet and breadcrumbs at the top of the editor view
+  - __Listing symbols in the active editor__: the list shown in the _outline_ view in the _Explorer_ view and breadcrumbs at the top of the editor view
 - __Code folding__ (`spec-data` and `dppmca` only)
 - __Preview__
   - motor positions just before a scan in a table view (`spec-data` only)
