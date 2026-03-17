@@ -15,42 +15,76 @@ interface BaseNode { type: string, lineStart: number, lineEnd: number }
 interface FileNode extends BaseNode { type: 'file', value: string }
 interface DateNode extends BaseNode { type: 'date', value: string }
 interface CommentNode extends BaseNode { type: 'comment', value: string }
-interface NameListNode extends BaseNode { type: 'nameList', kind: string, values: string[], mnemonic: boolean }
-interface ValueListNode extends BaseNode { type: 'valueList', kind: string, values: number[] }
+interface NameListNode extends BaseNode { type: 'nameList', kind: string, values: string[], subtype: string }
+interface ValueListNode extends BaseNode { type: 'valueList', kind: string, values: number[], subtype: string }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
 interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], xAxisSelectable: boolean }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
-export type ParsedData = {
+export type ParserResult = ParserSuccess | ParserFailure | undefined;
+
+export type ParserSuccess = {
     language: string,
+    nodes: Node[],
+    diagnostics: vscode.Diagnostic[],
     foldingRanges?: vscode.FoldingRange[],
     documentSymbols?: vscode.DocumentSymbol[],
-    nodes: Node[]
 };
 
-export function parseDocument(document: vscode.TextDocument, token: vscode.CancellationToken): ParsedData | undefined {
+export type ParserFailure = {
+    language: string | undefined,
+    nodes: undefined,
+    diagnostics: vscode.Diagnostic[],
+};
+
+/**
+ * Parse a text document.
+ * @param document The text document to parse.
+ * @param token A cancellation token.
+ * @param diagnosticCollection The diagnostic collection to update.
+ * @returns The result of parsing. If cancelled, return `undefined`.
+ */
+export function parseDocument(document: vscode.TextDocument, token: vscode.CancellationToken, diagnosticCollection: vscode.DiagnosticCollection): ParserResult {
+    let parserResult: ParserResult;
     if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
-        return parseSpecDataContent(document.getText(), token);
+        parserResult = parseSpecDataContent(document.getText(), token);
     } else if (vscode.languages.match(CSV_COLUMNS_FILTER, document)) {
-        return parseCsvContent(document.getText(), true, token);
+        parserResult = parseCsvContent(document.getText(), true, token);
     } else if (vscode.languages.match(CSV_ROWS_FILTER, document)) {
-        return parseCsvContent(document.getText(), false, token);
+        parserResult = parseCsvContent(document.getText(), false, token);
     } else if (vscode.languages.match(DPPMCA_FILTER, document)) {
-        return parseDppmcaContent(document.getText(), token);
+        parserResult = parseDppmcaContent(document.getText(), token);
     } else if (vscode.languages.match(CHIPLOT_FILTER, document)) {
-        return parseChiplotContent(document.getText(), token);
+        parserResult = parseChiplotContent(document.getText(), token);
     } else {
-        return undefined;
+        const diagnostics = [new vscode.Diagnostic(
+            new vscode.Range(0, 0, 0, 0),
+            vscode.l10n.t('Unsupported language: {0}.', document.languageId),
+        )];
+        parserResult = { language: undefined, nodes: undefined, diagnostics };
     }
+
+    // Update the diagnostics for the document unless parsing is cancelled.
+    if (parserResult !== undefined) {
+        diagnosticCollection.set(document.uri, parserResult.diagnostics);
+    }
+
+    return parserResult;
 }
 
-export async function parseTextFromUri(uri: vscode.Uri): Promise<ParsedData | undefined> {
+/**
+ * Parse a text content from a URI.
+ * If the URI corresponds to an opened document, parse the document. Otherwise, read the content from the file and parse it.
+ * @param uri The URI to parse.
+ * @return The result of parsing.
+ */
+export async function parseTextFromUri(uri: vscode.Uri): Promise<ParserResult> {
     let text: string;
-    let languageId: string | undefined;
+    let language: string | undefined;
 
     let document = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === uri.toString());
     if (document && vscode.languages.match(DOCUMENT_SELECTOR, document)) {
-        languageId = document.languageId;
+        language = document.languageId;
         text = document.getText();
     } else {
         // Determine the file type (language ID) for a file.
@@ -62,40 +96,58 @@ export async function parseTextFromUri(uri: vscode.Uri): Promise<ParsedData | un
 
         for (const [key, value] of associations) {
             if (minimatch(uri.path, key, { matchBase: true })) {
-                languageId = (LANGUAGE_IDS as string[]).includes(value) ? value : undefined;
+                if ((LANGUAGE_IDS as string[]).includes(value) === false) {
+                    const diagnostics = [new vscode.Diagnostic(
+                        new vscode.Range(0, 0, 0, 0),
+                        vscode.l10n.t('Unsupported language: {0}.', value),
+                    )];
+                    return { language: undefined, nodes: undefined, diagnostics };
+                }
+                language = value;
                 break;
             }
         }
 
-        if (languageId === undefined) {
-            return undefined;
+        if (language === undefined) {
+            const diagnostics = [new vscode.Diagnostic(
+                new vscode.Range(0, 0, 0, 0),
+                vscode.l10n.t('Undetermined file association.'),
+            )];
+            return { language: undefined, nodes: undefined, diagnostics };
         }
         // Read the content from a file.
         text = await vscode.workspace.decode(await vscode.workspace.fs.readFile(uri), { uri });
     }
 
-    if (languageId === SPEC_DATA_FILTER.language) {
+    if (language === SPEC_DATA_FILTER.language) {
         return parseSpecDataContent(text);
-    } else if (languageId === CSV_COLUMNS_FILTER.language) {
+    } else if (language === CSV_COLUMNS_FILTER.language) {
         return parseCsvContent(text, true);
-    } else if (languageId === CSV_ROWS_FILTER.language) {
+    } else if (language === CSV_ROWS_FILTER.language) {
         return parseCsvContent(text, false);
-    } else if (languageId === DPPMCA_FILTER.language) {
+    } else if (language === DPPMCA_FILTER.language) {
         return parseDppmcaContent(text);
-    } else if (languageId === CHIPLOT_FILTER.language) {
+    } else if (language === CHIPLOT_FILTER.language) {
         return parseChiplotContent(text);
     } else {
-        return undefined;
+        // This case will not be hit because of the previous check.
+        const diagnostics = [new vscode.Diagnostic(
+            new vscode.Range(0, 0, 0, 0),
+            vscode.l10n.t('Unsupported language: {0}.', language),
+        )];
+        return { language: undefined, nodes: undefined, diagnostics };
     }
 }
 
-function parseSpecDataContent(text: string, token?: vscode.CancellationToken): ParsedData | undefined {
+function parseSpecDataContent(text: string, token?: vscode.CancellationToken): ParserResult {
     const lines = text.split(/\n|\r\n/);
     const lineCount = lines.length;
+    const language = SPEC_DATA_FILTER.language;
 
+    const nodes: Node[] = [];
+    const diagnostics: vscode.Diagnostic[] = [];
     const foldingRanges: vscode.FoldingRange[] = [];
     const documentSymbols: vscode.DocumentSymbol[] = [];
-    const nodes: Node[] = [];
 
     // Parameters used for making folding ranges and document symbols.
     const scanLineRegex = /^(#S [0-9]+)\s*(\S.*)?$/;
@@ -106,8 +158,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
     const fileRegex = /^(#F) (.*)$/;
     const dateRegex = /^(#D) (.*)$/;
     const commentRegex = /^(#C) (.*)$/;
-    const nameListRegex = /^(?:#([OJoj])([0-9]+)) (.*)$/;
-    const valueListRegex = /^(?:#([P])([0-9]+)) (.*)$/;
+    const listRegex = /^(?:#([OJojP])([0-9]+)) (.*)$/;
     const scanHeadRegex = /^(#S) ([0-9]+) (.*)$/;
     const scanNumberRegex = /^(#N) ([0-9]+)$/;
     const scanDataRegex = /^(#L) (.*)$/;
@@ -144,68 +195,63 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
             nodes.push({ type: 'date', lineStart: lineNumber, lineEnd: lineNumber, value: matches[2] });
         } else if ((matches = line.match(commentRegex)) !== null) {
             nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: matches[2] });
-        } else if ((matches = line.match(nameListRegex)) !== null) {
-            let kind, isMnemonic, separator;
-            if (matches[1] === matches[1].toLowerCase()) {
-                isMnemonic = true;
+        } else if ((matches = line.match(listRegex)) !== null) {
+            let listType: 'valueList' | 'nameList', kind: string, subtype: string, separator: string;
+            if (matches[1] === 'P') {
+                listType = 'valueList';
+                kind = 'motor';
+                subtype = 'position';
                 separator = ' ';
             } else {
-                isMnemonic = false;
-                separator = '  ';
-            }
-            if (matches[1].toLowerCase() === 'o') {
-                kind = 'motor';
-            } else if (matches[1].toLowerCase() === 'j') {
-                kind = 'counter';
-            } else {
-                kind = matches[1];
+                listType = 'nameList';
+                if (matches[1] === matches[1].toLowerCase()) {
+                    subtype = 'mnemonic';
+                    separator = ' ';
+                } else {
+                    subtype = 'name';
+                    separator = '  ';
+                }
+                if (matches[1].toLowerCase() === 'o') {
+                    kind = 'motor';
+                } else if (matches[1].toLowerCase() === 'j') {
+                    kind = 'counter';
+                } else {
+                    kind = matches[1];
+                }
             }
             const listIndex = parseInt(matches[2]);
             const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
-            if (prevNode && prevNode.type === 'nameList' && prevNode.kind === kind && prevNode.mnemonic === isMnemonic) {
+            const values = matches[3].trimEnd().split(separator);
+
+            if (prevNode && prevNode.type === listType && prevNode.kind === kind && prevNode.subtype === subtype) {
                 if (prevNodeIndex !== listIndex - 1) {
-                    const message = vscode.l10n.t('Inconsequent index of the name list: line {0}', lineNumber + 1);
-                    vscode.window.showErrorMessage(message);
-                    return undefined;
+                    diagnostics.push(new vscode.Diagnostic(
+                        new vscode.Range(lineNumber, 0, lineNumber, 2 + matches[2].length),
+                        vscode.l10n.t('Index is not consecutive.', matches[1]),
+                        vscode.DiagnosticSeverity.Warning,
+                    ));
                 }
-                prevNode.values.push(...(matches[3].trimEnd().split(separator)));
+                if (prevNode.type === 'valueList') {
+                    prevNode.values.push(...values.map(value => parseFloat(value)));
+                } else {
+                    prevNode.values.push(...values);
+                }
                 prevNode.lineEnd = lineNumber;
                 prevNodeIndex = listIndex;
             } else {
                 if (listIndex !== 0) {
-                    const message = vscode.l10n.t('The name list not starting with 0: line {0}', lineNumber + 1);
-                    vscode.window.showErrorMessage(message);
-                    return undefined;
+                    diagnostics.push(new vscode.Diagnostic(
+                        new vscode.Range(lineNumber, 0, lineNumber, 2 + matches[2].length),
+                        vscode.l10n.t('Index is not starting with 0.'),
+                        vscode.DiagnosticSeverity.Warning,
+                    ));
                 }
-                nodes.push({ type: 'nameList', lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: matches[3].trimEnd().split(separator), mnemonic: isMnemonic });
-                prevNodeIndex = 0;
-            }
-        } else if ((matches = line.match(valueListRegex)) !== null) {
-            let kind;
-            if (matches[1] === 'P') {
-                kind = 'motor';
-            } else {
-                kind = matches[1];
-            }
-            const listIndex = parseInt(matches[2]);
-            const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
-            if (prevNode && prevNode.type === 'valueList' && prevNode.kind === kind) {
-                if (prevNodeIndex !== listIndex - 1) {
-                    const message = vscode.l10n.t('Inconsequent index of the value list: line {0}', lineNumber + 1);
-                    vscode.window.showErrorMessage(message);
-                    return undefined;
+                if (listType === 'valueList') {
+                    nodes.push({ type: listType, lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: values.map(value => parseFloat(value)), subtype: subtype });
+                } else {
+                    nodes.push({ type: listType, lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: values, subtype: subtype });
                 }
-                prevNode.values.push(...(matches[3].trimEnd().split(' ').map(value => parseFloat(value))));
-                prevNode.lineEnd = lineNumber;
-                prevNodeIndex = listIndex;
-            } else {
-                if (listIndex !== 0) {
-                    const message = vscode.l10n.t('The value list not starting with 0: line {0}', lineNumber + 1);
-                    vscode.window.showErrorMessage(message);
-                    return undefined;
-                }
-                nodes.push({ type: 'valueList', lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: matches[3].trimEnd().split(' ').map(value => parseFloat(value)) });
-                prevNodeIndex = 0;
+                prevNodeIndex = listIndex; // normally 0.
             }
         } else if ((matches = line.match(scanHeadRegex)) !== null) {
             nodes.push({ type: 'scanHead', lineStart: lineNumber, lineEnd: lineNumber, index: parseInt(matches[2]), code: matches[3] });
@@ -220,9 +266,12 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                 // for lazy format in which "#N" line does not exit.
                 columnCountInHeader = headers.length;
             } else if (headers.length !== columnCountInHeader) {
-                const message = vscode.l10n.t('Mismatch in the number of columns: line {0}. #N: {1}, #L: {2}', lineNumber + 1, columnCountInHeader, headers.length);
-                vscode.window.showErrorMessage(message);
-                return undefined;
+                // In case the number of items in "#L" line is different from the value  "#N" line.
+                diagnostics.push(new vscode.Diagnostic(
+                    new vscode.Range(lineNumber, 0, lineNumber, line.length),
+                    vscode.l10n.t('Column count in this line ({0}) does not match the value in the preceeding "#N" line.', headers.length),
+                    vscode.DiagnosticSeverity.Warning,
+                ));
             }
             const lineStart = lineNumber;
 
@@ -238,19 +287,24 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                 // const rows = blockline.split('  ', 2).map(a => a.split(' ')).reduce((a, b) => a.concat(b));
                 const rows = blockline.trim().split(/ {1,}|\t/);
                 if (columnCountInBody === -1) {
-                    // In case the first line of the scan body, compare the line number of the header part.
+                    // In case the first line of the scan body, compare the line number of the header part (#L).
                     // This mismatch can happen owing to spec's bug around `roisetup` and `disable` commands.
                     // So in this case, just show a message and do not stop parsing.
-                    if (rows.length !== columnCountInHeader) {
-                        const message = vscode.l10n.t('Mismatch in the number of columns (line {0}). header: {1}, body: {2}', lineNumber + 2, columnCountInHeader, rows.length);
-                        vscode.window.showWarningMessage(message);
+                    if (rows.length !== headers.length) {
+                        diagnostics.push(new vscode.Diagnostic(
+                            new vscode.Range(lineNumber + 1, 0, lineNumber + 1, blockline.length),
+                            vscode.l10n.t('Column count in this line ({0}) does not match that in the preceeding "#L" line.', rows.length),
+                            vscode.DiagnosticSeverity.Warning,
+                        ));
                     }
                     columnCountInBody = rows.length;
                 } else if (rows.length !== columnCountInBody) {
                     // In case the second or any later lines, compare with the first line.
-                    const message = vscode.l10n.t('Mismatch in the number of columns (line {0}). expected: {1}, actual: {2}', lineNumber + 2, columnCountInBody, rows.length);
-                    vscode.window.showErrorMessage(message);
-                    return undefined;
+                    diagnostics.push(new vscode.Diagnostic(
+                        new vscode.Range(lineNumber + 1, 0, lineNumber + 1, blockline.length),
+                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceeding data array.', rows.length),
+                    ));
+                    return { language, nodes: undefined, diagnostics };
                 }
                 data.push(rows.map(item => parseFloat(item)));
             }
@@ -265,15 +319,17 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
         }
     }
     // return nodes.length !== 0 ? nodes : undefined;
-    return { language: SPEC_DATA_FILTER.language, foldingRanges, documentSymbols, nodes };
+    return { language, nodes, diagnostics, foldingRanges, documentSymbols };
 }
 
 // character-separated values. The delimiter is auto-detected from a horizontal tab, a whitespace, or a comma. 
-function parseCsvContent(text: string, columnWise: boolean, token?: vscode.CancellationToken): ParsedData | undefined {
+function parseCsvContent(text: string, columnWise: boolean, token?: vscode.CancellationToken): ParserResult {
     const lines = text.split(/\r\n|\n/);
     const lineCount = lines.length;
 
+    const language = columnWise ? CSV_COLUMNS_FILTER.language : CSV_ROWS_FILTER.language;
     const nodes: Node[] = [];
+    const diagnostics: vscode.Diagnostic[] = [];
 
     for (let lineNumber = 0; lineNumber < lineCount; lineNumber++) {
         if (token && token.isCancellationRequested === true) { return; }
@@ -372,8 +428,11 @@ function parseCsvContent(text: string, columnWise: boolean, token?: vscode.Cance
             } else {
                 const currentRowCells = line.split(delimRegexp);
                 if (currentRowCells.length !== rowCount) {
-                    // mismatch of column number
-                    return undefined;
+                    diagnostics.push(new vscode.Diagnostic(
+                        new vscode.Range(lineNumber, 0, lineNumber, line.length),
+                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceeding data array.', currentRowCells.length),
+                    ));
+                    return { language, nodes: undefined, diagnostics };
                 }
                 data.push(currentRowCells.map(cell => parseFloat(cell)));
             }
@@ -391,19 +450,19 @@ function parseCsvContent(text: string, columnWise: boolean, token?: vscode.Cance
         nodes.push({ type: 'scanData', lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers: headers, data: data, xAxisSelectable: columnWise });
     }
 
-    const language = columnWise ? CSV_COLUMNS_FILTER.language : CSV_ROWS_FILTER.language;
     if (nodes.some(node => node.type === 'scanData')) {
-        return { language, nodes };
+        return { language, nodes, diagnostics };
     }
 }
 
-function parseDppmcaContent(text: string, token?: vscode.CancellationToken): ParsedData | undefined {
+function parseDppmcaContent(text: string, token?: vscode.CancellationToken): ParserResult {
     const lines = text.split(/\r\n|\n/);
     const lineCount = lines.length;
 
     const foldingRanges: vscode.FoldingRange[] = [];
     const documentSymbols: vscode.DocumentSymbol[] = [];
     const nodes: Node[] = [];
+    const diagnostics: vscode.Diagnostic[] = [];
     let prevHeader: { name: string, range: vscode.Range, items: string[] } | undefined;
 
     const headerRegexp = /^<<([a-zA-Z0-9_ ]+)>>$/;
@@ -441,7 +500,7 @@ function parseDppmcaContent(text: string, token?: vscode.CancellationToken): Par
             prevHeader.items.push(line);
         }
     }
-    return { language: DPPMCA_FILTER.language, foldingRanges, documentSymbols, nodes };
+    return { language: DPPMCA_FILTER.language, nodes, diagnostics, foldingRanges, documentSymbols };
 }
 
 /**
@@ -456,27 +515,43 @@ function parseDppmcaContent(text: string, token?: vscode.CancellationToken): Par
  * 
  * The separator at 4th line and data rows is one or more spaces or a comma.
  * @param text Text content.
- * @param token Cancellation token.
- * @returns Parsed Data.
+ * @param token A cancellation token.
+ * @returns The result of parsing. If cancelled, return `undefined`.
  */
-function parseChiplotContent(text: string, token?: vscode.CancellationToken): ParsedData | undefined {
-    if (token && token.isCancellationRequested === true) { return; }
+function parseChiplotContent(text: string, token?: vscode.CancellationToken): ParserResult {
+    if (token && token.isCancellationRequested === true) { return undefined; }
 
     const lines = text.split(/\n|\r\n/);
     const lineCount = lines.length;
+    const language = CHIPLOT_FILTER.language;
+
+    const diagnostics: vscode.Diagnostic[] = [];
+
     if (lineCount < 6) {
-        return undefined;
+        diagnostics.push(new vscode.Diagnostic(
+            new vscode.Range(0, 0, 0, 0),
+            vscode.l10n.t('Too few lines.'),
+        ));
+        return { language, nodes: undefined, diagnostics };
     }
 
     const title = lines[0].trim();
     const headers = lines[1].trim().split(/\s*,\s*|\s{2,}/).concat(lines[2].trim().split(/\s*,\s*|\s{2,}/));
     const matches = lines[3].match(/^\s*([0-9]+)((\s*,\s*|\s+)([0-9]+))?/);
     if (!matches) {
-        return undefined;
+        diagnostics.push(new vscode.Diagnostic(
+            new vscode.Range(3, 0, 3, lines[3].length),
+            vscode.l10n.t('Data row count is not found.'),
+        ));
+        return { language, nodes: undefined, diagnostics };
     }
     const rowCount = parseInt(matches[1]);
     if (isNaN(rowCount) || rowCount < 1) {
-        return undefined;
+        diagnostics.push(new vscode.Diagnostic(
+            new vscode.Range(3, 0, 3, lines[3].length),
+            vscode.l10n.t('Invalid data row count.'),
+        ));
+        return { language, nodes: undefined, diagnostics };
     }
 
     // const emptyLineRegex = /^\s*$/;
@@ -497,13 +572,22 @@ function parseChiplotContent(text: string, token?: vscode.CancellationToken): Pa
 
     const columnCount = data[0].length;
 
-    if (data.length !== rowCount) {
-        // row number mismatch with the header (4th line).
-        return undefined;
-    } else if (data.some(columns => columns.length !== columnCount)) {
-        // column number not equal with the first data row (5th line)
-        return undefined;
+    const index = data.findIndex(columns => columns.length !== columnCount);
+    if (index !== -1) {
+        diagnostics.push(new vscode.Diagnostic(
+            new vscode.Range(index + 4, 0, index + 4, lines[index + 4].length),
+            vscode.l10n.t('Column count in this line ({0}) does not match that of the preceeding data array.', data[index].length),
+        ));
+        return { language, nodes: undefined, diagnostics };
     }
+    if (data.length !== rowCount) {
+        diagnostics.push(new vscode.Diagnostic(
+            new vscode.Range(3, 0, 3, lines[4].length),
+            vscode.l10n.t('This value does not match the row count of following data array ({0}).', data.length),
+            vscode.DiagnosticSeverity.Warning,
+        ));
+    }
+
     // transpose the two-dimensional data array
     const data2 = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
 
@@ -522,5 +606,5 @@ function parseChiplotContent(text: string, token?: vscode.CancellationToken): Pa
     nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, value: title });
     nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineNumber, headers: headers2, data: data2, xAxisSelectable: true });
 
-    return { language: CHIPLOT_FILTER.language, nodes };
+    return { language, nodes, diagnostics };
 }

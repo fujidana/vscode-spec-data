@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
 import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './dataParser';
-import type { ParsedData, Node } from './dataParser';
+import type { Node, ParserResult, ParserSuccess } from './dataParser';
 
 // @types/plotly.js contains DOM objects and thus
 // `tsc -p .` fails without `skipLibCheck`.
@@ -19,7 +19,7 @@ type Preview = {
 };
 
 type ParserSession = {
-    promise: Promise<ParsedData | undefined>,
+    promise: Promise<ParserResult>,
     tokenSource: vscode.CancellationTokenSource | undefined,
 };
 
@@ -27,17 +27,18 @@ type ParserSession = {
  * Provider class for "spec-data" language.
  */
 export class DataProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider, vscode.WebviewPanelSerializer<State> {
-    readonly extensionUri;
-    readonly subscriptions;
-    readonly previews: Preview[] = [];
-    readonly parserSessionMap: Map<string, ParserSession> = new Map();
+    private readonly extensionUri;
+    private readonly subscriptions;
+    private readonly previews: Preview[] = [];
+    private readonly parserSessionMap: Map<string, ParserSession> = new Map();
+    private readonly diagnosticCollection: vscode.DiagnosticCollection;
 
-    enablePreviewScroll: boolean;
-    livePreview: Preview | undefined = undefined;
-    colorThemeKind: vscode.ColorThemeKind;
+    private enablePreviewScroll: boolean;
+    private livePreview: Preview | undefined = undefined;
+    private colorThemeKind: vscode.ColorThemeKind;
 
-    lastScrollEditorTimeStamp = 0;
-    lastScrollPreviewTimeStamp = 0;
+    private lastScrollEditorTimeStamp = 0;
+    private lastScrollPreviewTimeStamp = 0;
 
     private get activePreview(): Preview | undefined {
         return this.previews.find(preview => preview.panel.active);
@@ -46,6 +47,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     constructor(context: vscode.ExtensionContext) {
         this.extensionUri = context.extensionUri;
         this.subscriptions = context.subscriptions;
+
+        this.diagnosticCollection = vscode.languages.createDiagnosticCollection('spec-data');
         this.colorThemeKind = vscode.window.activeColorTheme.kind;
 
         const config = vscode.workspace.getConfiguration('spec-data.preview');
@@ -96,7 +99,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const showSourceCallback = (..._args: unknown[]) => {
             const activePreview = this.activePreview;
             if (activePreview) {
-                const document = vscode.workspace.textDocuments.find(document => document.uri.toString() === activePreview.uri.toString());
+                const document = vscode.workspace.textDocuments.find(
+                    document => document.uri.toString() === activePreview.uri.toString()
+                );
                 if (document) {
                     vscode.window.showTextDocument(document);
                 } else {
@@ -192,6 +197,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const textDocumentDidCloseListener = (document: vscode.TextDocument) => {
             if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
                 this.parserSessionMap.delete(document.uri.toString());
+                this.diagnosticCollection.delete(document.uri);
             }
         };
 
@@ -289,7 +295,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.window.onDidChangeActiveTextEditor(activeTextEditorChangeListener),
             vscode.window.onDidChangeTextEditorVisibleRanges(textEditorVisibleRangesChangeListener),
             vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
-            vscode.workspace.onDidChangeConfiguration(configurationChangeListner)
+            vscode.workspace.onDidChangeConfiguration(configurationChangeListner),
+            this.diagnosticCollection
         );
     }
 
@@ -299,7 +306,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     public provideFoldingRanges(document: vscode.TextDocument, context: vscode.FoldingContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
         if (token.isCancellationRequested) { return; }
 
-        return this.parserSessionMap.get(document.uri.toString())?.promise.then(data => data?.foldingRanges);
+        return this.parserSessionMap.get(document.uri.toString())?.promise.then(
+            result => result?.nodes !== undefined ? result.foldingRanges : undefined
+        );
     }
 
     /**
@@ -308,7 +317,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     public provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.SymbolInformation[] | vscode.DocumentSymbol[]> {
         if (token.isCancellationRequested) { return; }
 
-        return this.parserSessionMap.get(document.uri.toString())?.promise.then(data => data?.documentSymbols);
+        return this.parserSessionMap.get(document.uri.toString())?.promise.then(
+            result => result?.nodes !== undefined ? result.documentSymbols : undefined
+        );
     }
 
     /**
@@ -322,7 +333,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         }
         const uri = vscode.Uri.parse(state.sourceUri);
         const parsedData = await this.parseDataOfFileUri(uri);
-        if (!parsedData) {
+        if (!parsedData || parsedData.nodes === undefined) {
             const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
             vscode.window.showErrorMessage(message);
             return;
@@ -342,7 +353,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         // Create a new update session.
         const tokenSource = new vscode.CancellationTokenSource();
-        const promise = new Promise<ParsedData | undefined>(resolve => resolve(parseDocument(document, tokenSource.token)));
+        const promise = new Promise<ParserResult>(resolve => resolve(
+            parseDocument(document, tokenSource.token, this.diagnosticCollection)
+        ));
         const newSession: ParserSession = { promise, tokenSource };
         newSession.promise.finally(() => {
             // Attach a callback that cleans up the cancellation token when update is finished.
@@ -372,7 +385,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         } else {
             // Else create a new webview panel.
             const parsedData = await this.parseDataOfFileUri(uri);
-            if (!parsedData) {
+            if (!parsedData || parsedData.nodes === undefined) {
                 const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
                 vscode.window.showErrorMessage(message);
                 return;
@@ -413,7 +426,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      * @param lockPreview flag to lock preview with source URI.
      * @returns Preview object if succeeded in parsing a file or `undefined`.
      */
-    private async postCreatePreview(preview: Preview, parsedData: ParsedData, lockPreview: boolean) {
+    private async postCreatePreview(preview: Preview, parsedData: ParserSuccess, lockPreview: boolean) {
         this.previews.push(preview);
         preview.panel.iconPath = new vscode.ThemeIcon('graph-line');
 
@@ -515,7 +528,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         }
 
         const parsedData = await this.parseDataOfFileUri(uri);
-        if (!parsedData) {
+        if (!parsedData || parsedData.nodes === undefined) {
             const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
             vscode.window.showErrorMessage(message);
             return undefined;
@@ -617,7 +630,7 @@ log
         } else if (node.type === 'comment') {
             lines.push(`<p ${getAttributesForNode(node)}>Comment: ${getSanitizedString(node.value)}</p>`);
         } else if (node.type === 'nameList') {
-            if (node.mnemonic) {
+            if (node.subtype === 'mnemonic') {
                 mnemonicLists[node.kind] = node.values.map(value => getSanitizedString(value));
             } else {
                 nameLists[node.kind] = node.values.map(value => getSanitizedString(value));

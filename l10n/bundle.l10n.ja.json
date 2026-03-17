@@ -6,11 +6,15 @@
   "Preview {0}": "プレビュー {0}",
   "Failed to restore the preview content because the previous state is not recorded. The tab will be closed.": "以前の状態が記録されていないため、プレビューの内容を復元できませんでした。タブは閉じられます。",
   "Failed to parse file: \"{0}\"": "ファイルの解析に失敗しました: \"{0}\"",
-  "Inconsequent index of the name list: line {0}": "名前リストのインデックスが一貫していません: 行{0}",
-  "The name list not starting with 0: line {0}": "名前リストが0で始まっていません: 行 {0}",
-  "Inconsequent index of the value list: line {0}": "値リストのインデックスが一貫していません: 行{0}",
-  "The value list not starting with 0: line {0}": "値リストが0で始まっていません: 行 {0}",
-  "Mismatch in the number of columns: line {0}. #N: {1}, #L: {2}": "列の数に不一致があります: 行 {0}. #N: {1}, #L: {2}",
-  "Mismatch in the number of columns: line {0}. header: {1}, body: {2}": "列の数に不一致があります: 行 {0}. ヘッダー: {1}, ボディ: {2}",
-  "Mismatch in the number of columns: line {0}. expected: {1}, actual: {2}": "列の数に不一致があります: 行 {0}. 期待値: {1}, 実際の値: {2}"
+  "Unsupported language: {0}.": "サポートされていない言語: {0}。",
+  "Undetermined file association.": "ファイルの関連付けが不明です。",
+  "Index is not consecutive.": "インデックスが連続していません。",
+  "Index is not starting with 0.": "インデックスが0で始まっていません。",
+  "Column count in this line ({0}) does not match the value in the preceeding \"#N\" line.": "この行の列数 {0} は、前の \"#N\" 行の値と一致しません。",
+  "Column count in this line ({0}) does not match that in the preceeding \"#L\" line.": "この行の列数 {0} は、前の \"#L\" 行の列数と一致しません。",
+  "Column count in this line ({0}) does not match that of the preceeding data array.": "この行の列数 {0} は、前のデータ配列の列数と一致しません。",
+  "Too few lines.": "行数が少なすぎます。",
+  "Data row count is not found.": "データ行数が見つかりません。",
+  "Invalid data row count.": "無効なデータ行数です。",
+  "This value does not match the row count of following data array ({0}).": "この値は後のデータ配列の行数 {0} と一致しません。"
 }
