@@ -4,10 +4,10 @@
  */
 
 /*
- * At run-time, Plotly is separately loaded by `<script src=""..."">` in a 
+ * At run-time, Plotly is separately loaded by `<script src=""...">` in the
  * HTML file and thus, is available in the global scope.
  */
-// import Plotly from 'plotly.js-basic-dist-min';
+// import Plotly from 'plotly.js';
 declare const Plotly: any;
 
 import type { MessageFromWebview, MessageToWebview, CallbackType, State, GraphParam } from './previewTypes';

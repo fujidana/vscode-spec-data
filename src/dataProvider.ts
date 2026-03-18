@@ -5,7 +5,7 @@ import type { Node, ParserResult, ParserSuccess } from './dataParser';
 
 // @types/plotly.js contains DOM objects and thus
 // `tsc -p .` fails without `skipLibCheck`.
-import type { PlotData, Layout } from 'plotly.js-basic-dist-min';
+import type { PlotData, Layout } from 'plotly.js';
 // type PlotData = any;
 // type Layout = any;
 import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
@@ -542,7 +542,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     private updatePreviewWithNodes(preview: Preview, language: string, nodes: Node[]) {
         const webview = preview.panel.webview;
         const filePath = preview.uri.path;
-        const plotlyUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
+        const plotlyUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-cartesian-dist-min', 'plotly-cartesian.min.js'));
         const controllerUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewController.js'));
 
         preview.nodes = nodes;
