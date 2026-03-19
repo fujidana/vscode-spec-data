@@ -5,7 +5,7 @@ import type { Node, ParserResult, ParserSuccess } from './dataParser';
 
 // @types/plotly.js contains DOM objects and thus
 // `tsc -p .` fails without `skipLibCheck`.
-import type { PlotData, Layout } from 'plotly.js';
+import type { PlotData, Layout, Template } from 'plotly.js';
 // type PlotData = any;
 // type Layout = any;
 import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
@@ -459,7 +459,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     }
                     this.lastScrollEditorTimeStamp = now;
                 }
-            } else if (messageIn.type === 'requestPlotData') {
+            } else if (messageIn.type === 'requestLinePlotData') {
                 if (preview.nodes) {
                     let index = 0;
                     const node = preview.nodes.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
@@ -473,11 +473,25 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                         const y2Data = y2Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
 
                         const messageOut: MessageToWebview = {
-                            type: 'updatePlot',
+                            type: 'updateLinePlot',
                             graphNumber: messageIn.graphNumber,
                             x: xData,
                             y1: y1Data,
                             y2: y2Data,
+                            action: messageIn.callback
+                        };
+                        preview.panel.webview.postMessage(messageOut);
+                    }
+                }
+            } else if (messageIn.type === 'requestHeatmapData') {
+                if (preview.nodes) {
+                    let index = 0;
+                    const node = preview.nodes.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
+                    if (node && node.type === 'scanData' && node.data.length) {
+                        const messageOut: MessageToWebview = {
+                            type: 'updateHeatmap',
+                            graphNumber: messageIn.graphNumber,
+                            z: node.data,
                             action: messageIn.callback
                         };
                         preview.panel.webview.postMessage(messageOut);
@@ -568,7 +582,7 @@ function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscod
 
     // Apply CSP regardless of user settings when in untrusted workspaces.
     const metaCspStr = !vscode.workspace.isTrusted || config.get<boolean>('applyContentSecurityPolicy', true)
-        ? `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src 'unsafe-inline'; script-src ${cspSource};">`
+        ? `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src ${cspSource};">`
         : '';
 
     function getSanitizedString(text: string) {
@@ -667,19 +681,19 @@ Show Prescan Table
             const data = node.data;
             const headers = node.headers;
 
-            lines.push(`<div ${getAttributesForNode(node)}>`);
+            lines.push(`<div ${getAttributesForNode(node)} data-subtype="${node.subtype}">`);
             if (data.length) {
                 lines.push(`<p>
 <label>
 <input type="checkbox" class="showPlotInput">
 Show Plot
 </label>`);
-                const size = Math.min((node.xAxisSelectable ? headers.length + 1 : headers.length), 4);
-                lines.push(getAxisSelectAndOptions('x', [...headers, '[point]'], size, false, !node.xAxisSelectable));
+                const size = Math.min((node.subtype === 'xy' ? headers.length + 1 : headers.length), 4);
+                lines.push(getAxisSelectAndOptions('x', [...headers, '[point]'], size, false, node.subtype === 'y'));
                 lines.push(getAxisSelectAndOptions('y1', headers, size, true, false));
                 lines.push(getAxisSelectAndOptions('y2', [...headers, '[none]'], size, true, !preview.enableRightAxis));
-                lines.push(`.</p>
-<div class="graphDiv"></div>`);
+                lines.push(`</p>
+<div class="graphDiv" data-subtype="${node.subtype}"></div>`);
             }
             lines.push(`</div>`);
             // } else if (node.type === 'unknown') {
@@ -693,7 +707,7 @@ Show Plot
 
 type ColorThemeKind = 'light' | 'dark' | 'highContrast' | 'highContrastLight';
 
-function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope) {
+function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope): Template {
     let traceTemplate: Partial<PlotData>[]; // Record<string, unknown>[];
     let layoutTemplate: Partial<Layout>; // Record<string, unknown>;
 

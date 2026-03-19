@@ -4,20 +4,21 @@ import type { Template } from 'plotly.js';
 // type Template = any;
 
 export interface GraphParam {
-    selections: {
+    subtype: 'y' | 'xy' | 'z';
+    hidden?: boolean;
+    selections?: {
         x: number;
         y1: number[];
         y2: number[];
-    }
-    hidden: boolean;
-    y1Log: boolean;
-    y2Log: boolean;
+    };
+    y1Log?: boolean;
+    y2Log?: boolean;
 }
 
 export interface State {
     template: Template | undefined;
     tableParams: { [index: number]: { hidden: boolean } };
-    graphParams: { [index: number]: Partial<GraphParam> };
+    graphParams: { [index: number]: GraphParam };
     sourceUri: string;
     lockPreview: boolean;
     enableMultipleSelection: boolean;
@@ -35,7 +36,8 @@ export type MessageToWebview =
     | LockPreviewMessage
     | ScrollPreviewMessage
     | SetTemplateMessage
-    | UpdatePlotMessage
+    | UpdateLinePlotMessage
+    | UpdateHeatmapMessage
     | EnableMultipleSelectionMessage
     | EnableRightAxisMessage
     | EnableEditorScrollMessage
@@ -58,12 +60,19 @@ interface SetTemplateMessage extends BaseMessage {
     callback: CallbackType;
 }
 
-interface UpdatePlotMessage extends BaseMessage {
-    type: 'updatePlot';
+interface UpdateLinePlotMessage extends BaseMessage {
+    type: 'updateLinePlot';
     graphNumber: number;
     x: { label: string, array: number[] };
     y1: { label: string, array: number[] }[];
     y2: { label: string, array: number[] }[];
+    action: CallbackType;
+}
+
+interface UpdateHeatmapMessage extends BaseMessage {
+    type: 'updateHeatmap';
+    graphNumber: number;
+    z: number[][];
     action: CallbackType;
 }
 
@@ -94,7 +103,8 @@ interface RestoreScrallMessage extends BaseMessage {
 
 export type MessageFromWebview =
     | ScrollEditorMessage
-    | requestPlotDataMessage
+    | requestLinePlotDataMessage
+    | requestHeatmapDataMessage
     | ContentLoadedMessage;
 
 interface ScrollEditorMessage extends BaseMessage {
@@ -102,14 +112,20 @@ interface ScrollEditorMessage extends BaseMessage {
     line: number;
 }
 
-interface requestPlotDataMessage extends BaseMessage {
-    type: 'requestPlotData';
+interface requestLinePlotDataMessage extends BaseMessage {
+    type: 'requestLinePlotData';
     graphNumber: number;
     selections: {
         x: number,
         y1: number[],
         y2: number[]
     };
+    callback: CallbackType;
+}
+
+interface requestHeatmapDataMessage extends BaseMessage {
+    type: 'requestHeatmapData';
+    graphNumber: number;
     callback: CallbackType;
 }
 

@@ -4,11 +4,17 @@ import { minimatch } from 'minimatch';
 export const SPEC_DATA_FILTER = { language: 'spec-data' } as const;
 export const CSV_COLUMNS_FILTER = { language: 'csv-column' } as const;
 export const CSV_ROWS_FILTER = { language: 'csv-row' } as const;
+export const CSV_MATRIX_FILTER = { language: 'csv-matrix' } as const;
 export const DPPMCA_FILTER = { language: 'dppmca' } as const;
 export const CHIPLOT_FILTER = { language: 'chiplot' } as const;
-export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER] as const;
-export const LANGUAGE_IDS = DOCUMENT_SELECTOR.map(filter => filter.language);
-export type LanguageIds = typeof LANGUAGE_IDS[number];
+
+const CSV_DOCUMENT_SELECTOR = [CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, CSV_MATRIX_FILTER] as const;
+const CSV_LANGUAGES = CSV_DOCUMENT_SELECTOR.map(filter => filter.language);
+type CsvLanguage = typeof CSV_LANGUAGES[number];
+
+export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, CSV_MATRIX_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER] as const;
+const LANGUAGE_IDS = DOCUMENT_SELECTOR.map(filter => filter.language);
+type SupportedLanguage = typeof LANGUAGE_IDS[number];
 
 export type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
 interface BaseNode { type: string, lineStart: number, lineEnd: number }
@@ -18,7 +24,7 @@ interface CommentNode extends BaseNode { type: 'comment', value: string }
 interface NameListNode extends BaseNode { type: 'nameList', kind: string, values: string[], subtype: string }
 interface ValueListNode extends BaseNode { type: 'valueList', kind: string, values: number[], subtype: string }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
-interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], xAxisSelectable: boolean }
+interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], subtype: 'y' | 'xy' | 'z' }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
 export type ParserResult = ParserSuccess | ParserFailure | undefined;
@@ -49,9 +55,11 @@ export function parseDocument(document: vscode.TextDocument, token: vscode.Cance
     if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
         parserResult = parseSpecDataContent(document.getText(), token);
     } else if (vscode.languages.match(CSV_COLUMNS_FILTER, document)) {
-        parserResult = parseCsvContent(document.getText(), true, token);
+        parserResult = parseCsvContent(document.getText(), CSV_COLUMNS_FILTER.language, token);
     } else if (vscode.languages.match(CSV_ROWS_FILTER, document)) {
-        parserResult = parseCsvContent(document.getText(), false, token);
+        parserResult = parseCsvContent(document.getText(), CSV_ROWS_FILTER.language, token);
+    } else if (vscode.languages.match(CSV_MATRIX_FILTER, document)) {
+        parserResult = parseCsvContent(document.getText(), CSV_MATRIX_FILTER.language, token);
     } else if (vscode.languages.match(DPPMCA_FILTER, document)) {
         parserResult = parseDppmcaContent(document.getText(), token);
     } else if (vscode.languages.match(CHIPLOT_FILTER, document)) {
@@ -122,9 +130,11 @@ export async function parseTextFromUri(uri: vscode.Uri): Promise<ParserResult> {
     if (language === SPEC_DATA_FILTER.language) {
         return parseSpecDataContent(text);
     } else if (language === CSV_COLUMNS_FILTER.language) {
-        return parseCsvContent(text, true);
+        return parseCsvContent(text, language);
     } else if (language === CSV_ROWS_FILTER.language) {
-        return parseCsvContent(text, false);
+        return parseCsvContent(text, language);
+    } else if (language === CSV_MATRIX_FILTER.language) {
+        return parseCsvContent(text, language);
     } else if (language === DPPMCA_FILTER.language) {
         return parseDppmcaContent(text);
     } else if (language === CHIPLOT_FILTER.language) {
@@ -311,7 +321,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
             // transpose the two-dimensional data array
             const data2 = data.length > 0 ? data[0].map((_, colIndex) => data.map(row => row[colIndex])) : data;
 
-            nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineNumber, headers: headers, data: data2, xAxisSelectable: true });
+            nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineNumber, headers: headers, data: data2, subtype: 'xy' });
             columnCountInHeader = -1;
             columnCountInBody = -1;
         } else if ((matches = line.match(unknownRegex)) !== null) {
@@ -323,11 +333,10 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
 }
 
 // character-separated values. The delimiter is auto-detected from a horizontal tab, a whitespace, or a comma. 
-function parseCsvContent(text: string, columnWise: boolean, token?: vscode.CancellationToken): ParserResult {
+function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.CancellationToken): ParserResult {
     const lines = text.split(/\r\n|\n/);
     const lineCount = lines.length;
 
-    const language = columnWise ? CSV_COLUMNS_FILTER.language : CSV_ROWS_FILTER.language;
     const nodes: Node[] = [];
     const diagnostics: vscode.Diagnostic[] = [];
 
@@ -353,7 +362,7 @@ function parseCsvContent(text: string, columnWise: boolean, token?: vscode.Cance
                 // Skip a comment line after appending the text to the nodes.
                 nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: line.substring(1) });
                 continue;
-            } else if (!columnWise && line.startsWith('@A ')) {
+            } else if (language === 'csv-row' && line.startsWith('@A ')) {
                 // If the line starts with "@A", it is data in ESRF's MCA format.
                 // Trim the prefix: "@A ".
                 isEsrfMca = true;
@@ -439,15 +448,24 @@ function parseCsvContent(text: string, columnWise: boolean, token?: vscode.Cance
         }
 
         // Add the read data to the nodes.
-        if (columnWise) {
+        let subtype: 'y' | 'xy' | 'z';
+        if (language === 'csv-column') {
+            subtype = 'xy';
+            // Transpose the two-dimensional data array.
             data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
+            // Create a header if not exists.
             if (!headers) {
                 headers = Array(data.length).fill(0).map((_x, i) => `column ${i}`);
             }
-        } else {
+        } else if (language === 'csv-row') {
+            subtype = 'y';
+            // Create a header.
             headers = Array(data.length).fill(0).map((_x, i) => `row ${i}`);
+        } else { // language === 'csv-matrix'
+            subtype = 'z';
+            headers = [];
         }
-        nodes.push({ type: 'scanData', lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers: headers, data: data, xAxisSelectable: columnWise });
+        nodes.push({ type: 'scanData', lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers, data, subtype });
     }
 
     if (nodes.some(node => node.type === 'scanData')) {
@@ -488,7 +506,7 @@ function parseDppmcaContent(text: string, token?: vscode.CancellationToken): Par
                 }
                 if (prevHeader.name === 'DATA') {
                     const data1d = prevHeader.items.map(line => parseInt(line));
-                    nodes.push({ type: 'scanData', lineStart: prevHeader.range.start.line, lineEnd: lineNumber, headers: ['count'], data: [data1d], xAxisSelectable: false });
+                    nodes.push({ type: 'scanData', lineStart: prevHeader.range.start.line, lineEnd: lineNumber, headers: ['count'], data: [data1d], subtype: 'y' });
                 }
             }
             if (matches[1].endsWith('END')) {
@@ -604,7 +622,7 @@ function parseChiplotContent(text: string, token?: vscode.CancellationToken): Pa
 
     const nodes: Node[] = [];
     nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, value: title });
-    nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineNumber, headers: headers2, data: data2, xAxisSelectable: true });
+    nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineNumber, headers: headers2, data: data2, subtype: 'xy' });
 
     return { language, nodes, diagnostics };
 }

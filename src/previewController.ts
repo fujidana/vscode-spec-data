@@ -47,7 +47,10 @@ let lastScrollPreviewTimeStamp = 0;
 let timer1: NodeJS.Timeout | undefined;
 let timer2: NodeJS.Timeout | undefined;
 
-// a handler for a checkbox to control the table visibility
+/**
+ * When a checkbox to show/hide the motor-position table is toggled, this handler is called.
+ * It toggles the visibility of the table and saves the state.
+ */
 const showValueListInputChangeHandler = function (event: Event) {
     let matches: RegExpMatchArray | null;
     if (event.target && event.target instanceof HTMLInputElement && (matches = event.target.id.match(/^showValueListInput(\d+)$/)) !== null) {
@@ -65,7 +68,10 @@ const showValueListInputChangeHandler = function (event: Event) {
     }
 };
 
-// a handler for a checkbox to control the plot visibility
+/**
+ * When a checkbox to show/hide the plot is toggled, this handler is called.
+ * It toggles the visibility of the plot and saves the state.
+ */
 const showPlotInputChangeHandler = function (event: Event) {
     let matches: RegExpMatchArray | null;
     if (event.target && event.target instanceof HTMLInputElement && (matches = event.target.id.match(/^showPlotInput(\d+)$/)) !== null) {
@@ -76,35 +82,58 @@ const showPlotInputChangeHandler = function (event: Event) {
         const y2AxisSelect = document.getElementById(`y2AxisSelect${index}`) as HTMLSelectElement | null;
         const y1LogInput = document.getElementById(`y1LogInput${index}`) as HTMLInputElement | null;
         const y2LogInput = document.getElementById(`y2LogInput${index}`) as HTMLInputElement | null;
-        if (xAxisSelect && y1AxisSelect && y2AxisSelect && y1LogInput && y2LogInput) {
+        const graphDiv = document.getElementById(`graphDiv${index}`) as HTMLDivElement | null;
+        if (xAxisSelect && y1AxisSelect && y2AxisSelect && y1LogInput && y2LogInput && graphDiv) {
+            // Get the current selection of axes.
             const selections = {
                 x: xAxisSelect.hidden ? -1 : xAxisSelect.selectedIndex,
                 y1: [...y1AxisSelect.selectedOptions].map(option => option.index),
                 y2: y2AxisSelect.hidden ? [] : [...y2AxisSelect.selectedOptions].map(option => option.index)
             };
 
-            // show or hide the graph
-            if (showPlotInput.checked) {
-                const messageOut: MessageFromWebview = {
-                    type: 'requestPlotData',
-                    graphNumber: index,
-                    selections,
-                    callback: 'newPlot'
-                };
-                vscode.postMessage(messageOut);
+            // Show or hide the plot according to the checkbox.
+            if (graphDiv.dataset.subtype === 'y' || graphDiv.dataset.subtype === 'xy') {
+                // In case the target is a line plot...
+                if (showPlotInput.checked) {
+                    const messageOut: MessageFromWebview = {
+                        type: 'requestLinePlotData',
+                        graphNumber: index,
+                        selections,
+                        callback: 'newPlot'
+                    };
+                    vscode.postMessage(messageOut);
+                } else {
+                    Plotly.purge(graphDiv);
+                    // console.log('Plot purged');
+                }
+            } else if (graphDiv.dataset.subtype === 'z') {
+                // In case the target is a heatmap...
+                if (showPlotInput.checked) {
+                    const messageOut: MessageFromWebview = {
+                        type: 'requestHeatmapData',
+                        graphNumber: index,
+                        callback: 'newPlot'
+                    };
+                    vscode.postMessage(messageOut);
+                } else {
+                    Plotly.purge(graphDiv);
+                    // console.log('Plot purged');
+                }
             } else {
-                Plotly.purge(`graphDiv${index}`);
+                // If the subtype is not recognized, do nothing.
+                return;
             }
 
-            // enable or disable the dropdown axis selectors
+            // Enable or disable axis selectors and log checkboxes according to the checkbox.
             xAxisSelect.disabled = !showPlotInput.checked;
             y1AxisSelect.disabled = !showPlotInput.checked;
             y2AxisSelect.disabled = !showPlotInput.checked;
             y1LogInput.disabled = !showPlotInput.checked;
             y2LogInput.disabled = !showPlotInput.checked;
 
-            // save the current state
+            // Save the current state.
             state.graphParams[index] = {
+                subtype: graphDiv.dataset.subtype,
                 selections: selections,
                 y1Log: y1LogInput.checked,
                 y2Log: y2LogInput.checked,
@@ -115,7 +144,10 @@ const showPlotInputChangeHandler = function (event: Event) {
     }
 };
 
-// a handler for a select (dropdown list) to select columns for X and Y axes.
+/**
+ * When a dropdown list to select columns for X and Y axes is changed, this handler is called.
+ * It redraws the graph according to the new selection and saves the state.
+ */
 const plotAxisSelectChangeHandler = function (event: Event) {
     let matches: RegExpMatchArray | null;
     if (event.target && event.target instanceof HTMLSelectElement && (matches = event.target.id.match(/^(x|y1|y2)AxisSelect(\d+)$/)) !== null) {
@@ -123,34 +155,44 @@ const plotAxisSelectChangeHandler = function (event: Event) {
         const xAxisSelect = document.getElementById(`xAxisSelect${index}`) as HTMLSelectElement | null;
         const y1AxisSelect = document.getElementById(`y1AxisSelect${index}`) as HTMLSelectElement | null;
         const y2AxisSelect = document.getElementById(`y2AxisSelect${index}`) as HTMLSelectElement | null;
-        if (xAxisSelect && y1AxisSelect && y2AxisSelect) {
-            const selections = {
-                x: xAxisSelect.hidden ? -1 : xAxisSelect.selectedIndex,
-                y1: [...y1AxisSelect.selectedOptions].map(option => option.index),
-                y2: y2AxisSelect.hidden ? [] : [...y2AxisSelect.selectedOptions].map(option => option.index)
-            };
+        const graphDiv = document.getElementById(`graphDiv${index}`) as HTMLDivElement | null;
+        if (xAxisSelect && y1AxisSelect && y2AxisSelect && graphDiv) {
+            if (graphDiv.dataset.subtype === 'y' || graphDiv.dataset.subtype === 'xy') {
+                // Get the current selection of axes.
+                const selections = {
+                    x: xAxisSelect.hidden ? -1 : xAxisSelect.selectedIndex,
+                    y1: [...y1AxisSelect.selectedOptions].map(option => option.index),
+                    y2: y2AxisSelect.hidden ? [] : [...y2AxisSelect.selectedOptions].map(option => option.index)
+                };
 
-            // redraw the graph
-            const messageOut: MessageFromWebview = {
-                type: 'requestPlotData',
-                graphNumber: index,
-                selections,
-                callback: 'react'
-            };
-            vscode.postMessage(messageOut);
+                // Redraw the graph.
+                const messageOut: MessageFromWebview = {
+                    type: 'requestLinePlotData',
+                    graphNumber: index,
+                    selections,
+                    callback: 'react'
+                };
+                vscode.postMessage(messageOut);
 
-            // save the current state
-            if (index in state.graphParams) {
-                state.graphParams[index].selections = selections;
-            } else {
-                state.graphParams[index] = { selections };
+                // Save the current state.
+                if (index in state.graphParams) {
+                    state.graphParams[index].selections = selections;
+                } else {
+                    state.graphParams[index] = {
+                        subtype: graphDiv.dataset.subtype,
+                        selections,
+                    };
+                }
+                vscode.setState(state);
             }
-            vscode.setState(state);
+
         }
     }
 };
 
-// a handler for a checkbox to select the axis scale from log or linear.
+/**
+ * When a checkbox to select the axis scale from log or linear is toggled, this handler is called.
+ */
 const logAxisInputChangeHandler = function (event: Event) {
     let matches: RegExpMatchArray | null;
     if (event.target && event.target instanceof HTMLInputElement && (matches = event.target.id.match(/^(y1|y2)LogInput(\d+)$/)) !== null) {
@@ -158,59 +200,85 @@ const logAxisInputChangeHandler = function (event: Event) {
         const index = parseInt(matches[2]);
         const graphDiv = document.getElementById(`graphDiv${index}`) as HTMLDivElement | null;
         if (graphDiv) {
-            let layout: any; // Partial<Plotly.Layout>;
-            let newGraphParam: Partial<GraphParam>;
-            const axisTypeValue = logAxisInput.checked ? 'log' : 'linear';
-            if (matches[1] === 'y2') {
-                layout = { 'yaxis2.type': axisTypeValue };
-                newGraphParam = { y2Log: logAxisInput.checked };
-            } else {
-                layout = { 'yaxis.type': axisTypeValue };
-                newGraphParam = { y1Log: logAxisInput.checked };
-            }
+            if (graphDiv.dataset.subtype === 'y' || graphDiv.dataset.subtype === 'xy') {
+                let layout: any; // Partial<Plotly.Layout>;
+                let newGraphParam: Partial<GraphParam>;
 
-            Plotly.relayout(graphDiv, layout);
-            state.graphParams[index] = index in state.graphParams ? { ...state.graphParams[index], ...newGraphParam } : newGraphParam;
-            vscode.setState(state);
+                const axisTypeValue = logAxisInput.checked ? 'log' : 'linear';
+                if (matches[1] === 'y2') {
+                    layout = { 'yaxis2.type': axisTypeValue };
+                    newGraphParam = { y2Log: logAxisInput.checked };
+                } else {
+                    layout = { 'yaxis.type': axisTypeValue };
+                    newGraphParam = { y1Log: logAxisInput.checked };
+                }
+                // Redraw the graph.
+                Plotly.relayout(graphDiv, layout);
+                // console.log('Graph relayouted with', layout);
+
+                // Save the current state.
+                if (index in state.graphParams) {
+                    state.graphParams[index] = { ...state.graphParams[index], ...newGraphParam };
+                } else {
+                    state.graphParams[index] = { subtype: graphDiv.dataset.subtype, ...newGraphParam };
+                }
+                vscode.setState(state);
+            }
         }
     }
 };
 
-// show all graphs
+/**
+ * Redraw all graphs according to the current state.
+ * This is called when the color theme is changed or when the preview is loaded.
+ */
 const showAllGraphs = (callback: CallbackType) => {
     const scanDataDivs = document.body.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>;
     for (let index = 0; index < scanDataDivs.length; index++) {
-        const div = scanDataDivs[index];
-        const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
-        const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const y1AxisSelects = div.getElementsByClassName('y1AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const y2AxisSelects = div.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const graphDivs = div.getElementsByClassName('graphDiv') as HTMLCollectionOf<HTMLDivElement>;
-        if ([showPlotInputs, xAxisSelects, y1AxisSelects, y2AxisSelects, graphDivs].every(element => element.length === 1)) {
+        const scanDataDiv = scanDataDivs[index];
+        const graphDivs = scanDataDiv.getElementsByClassName('graphDiv') as HTMLCollectionOf<HTMLDivElement>;
+        const showPlotInputs = scanDataDiv.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
+        const xAxisSelects = scanDataDiv.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y1AxisSelects = scanDataDiv.getElementsByClassName('y1AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y2AxisSelects = scanDataDiv.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        if ([graphDivs, showPlotInputs, xAxisSelects, y1AxisSelects, y2AxisSelects].every(element => element.length === 1)) {
             if (showPlotInputs[0].checked) {
+                const graphDiv = graphDivs[0];
+
                 if (callback === 'newPlot') {
                     const xAxisSelect = xAxisSelects[0];
                     const y1AxisSelect = y1AxisSelects[0];
                     const y2AxisSelect = y2AxisSelects[0];
 
-                    const selections = {
-                        x: xAxisSelect.hidden ? -1 : xAxisSelect.selectedIndex,
-                        y1: [...y1AxisSelect.selectedOptions].map(option => option.index),
-                        y2: y2AxisSelect.hidden ? [] : [...y2AxisSelect.selectedOptions].map(option => option.index)
-                    };
+                    // Draw the graph according to the current selection of axes.
+                    if (graphDiv.dataset.subtype === 'y' || graphDiv.dataset.subtype === 'xy') {
 
-                    // redraw the graph
-                    const messageOut: MessageFromWebview = {
-                        type: 'requestPlotData',
-                        graphNumber: index,
-                        selections,
-                        callback
-                    };
-                    vscode.postMessage(messageOut);
+                        const selections = {
+                            x: xAxisSelect.hidden ? -1 : xAxisSelect.selectedIndex,
+                            y1: [...y1AxisSelect.selectedOptions].map(option => option.index),
+                            y2: y2AxisSelect.hidden ? [] : [...y2AxisSelect.selectedOptions].map(option => option.index)
+                        };
+
+                        const messageOut: MessageFromWebview = {
+                            type: 'requestLinePlotData',
+                            graphNumber: index,
+                            selections,
+                            callback
+                        };
+                        vscode.postMessage(messageOut);
+                    } else if (graphDiv.dataset.subtype === 'z') {
+                        const messageOut: MessageFromWebview = {
+                            type: 'requestHeatmapData',
+                            graphNumber: index,
+                            callback
+                        };
+                        vscode.postMessage(messageOut);
+                    }
                 } else if (callback === 'relayout') {
-                    Plotly.relayout(graphDivs[0], {
+                    Plotly.relayout(graphDiv, {
                         template: state.template
                     });
+                    // console.log('Graph relayouted.');
                 }
             }
         }
@@ -226,17 +294,17 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         vscode.setState(state);
         showAllGraphs(messageIn.callback);
     } else if (messageIn.type === 'scrollPreview') {
-        const element = document.getElementById(messageIn.elementId);
-        if (event.timeStamp - lastScrollEditorTimeStamp > 1500 && element) {
+        let element: HTMLElement | null;
+        if (event.timeStamp - lastScrollEditorTimeStamp > 1500 && (element = document.getElementById(messageIn.elementId)) !== null) {
             // Ignore 'scrollPreview' message soon (< 1.5 sec) after sending 'scrollEditor' message.
             element.scrollIntoView({ block: 'start' });
             lastScrollPreviewTimeStamp = event.timeStamp;
         }
-    } else if (messageIn.type === 'updatePlot') {
+    } else if (messageIn.type === 'updateLinePlot') {
         const graphDiv = document.getElementById(`graphDiv${messageIn.graphNumber}`);
         const y1LogInput = document.getElementById(`y1LogInput${messageIn.graphNumber}`) as HTMLInputElement | null;
         const y2LogInput = document.getElementById(`y2LogInput${messageIn.graphNumber}`) as HTMLInputElement | null;
-        if (graphDiv && y1LogInput && y2LogInput) {
+        if (graphDiv && y1LogInput && y2LogInput && (graphDiv.dataset.subtype === 'y' || graphDiv.dataset.subtype === 'xy')) {
             const y1Data: Partial<Plotly.PlotData>[] = messageIn.y1.map(y_i => {
                 return {
                     x: messageIn.x.array,
@@ -287,8 +355,33 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
             if (messageIn.action === 'newPlot') {
                 graphDiv.hidden = false;
                 Plotly.newPlot(graphDiv, data, layout, { responsive: true });
+                // console.log('New plot drawn.');
             } else if (messageIn.action === 'react') {
                 Plotly.react(graphDiv, data, layout);
+                // console.log('Plot reactivated.');
+            }
+        }
+    } else if (messageIn.type === 'updateHeatmap') {
+        const graphDiv = document.getElementById(`graphDiv${messageIn.graphNumber}`);
+        if (graphDiv && graphDiv.dataset.subtype === 'z') {
+            const data: Partial<Plotly.PlotData>[] = [{
+                z: messageIn.z,
+                type: 'heatmap',
+                visible: true,
+            }];
+            const layout: Partial<Plotly.Layout> = {
+                template: state.template,
+                height: plotHeight,
+                margin: { t: 20, r: 20 }
+            };
+
+            if (messageIn.action === 'newPlot') {
+                graphDiv.hidden = false;
+                Plotly.newPlot(graphDiv, data, layout, { responsive: true });
+                // console.log('New heatmap drawn.');
+            } else if (messageIn.action === 'react') {
+                Plotly.react(graphDiv, data, layout);
+                // console.log('Heatmap reactivated.');
             }
         }
     } else if (messageIn.type === 'lockPreview') {
@@ -341,8 +434,13 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         state.enableMultipleSelection = messageIn.flag;
         vscode.setState(state);
     } else if (messageIn.type === 'enableRightAxis') {
-        const y2Elements = document.body.getElementsByClassName('y2') as HTMLCollectionOf<HTMLElement>;
-        [...y2Elements].forEach(element => element.hidden = !messageIn.flag);
+        const scanDataDivs = document.body.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>;
+        [...scanDataDivs].forEach(scanDataDiv => {
+            if (scanDataDiv.dataset.subtype === 'y' || scanDataDiv.dataset.subtype === 'xy') {
+                const y2Elements = scanDataDiv.getElementsByClassName('y2') as HTMLCollectionOf<HTMLElement>;
+                [...y2Elements].forEach(element => element.hidden = !messageIn.flag);
+            }
+        });
         state.enableRightAxis = messageIn.flag;
         vscode.setState(state);
     } else if (messageIn.type === 'enableEditorScroll') {
@@ -398,14 +496,14 @@ window.addEventListener('DOMContentLoaded', _event => {
     // Initialize scan data elements
     const scanDataDivs = document.body.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>;
     for (let index = 0; index < scanDataDivs.length; index++) {
-        const div = scanDataDivs[index];
-        const showPlotInputs = div.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
-        const xAxisSelects = div.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const y1AxisSelects = div.getElementsByClassName('y1AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const y2AxisSelects = div.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
-        const y1LogInputs = div.getElementsByClassName('y1LogInput') as HTMLCollectionOf<HTMLInputElement>;
-        const y2LogInputs = div.getElementsByClassName('y2LogInput') as HTMLCollectionOf<HTMLInputElement>;
-        const graphDivs = div.getElementsByClassName('graphDiv') as HTMLCollectionOf<HTMLDivElement>;
+        const scanDataDiv = scanDataDivs[index];
+        const showPlotInputs = scanDataDiv.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
+        const xAxisSelects = scanDataDiv.getElementsByClassName('xAxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y1AxisSelects = scanDataDiv.getElementsByClassName('y1AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y2AxisSelects = scanDataDiv.getElementsByClassName('y2AxisSelect') as HTMLCollectionOf<HTMLSelectElement>;
+        const y1LogInputs = scanDataDiv.getElementsByClassName('y1LogInput') as HTMLCollectionOf<HTMLInputElement>;
+        const y2LogInputs = scanDataDiv.getElementsByClassName('y2LogInput') as HTMLCollectionOf<HTMLInputElement>;
+        const graphDivs = scanDataDiv.getElementsByClassName('graphDiv') as HTMLCollectionOf<HTMLDivElement>;
 
         if ([showPlotInputs, xAxisSelects, y1AxisSelects, y2AxisSelects, y1LogInputs, y2LogInputs, graphDivs].every(element => element.length === 1)) {
             const showPlotInput = showPlotInputs[0];
@@ -416,6 +514,7 @@ window.addEventListener('DOMContentLoaded', _event => {
             const y2LogInput = y2LogInputs[0];
             const graphDiv = graphDivs[0];
 
+            scanDataDiv.setAttribute('id', `scanData${index}`);
             showPlotInput.setAttribute('id', `showPlotInput${index}`);
             xAxisSelect.setAttribute('id', `xAxisSelect${index}`);
             y1AxisSelect.setAttribute('id', `y1AxisSelect${index}`);
@@ -476,11 +575,18 @@ window.addEventListener('DOMContentLoaded', _event => {
             }
             // toggle multiple slection: end
 
-            // toggle right axis: start
-            // This does essentially the same as "enableRightAxis" event handler.
-            const y2Elements = div.getElementsByClassName('y2') as HTMLCollectionOf<HTMLElement>;
-            [...y2Elements].forEach(element => element.hidden = !state.enableRightAxis);
-            // toggle right axis: end
+            if (graphDiv.dataset.subtype === 'y' || graphDiv.dataset.subtype === 'xy') {
+                // toggle right axis: start
+                // This does essentially the same as "enableRightAxis" event handler.
+                const y2Elements = scanDataDiv.getElementsByClassName('y2') as HTMLCollectionOf<HTMLElement>;
+                [...y2Elements].forEach(element => element.hidden = !state.enableRightAxis);
+                // toggle right axis: end
+            } else if (graphDiv.dataset.subtype === 'z') {
+                const xElements = scanDataDiv.getElementsByClassName('x') as HTMLCollectionOf<HTMLElement>;
+                const y1Elements = scanDataDiv.getElementsByClassName('y1') as HTMLCollectionOf<HTMLElement>;
+                const y2Elements = scanDataDiv.getElementsByClassName('y2') as HTMLCollectionOf<HTMLElement>;
+                [...xElements, ...y1Elements, ...y2Elements].forEach(element => element.hidden = true);
+            }
 
             y1LogInput.checked = state.graphParams[index]?.y1Log ?? false;
             y2LogInput.checked = state.graphParams[index]?.y2Log ?? false;
