@@ -3,9 +3,11 @@
 import type { Template } from 'plotly.js';
 // type Template = any;
 
+type GraphMode = 'line' | 'heatmap';
+
 export interface GraphParam {
-    subtype: 'y' | 'xy' | 'z';
-    hidden?: boolean;
+    mode: GraphMode;
+    hidden: boolean;
     selections?: {
         x: number;
         y1: number[];
@@ -16,9 +18,10 @@ export interface GraphParam {
 }
 
 export interface State {
+    fresh: boolean;
     template: Template | undefined;
-    tableParams: { [index: number]: { hidden: boolean } };
-    graphParams: { [index: number]: GraphParam };
+    tableParams: { hidden: boolean }[];
+    graphParams: GraphParam[];
     sourceUri: string;
     lockPreview: boolean;
     enableMultipleSelection: boolean;
@@ -42,7 +45,7 @@ export type MessageToWebview =
     | EnableRightAxisMessage
     | EnableEditorScrollMessage
     | SetScrollBehaviorMessage
-    | RestoreScrallMessage;
+    | RestoreScrollMessage;
 
 interface LockPreviewMessage extends BaseMessage {
     type: 'lockPreview';
@@ -96,14 +99,14 @@ interface SetScrollBehaviorMessage extends BaseMessage {
     value: 'auto' | 'smooth';
 }
 
-interface RestoreScrallMessage extends BaseMessage {
+interface RestoreScrollMessage extends BaseMessage {
     type: 'restoreScroll';
     delay: boolean;
 }
 
 export type MessageFromWebview =
     | ScrollEditorMessage
-    | requestLinePlotDataMessage
+    | requestLineDataMessage
     | requestHeatmapDataMessage
     | ContentLoadedMessage;
 
@@ -112,13 +115,13 @@ interface ScrollEditorMessage extends BaseMessage {
     line: number;
 }
 
-interface requestLinePlotDataMessage extends BaseMessage {
-    type: 'requestLinePlotData';
+interface requestLineDataMessage extends BaseMessage {
+    type: 'requestLineData';
     graphNumber: number;
     selections: {
-        x: number,
-        y1: number[],
-        y2: number[]
+        x: number;
+        y1: number[];
+        y2: number[];
     };
     callback: CallbackType;
 }

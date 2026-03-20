@@ -21,8 +21,8 @@ interface BaseNode { type: string, lineStart: number, lineEnd: number }
 interface FileNode extends BaseNode { type: 'file', value: string }
 interface DateNode extends BaseNode { type: 'date', value: string }
 interface CommentNode extends BaseNode { type: 'comment', value: string }
-interface NameListNode extends BaseNode { type: 'nameList', kind: string, values: string[], subtype: string }
-interface ValueListNode extends BaseNode { type: 'valueList', kind: string, values: number[], subtype: string }
+interface NameListNode extends BaseNode { type: 'nameList', kind: 'motor' | 'counter', values: string[], subtype: 'name' | 'mnemonic' }
+interface ValueListNode extends BaseNode { type: 'valueList', kind: 'motor', values: number[], subtype: 'position' }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
 interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], subtype: 'y' | 'xy' | 'z' }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
@@ -206,34 +206,23 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
         } else if ((matches = line.match(commentRegex)) !== null) {
             nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: matches[2] });
         } else if ((matches = line.match(listRegex)) !== null) {
-            let listType: 'valueList' | 'nameList', kind: string, subtype: string, separator: string;
-            if (matches[1] === 'P') {
-                listType = 'valueList';
-                kind = 'motor';
-                subtype = 'position';
-                separator = ' ';
-            } else {
-                listType = 'nameList';
-                if (matches[1] === matches[1].toLowerCase()) {
-                    subtype = 'mnemonic';
-                    separator = ' ';
-                } else {
-                    subtype = 'name';
-                    separator = '  ';
-                }
-                if (matches[1].toLowerCase() === 'o') {
-                    kind = 'motor';
-                } else if (matches[1].toLowerCase() === 'j') {
-                    kind = 'counter';
-                } else {
-                    kind = matches[1];
-                }
-            }
+            const typeHint = matches[1] === 'P' ? {
+                listType: 'valueList',
+                kind: 'motor',
+                subtype: 'position',
+                separator: ' '
+            } as const : {
+                listType: 'nameList',
+                kind: matches[1].toLowerCase() === 'o' ? 'motor' : 'counter',
+                subtype: matches[1] === matches[1].toLowerCase() ? 'mnemonic' : 'name',
+                separator: matches[1] === matches[1].toLowerCase() ? ' ' : '  '
+            } as const;
+
             const listIndex = parseInt(matches[2]);
             const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
-            const values = matches[3].trimEnd().split(separator);
+            const values = matches[3].trimEnd().split(typeHint.separator);
 
-            if (prevNode && prevNode.type === listType && prevNode.kind === kind && prevNode.subtype === subtype) {
+            if (prevNode && prevNode.type === typeHint.listType && prevNode.kind === typeHint.kind && prevNode.subtype === typeHint.subtype) {
                 if (prevNodeIndex !== listIndex - 1) {
                     diagnostics.push(new vscode.Diagnostic(
                         new vscode.Range(lineNumber, 0, lineNumber, 2 + matches[2].length),
@@ -256,10 +245,10 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                         vscode.DiagnosticSeverity.Warning,
                     ));
                 }
-                if (listType === 'valueList') {
-                    nodes.push({ type: listType, lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: values.map(value => parseFloat(value)), subtype: subtype });
+                if (typeHint.listType === 'valueList') {
+                    nodes.push({ type: typeHint.listType, lineStart: lineNumber, lineEnd: lineNumber, kind: typeHint.kind, values: values.map(value => parseFloat(value)), subtype: typeHint.subtype });
                 } else {
-                    nodes.push({ type: listType, lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: values, subtype: subtype });
+                    nodes.push({ type: typeHint.listType, lineStart: lineNumber, lineEnd: lineNumber, kind: typeHint.kind, values: values, subtype: typeHint.subtype });
                 }
                 prevNodeIndex = listIndex; // normally 0.
             }

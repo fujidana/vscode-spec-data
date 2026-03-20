@@ -31,7 +31,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     private readonly subscriptions;
     private readonly previews: Preview[] = [];
     private readonly parserSessionMap: Map<string, ParserSession> = new Map();
-    private readonly diagnosticCollection: vscode.DiagnosticCollection;
+    private readonly diagnosticCollection = vscode.languages.createDiagnosticCollection('spec-data');
 
     private enablePreviewScroll: boolean;
     private livePreview: Preview | undefined = undefined;
@@ -48,7 +48,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         this.extensionUri = context.extensionUri;
         this.subscriptions = context.subscriptions;
 
-        this.diagnosticCollection = vscode.languages.createDiagnosticCollection('spec-data');
         this.colorThemeKind = vscode.window.activeColorTheme.kind;
 
         const config = vscode.workspace.getConfiguration('spec-data.preview');
@@ -62,9 +61,13 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 // it can be inferred from the active editor.
                 let uris: vscode.Uri[];
                 if (args && args.length > 0) {
-                    // typically, the type of args is [vscode.Uri, vscode.Uri[]]
-                    if (args.length >= 2 && Array.isArray(args[1]) && args[1].every(item => item instanceof vscode.Uri)) {
+                    // Typically, the type of args is [vscode.Uri, vscode.Uri[]].
+                    if (args.length >= 2 && Array.isArray(args[1]) && args[1].length > 0 && args[1].every(item => item instanceof vscode.Uri)) {
                         uris = args[1];
+                        // If not locked, a single preview is reused for multiple URIs and thus the URIs except the last one are not needed.
+                        if (!lockPreview) {
+                            uris = [uris[uris.length - 1]];
+                        }
                     } else if (args[0] instanceof vscode.Uri) {
                         uris = [args[0]];
                     } else {
@@ -72,7 +75,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                         return;
                     }
                 } else {
-                    // If the URI is not provided via the arguments, returns the URI and contents of the active editor.
+                    // If the URI is not provided via the arguments, get an URI from the active editor.
                     const editor = vscode.window.activeTextEditor;
                     if (editor) {
                         uris = [editor.document.uri];
@@ -83,15 +86,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 }
 
                 // Show the preview(s).
-                if (lockPreview) {
-                    for (const uri of uris) {
-                        this.showPreview(uri, lockPreview, showToSide);
-                    }
-                } else {
-                    if (uris.length > 0) {
-                        this.showPreview(uris[uris.length - 1], lockPreview, showToSide);
-                    }
-                }
+                uris.forEach(uri => { this.showPreview(uri, lockPreview, showToSide); });
             };
         };
 
@@ -162,10 +157,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 } else {
                     // If the active view is not a live preview...
                     if (this.livePreview) {
-                        // close the previous live view if it exists...
+                        // Close the previous live view if it exists.
                         this.livePreview.panel.dispose();
                     }
-                    // and set the active view to live view.
+                    // Set the active view to live view.
                     this.livePreview = activePreview;
                     const messageOut: MessageToWebview = { type: 'lockPreview', flag: false };
                     activePreview.panel.webview.postMessage(messageOut);
@@ -268,14 +263,16 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             this.colorThemeKind = colorTheme.kind;
         };
 
-        // When the extension is activated by opening a file for this extension.
+        // When the extension is activated by opening a file for this extension,
+        // the `onDidOpenTextDocument` event is not fired.
+        // Thus, run the parser session for each open document here.
         for (const document of vscode.workspace.textDocuments) {
             if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
                 this.runParserSession(document);
             }
         }
 
-        // register providers and commands
+        // Register providers and commands.
         context.subscriptions.push(
             vscode.commands.registerCommand('spec-data.showPreview', makeShowPreviewCallback(false, false)),
             vscode.commands.registerCommand('spec-data.showPreviewToSide', makeShowPreviewCallback(false, true)),
@@ -301,9 +298,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     }
 
     /**
-     * Required implementation of vscode.FoldingRangeProvider
+     * Required implementation of vscode.FoldingRangeProvider.
      */
-    public provideFoldingRanges(document: vscode.TextDocument, context: vscode.FoldingContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
+    public provideFoldingRanges(document: vscode.TextDocument, _context: vscode.FoldingContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
         if (token.isCancellationRequested) { return; }
 
         return this.parserSessionMap.get(document.uri.toString())?.promise.then(
@@ -312,7 +309,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     }
 
     /**
-     * Required implementation of vscode.DocumentSymbolProvider
+     * Required implementation of vscode.DocumentSymbolProvider.
      */
     public provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.SymbolInformation[] | vscode.DocumentSymbol[]> {
         if (token.isCancellationRequested) { return; }
@@ -345,7 +342,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     }
 
     /**
-     * Parse document contents.
+     * Parse the document content.
      * Cancellation token is integrated.
      */
     private runParserSession(document: vscode.TextDocument): void {
@@ -459,7 +456,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     }
                     this.lastScrollEditorTimeStamp = now;
                 }
-            } else if (messageIn.type === 'requestLinePlotData') {
+            } else if (messageIn.type === 'requestLineData') {
                 if (preview.nodes) {
                     let index = 0;
                     const node = preview.nodes.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
@@ -537,7 +534,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      */
     private async reloadPreview(preview: Preview, uri: vscode.Uri, forcesReload = false): Promise<Preview | undefined> {
         // If the source URI is the same as the preview URI, do not reload.
-        if (forcesReload === false && preview.uri.toString() === uri.toString()) {
+        if (!forcesReload && preview.uri.toString() === uri.toString()) {
             return preview;
         }
 
@@ -624,7 +621,7 @@ log
 
     const header = `<!DOCTYPE html>
 <html lang="en">
-<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${preview.uri.toString()}" data-enable-multiple-selection="${Number(preview.enableMultipleSelection)}" data-enable-right-axis="${Number(preview.enableRightAxis)}">
+<head data-plot-height="${plotHeight}" data-source-uri="${preview.uri.toString()}" data-enable-multiple-selection="${Number(preview.enableMultipleSelection)}" data-enable-right-axis="${Number(preview.enableRightAxis)}">
 	<meta charset="UTF-8">
     ${metaCspStr}
     <title>Preview of spec-data</title>
@@ -636,6 +633,8 @@ log
 `;
 
     const lines: string[] = [];
+    let scanDataCount = 0;
+
     for (const node of preview.nodes) {
         if (node.type === 'file') {
             lines.push(`<h1 ${getAttributesForNode(node)}>${getSanitizedString(node.value)}</h1>`);
@@ -660,11 +659,10 @@ log
             } else {
                 lines.push(`<p>
 <label>
-<input type="checkbox" class="showValueListInput">
-Show Prescan Table
+<input type="checkbox" class="showValueListInput"${hideTable ? '' : ' checked'}>Show Prescan Table
 </label>
 </p>
-<table class="valueListTable">
+<table class="valueListTable"${hideTable ? ' hidden' : ''}>
 <caption>${getSanitizedString(node.kind)}</caption>`);
                 for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
                     if (headerList) {
@@ -680,13 +678,13 @@ Show Prescan Table
         } else if (node.type === 'scanData') {
             const data = node.data;
             const headers = node.headers;
+            const hidePlot = scanDataCount++ >= maximumPlots;
 
             lines.push(`<div ${getAttributesForNode(node)} data-subtype="${node.subtype}">`);
             if (data.length) {
                 lines.push(`<p>
 <label>
-<input type="checkbox" class="showPlotInput">
-Show Plot
+<input type="checkbox" class="showPlotInput"${hidePlot ? '' : ' checked'}>Show Plot
 </label>`);
                 const size = Math.min((node.subtype === 'xy' ? headers.length + 1 : headers.length), 4);
                 lines.push(getAxisSelectAndOptions('x', [...headers, '[point]'], size, false, node.subtype === 'y'));
