@@ -4,15 +4,15 @@ import { minimatch } from 'minimatch';
 export const SPEC_DATA_FILTER = { language: 'spec-data' } as const;
 export const CSV_COLUMNS_FILTER = { language: 'csv-column' } as const;
 export const CSV_ROWS_FILTER = { language: 'csv-row' } as const;
-export const CSV_MATRIX_FILTER = { language: 'csv-matrix' } as const;
 export const DPPMCA_FILTER = { language: 'dppmca' } as const;
 export const CHIPLOT_FILTER = { language: 'chiplot' } as const;
 
-const CSV_DOCUMENT_SELECTOR = [CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, CSV_MATRIX_FILTER] as const;
-const CSV_LANGUAGES = CSV_DOCUMENT_SELECTOR.map(filter => filter.language);
-type CsvLanguage = typeof CSV_LANGUAGES[number];
+const CSV_DOCUMENT_SELECTOR = [CSV_COLUMNS_FILTER, CSV_ROWS_FILTER] as const;
+// const CSV_LANGUAGES = CSV_DOCUMENT_SELECTOR.map(filter => filter.language);
+// typeof CSV_LANGUAGES[number];
+type CsvLanguage = typeof CSV_DOCUMENT_SELECTOR[number]['language'];
 
-export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, CSV_MATRIX_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER] as const;
+export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER] as const;
 const LANGUAGE_IDS = DOCUMENT_SELECTOR.map(filter => filter.language);
 type SupportedLanguage = typeof LANGUAGE_IDS[number];
 
@@ -24,7 +24,7 @@ interface CommentNode extends BaseNode { type: 'comment', value: string }
 interface NameListNode extends BaseNode { type: 'nameList', kind: 'motor' | 'counter', values: string[], subtype: 'name' | 'mnemonic' }
 interface ValueListNode extends BaseNode { type: 'valueList', kind: 'motor', values: number[], subtype: 'position' }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
-interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], subtype: 'y' | 'xy' | 'z' }
+interface ScanDataNode extends BaseNode { type: 'scanData', subtype: 'serial' | 'matrix', headers: string[], data: number[][] }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
 export type ParserResult = ParserSuccess | ParserFailure | undefined;
@@ -58,8 +58,6 @@ export function parseDocument(document: vscode.TextDocument, token: vscode.Cance
         parserResult = parseCsvContent(document.getText(), CSV_COLUMNS_FILTER.language, token);
     } else if (vscode.languages.match(CSV_ROWS_FILTER, document)) {
         parserResult = parseCsvContent(document.getText(), CSV_ROWS_FILTER.language, token);
-    } else if (vscode.languages.match(CSV_MATRIX_FILTER, document)) {
-        parserResult = parseCsvContent(document.getText(), CSV_MATRIX_FILTER.language, token);
     } else if (vscode.languages.match(DPPMCA_FILTER, document)) {
         parserResult = parseDppmcaContent(document.getText(), token);
     } else if (vscode.languages.match(CHIPLOT_FILTER, document)) {
@@ -132,8 +130,6 @@ export async function parseTextFromUri(uri: vscode.Uri): Promise<ParserResult> {
     } else if (language === CSV_COLUMNS_FILTER.language) {
         return parseCsvContent(text, language);
     } else if (language === CSV_ROWS_FILTER.language) {
-        return parseCsvContent(text, language);
-    } else if (language === CSV_MATRIX_FILTER.language) {
         return parseCsvContent(text, language);
     } else if (language === DPPMCA_FILTER.language) {
         return parseDppmcaContent(text);
@@ -275,7 +271,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
             const lineStart = lineNumber;
 
             // read succeeding lines until EOF or non-data line.
-            const data: number[][] = [];
+            const data0: number[][] = [];
             for (; lineNumber + 1 < lineCount; lineNumber++) {
                 const blockline = lines[lineNumber + 1];
                 if (blockline.match(unknownRegex) || blockline.match(emptyLineRegex)) {
@@ -305,12 +301,13 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                     ));
                     return { language, nodes: undefined, diagnostics };
                 }
-                data.push(rows.map(item => parseFloat(item)));
+                data0.push(rows.map(item => parseFloat(item)));
             }
-            // transpose the two-dimensional data array
-            const data2 = data.length > 0 ? data[0].map((_, colIndex) => data.map(row => row[colIndex])) : data;
+            // Transpose the two-dimensional data array.
+            const data = data0.length > 0 ? data0[0].map((_, colIndex) => data0.map(row => row[colIndex])) : data0;
 
-            nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineNumber, headers: headers, data: data2, subtype: 'xy' });
+            // Add the scan data to the nodes.
+            nodes.push({ type: 'scanData', subtype: 'serial', lineStart: lineStart, lineEnd: lineNumber, headers, data });
             columnCountInHeader = -1;
             columnCountInBody = -1;
         } else if ((matches = line.match(unknownRegex)) !== null) {
@@ -437,24 +434,19 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
         }
 
         // Add the read data to the nodes.
-        let subtype: 'y' | 'xy' | 'z';
         if (language === 'csv-column') {
-            subtype = 'xy';
             // Transpose the two-dimensional data array.
             data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
             // Create a header if not exists.
             if (!headers) {
                 headers = Array(data.length).fill(0).map((_x, i) => `column ${i}`);
             }
-        } else if (language === 'csv-row') {
-            subtype = 'y';
+        } else { // language === 'csv-row'
             // Create a header.
             headers = Array(data.length).fill(0).map((_x, i) => `row ${i}`);
-        } else { // language === 'csv-matrix'
-            subtype = 'z';
-            headers = [];
         }
-        nodes.push({ type: 'scanData', lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers, data, subtype });
+
+        nodes.push({ type: 'scanData', subtype: 'matrix', lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers, data });
     }
 
     if (nodes.some(node => node.type === 'scanData')) {
@@ -494,8 +486,8 @@ function parseDppmcaContent(text: string, token?: vscode.CancellationToken): Par
                     documentSymbols.push(new vscode.DocumentSymbol(prevHeader.name, '', vscode.SymbolKind.Object, range, prevHeader.range));
                 }
                 if (prevHeader.name === 'DATA') {
-                    const data1d = prevHeader.items.map(line => parseInt(line));
-                    nodes.push({ type: 'scanData', lineStart: prevHeader.range.start.line, lineEnd: lineNumber, headers: ['count'], data: [data1d], subtype: 'y' });
+                    const data = [prevHeader.items.map(line => parseInt(line))];
+                    nodes.push({ type: 'scanData', subtype: 'serial', lineStart: prevHeader.range.start.line, lineEnd: lineNumber, headers: ['count'], data });
                 }
             }
             if (matches[1].endsWith('END')) {
@@ -611,7 +603,7 @@ function parseChiplotContent(text: string, token?: vscode.CancellationToken): Pa
 
     const nodes: Node[] = [];
     nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, value: title });
-    nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineNumber, headers: headers2, data: data2, subtype: 'xy' });
+    nodes.push({ type: 'scanData', subtype: 'serial', lineStart: 4, lineEnd: lineNumber, headers: headers2, data: data2 });
 
     return { language, nodes, diagnostics };
 }

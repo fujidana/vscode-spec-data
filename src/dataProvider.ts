@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
-import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './dataParser';
+import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR, CSV_ROWS_FILTER } from './dataParser';
 import type { Node, ParserResult, ParserSuccess } from './dataParser';
 
 // @types/plotly.js contains DOM objects and thus
@@ -8,7 +8,7 @@ import type { Node, ParserResult, ParserSuccess } from './dataParser';
 import type { PlotData, Layout, Template } from 'plotly.js';
 // type PlotData = any;
 // type Layout = any;
-import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
+import type { State, GraphMode, MessageToWebview, MessageFromWebview } from './previewTypes';
 
 type Preview = {
     readonly panel: vscode.WebviewPanel;
@@ -236,7 +236,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 this.enablePreviewScroll = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollPreviewWithEditor', true);
             }
             if (event.affectsConfiguration('spec-data.preview.smoothScrolling')) {
-                const flag = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('smoothScrolling', true);
+                const flag = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('smoothScrolling', false);
                 const messageOut: MessageToWebview = { type: 'setScrollBehavior', value: flag ? 'smooth' : 'auto' };
                 for (const preview of this.previews) {
                     preview.panel.webview.postMessage(messageOut);
@@ -456,42 +456,44 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     }
                     this.lastScrollEditorTimeStamp = now;
                 }
-            } else if (messageIn.type === 'requestLineData') {
+            } else if (messageIn.type === 'requestData') {
                 if (preview.nodes) {
                     let index = 0;
                     const node = preview.nodes.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
                     if (node && node.type === 'scanData' && node.data.length) {
-                        const { x: xIndex, y1: y1Indexes, y2: y2Indexes } = messageIn.selections;
+                        if (messageIn.subtype === 'line') {
+                            const { x: xIndex, y1: y1Indexes, y2: y2Indexes } = messageIn.selections;
 
-                        const xData = (xIndex >= 0 && xIndex < node.data.length) ?
-                            { label: node.headers[xIndex], array: node.data[xIndex] } :
-                            { label: 'point', array: Array(node.data[0].length).fill(0).map((_x, i) => i) };
-                        const y1Data = y1Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
-                        const y2Data = y2Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
+                            const xData = (xIndex >= 0 && xIndex < node.data.length) ?
+                                { label: node.headers[xIndex], array: node.data[xIndex] } :
+                                { label: 'point', array: Array(node.data[0].length).fill(0).map((_x, i) => i) };
+                            const y1Data = y1Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
+                            const y2Data = y2Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
 
-                        const messageOut: MessageToWebview = {
-                            type: 'updateLinePlot',
-                            graphNumber: messageIn.graphNumber,
-                            x: xData,
-                            y1: y1Data,
-                            y2: y2Data,
-                            action: messageIn.callback
-                        };
-                        preview.panel.webview.postMessage(messageOut);
-                    }
-                }
-            } else if (messageIn.type === 'requestHeatmapData') {
-                if (preview.nodes) {
-                    let index = 0;
-                    const node = preview.nodes.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
-                    if (node && node.type === 'scanData' && node.data.length) {
-                        const messageOut: MessageToWebview = {
-                            type: 'updateHeatmap',
-                            graphNumber: messageIn.graphNumber,
-                            z: node.data,
-                            action: messageIn.callback
-                        };
-                        preview.panel.webview.postMessage(messageOut);
+                            const messageOut: MessageToWebview = {
+                                type: 'updatePlot',
+                                subtype: 'line',
+                                graphNumber: messageIn.graphNumber,
+                                x: xData,
+                                y1: y1Data,
+                                y2: y2Data,
+                                action: messageIn.callback
+                            };
+                            preview.panel.webview.postMessage(messageOut);
+                        } else if (messageIn.subtype === 'heatmap') {
+                            if (node.subtype === 'serial') {
+                                // TODO:
+                            } else {
+                                const messageOut: MessageToWebview = {
+                                    type: 'updatePlot',
+                                    subtype: 'heatmap',
+                                    graphNumber: messageIn.graphNumber,
+                                    z: node.data,
+                                    action: messageIn.callback
+                                };
+                                preview.panel.webview.postMessage(messageOut);
+                            }
+                        }
                     }
                 }
             } else if (messageIn.type === 'contentLoaded') {
@@ -508,7 +510,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 messageOut = {
                     type: 'setTemplate',
                     template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, preview.uri),
-                    callback: 'newPlot'
+                    callback: 'newPlot',
                 };
                 preview.panel.webview.postMessage(messageOut);
 
@@ -592,33 +594,6 @@ function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscod
         return `id="l${node.lineStart}" class="${node.type}"`;
     }
 
-    /** create components to select arrays (<select>) and select log-linear <input> */
-    function getAxisSelectAndOptions(axis: string, headers: string[], size: number, useLogInput: boolean, hidden: boolean) {
-        const hiddenStr = hidden === true ? ' hidden' : '';
-        const sizeStr = size !== undefined ? ` data-size-for-multiple="${size}"` : '';
-        // const multipleStr = isMultiple ? ` multiple size="${size}"` : '';
-        let tmpStr;
-        tmpStr = `<span class="${axis}"${hiddenStr}>; </span>
-<label class="${axis}"${hiddenStr}>
-<var>${axis}</var>:
-<select class="${axis} ${axis}AxisSelect"${hiddenStr}${sizeStr}>
-`;
-        tmpStr += headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('\n');
-        tmpStr += `</select>
-</label>
-`;
-        if (useLogInput) {
-            tmpStr += `<span class="${axis}"${hiddenStr}>,</span>
-<label class="${axis}"${hiddenStr}>
-<input type="checkbox" class="${axis} ${axis}LogInput"${hiddenStr}>
-log
-</label>
-`;
-        }
-
-        return tmpStr;
-    }
-
     const header = `<!DOCTYPE html>
 <html lang="en">
 <head data-plot-height="${plotHeight}" data-source-uri="${preview.uri.toString()}" data-enable-multiple-selection="${Number(preview.enableMultipleSelection)}" data-enable-right-axis="${Number(preview.enableRightAxis)}">
@@ -659,11 +634,13 @@ log
             } else {
                 lines.push(`<p>
 <label>
-<input type="checkbox" class="showValueListInput"${hideTable ? '' : ' checked'}>Show Prescan Table
+<input type="checkbox" class="showValueListInput"${hideTable ? '' : ' checked'} />
+Show Prescan Table
 </label>
 </p>
 <table class="valueListTable"${hideTable ? ' hidden' : ''}>
 <caption>${getSanitizedString(node.kind)}</caption>`);
+
                 for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
                     if (headerList) {
                         const headerListInRow = headerList.slice(row * columnsPerLine, Math.min((row + 1) * columnsPerLine, headerList.length));
@@ -680,22 +657,73 @@ log
             const headers = node.headers;
             const hidePlot = scanDataCount++ >= maximumPlots;
 
-            lines.push(`<div ${getAttributesForNode(node)} data-subtype="${node.subtype}">`);
+            let modes: { label: string, value: GraphMode }[];
+            if (node.subtype === 'serial') {
+                modes = [{ label: 'line', value: 'line' }];
+            } else {
+                modes = [
+                    { label: 'line', value: 'line' },
+                    { label: 'map', value: 'heatmap' },
+                ];
+            }
+
+            lines.push(`<div ${getAttributesForNode(node)}>`);
             if (data.length) {
                 lines.push(`<p>
 <label>
-<input type="checkbox" class="showPlotInput"${hidePlot ? '' : ' checked'}>Show Plot
-</label>`);
-                const size = Math.min((node.subtype === 'xy' ? headers.length + 1 : headers.length), 4);
-                lines.push(getAxisSelectAndOptions('x', [...headers, '[point]'], size, false, node.subtype === 'y'));
-                lines.push(getAxisSelectAndOptions('y1', headers, size, true, false));
-                lines.push(getAxisSelectAndOptions('y2', [...headers, '[none]'], size, true, !preview.enableRightAxis));
-                lines.push(`</p>
-<div class="graphDiv" data-subtype="${node.subtype}"></div>`);
+<input type="checkbox" class="showPlotInput"${hidePlot ? '' : ' checked'} />
+Show Plot
+</label>
+<span class="modeSpan"${modes.length <= 1 ? ' hidden' : ''}>
+;
+<label class="modeLabel">
+mode: 
+<select class="modeSelect">`);
+
+                lines.push(...modes.map(mode => `<option value="${mode.value}">${mode.label}</option>`));
+                lines.push(`</select>
+</label>
+</span>
+<span class="axesSpan">`);
+
+                for (let i = 0; i < 3; i++) {
+                    lines.push(`<span class="x${i} axisSpan">
+;
+<label class="x${i} dataLabel">
+<span class="x${i} dataAxisNameSpan"><var>x</var><sub>${i}</sub></span>:
+<select class="x${i} dataSelect">`);
+                    let selectedIndex: number;
+                    if (i === 0) {
+                        if (headers.length <= 1 || languageId === CSV_ROWS_FILTER.language) {
+                            selectedIndex = headers.length;
+                        } else {
+                            selectedIndex = 0;
+                        }
+                    } else if (i === 1) {
+                        selectedIndex = headers.length - 1;
+                    } else {
+                        selectedIndex = headers.length - 1;
+                    }
+                    [...headers, '[extra]'].forEach((header, j) => {
+                        lines.push(`<option value="${j}"${selectedIndex === j ? ' selected' : ''}>${getSanitizedString(header)}</option>`);
+                    });
+
+                    lines.push(`</select>
+</label>
+<span class="x${i} logSpan"${i === 0 ? ' hidden' : ''}>
+,
+<label class="x${i} logLabel">
+<input type="checkbox" class="x${i} logInput" />log
+</label>
+</span>
+</span>`);
+                }
+                lines.push(`</span></p>`);
+                lines.push(`<div class="graphDiv"></div>`);
             }
             lines.push(`</div>`);
-            // } else if (node.type === 'unknown') {
-            //     lines.push(`<p>#${node.kind} ${node.value}</p>`);
+        // } else if (node.type === 'unknown') {
+        //     lines.push(`<p>#${node.kind} ${node.value}</p>`);
         }
     }
 

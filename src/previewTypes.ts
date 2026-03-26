@@ -3,25 +3,24 @@
 import type { Template } from 'plotly.js';
 // type Template = any;
 
-type GraphMode = 'line' | 'heatmap';
+export type GraphMode = 'line' | 'heatmap';
 
-export interface GraphParam {
+export interface GraphState {
     mode: GraphMode;
     hidden: boolean;
-    selections?: {
-        x: number;
-        y1: number[];
-        y2: number[];
-    };
-    y1Log?: boolean;
-    y2Log?: boolean;
+    selections: [
+        number | number[],
+        number | number[],
+        number | number[]
+    ];
+    logs: [boolean, boolean, boolean];
 }
 
 export interface State {
     fresh: boolean;
     template: Template | undefined;
-    tableParams: { hidden: boolean }[];
-    graphParams: GraphParam[];
+    tableStates: { hidden: boolean }[];
+    graphStates: GraphState[];
     sourceUri: string;
     lockPreview: boolean;
     enableMultipleSelection: boolean;
@@ -60,23 +59,26 @@ interface ScrollPreviewMessage extends BaseMessage {
 interface SetTemplateMessage extends BaseMessage {
     type: 'setTemplate';
     template: Template;
-    callback: CallbackType;
+    callback: 'newPlot' | 'relayout';
 }
 
-interface UpdateLinePlotMessage extends BaseMessage {
-    type: 'updateLinePlot';
+interface BaseUpdatePlotMessage extends BaseMessage {
+    type: 'updatePlot';
+    subtype: GraphMode;
     graphNumber: number;
+    action: CallbackType;
+}
+
+interface UpdateLinePlotMessage extends BaseUpdatePlotMessage {
+    subtype: 'line';
     x: { label: string, array: number[] };
     y1: { label: string, array: number[] }[];
     y2: { label: string, array: number[] }[];
-    action: CallbackType;
 }
 
-interface UpdateHeatmapMessage extends BaseMessage {
-    type: 'updateHeatmap';
-    graphNumber: number;
+interface UpdateHeatmapMessage extends BaseUpdatePlotMessage {
+    subtype: 'heatmap';
     z: number[][];
-    action: CallbackType;
 }
 
 interface EnableMultipleSelectionMessage extends BaseMessage {
@@ -106,8 +108,8 @@ interface RestoreScrollMessage extends BaseMessage {
 
 export type MessageFromWebview =
     | ScrollEditorMessage
-    | requestLineDataMessage
-    | requestHeatmapDataMessage
+    | RequestLineDataMessage
+    | RequestHeatmapDataMessage
     | ContentLoadedMessage;
 
 interface ScrollEditorMessage extends BaseMessage {
@@ -115,21 +117,24 @@ interface ScrollEditorMessage extends BaseMessage {
     line: number;
 }
 
-interface requestLineDataMessage extends BaseMessage {
-    type: 'requestLineData';
+interface BaseRequestDataMessage extends BaseMessage {
+    type: 'requestData';
+    subtype: GraphMode;
     graphNumber: number;
+    callback: CallbackType;
+}
+
+interface RequestLineDataMessage extends BaseRequestDataMessage {
+    subtype: 'line';
     selections: {
         x: number;
         y1: number[];
         y2: number[];
     };
-    callback: CallbackType;
 }
 
-interface requestHeatmapDataMessage extends BaseMessage {
-    type: 'requestHeatmapData';
-    graphNumber: number;
-    callback: CallbackType;
+interface RequestHeatmapDataMessage extends BaseRequestDataMessage {
+    subtype: 'heatmap';
 }
 
 interface ContentLoadedMessage extends BaseMessage {
