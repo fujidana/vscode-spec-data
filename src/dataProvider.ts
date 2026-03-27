@@ -123,8 +123,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             if (activePreview) {
                 const flag = !activePreview.enableMultipleSelection;
                 activePreview.enableMultipleSelection = flag;
-                const messageOut: MessageToWebview = { type: 'enableMultipleSelection', flag: flag };
-                activePreview.panel.webview.postMessage(messageOut);
+                activePreview.panel.webview.postMessage({
+                    type: 'enableMultipleSelection',
+                    flag: flag
+                } satisfies MessageToWebview);
             } else {
                 vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
@@ -136,8 +138,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             if (activePreview) {
                 const flag = !activePreview.enableRightAxis;
                 activePreview.enableRightAxis = flag;
-                const messageOut: MessageToWebview = { type: 'enableRightAxis', flag: flag };
-                activePreview.panel.webview.postMessage(messageOut);
+                activePreview.panel.webview.postMessage({
+                    type: 'enableRightAxis',
+                    flag: flag,
+                } satisfies MessageToWebview);
             } else {
                 vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
@@ -151,8 +155,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 if (this.livePreview && activePreview === this.livePreview) {
                     // If the active view is a live preview, lock the view to the file.
                     this.livePreview = undefined;
-                    const messageOut: MessageToWebview = { type: 'lockPreview', flag: true };
-                    activePreview.panel.webview.postMessage(messageOut);
+                    activePreview.panel.webview.postMessage({
+                        type: 'lockPreview',
+                        flag: true,
+                    } satisfies MessageToWebview);
                     activePreview.panel.title = vscode.l10n.t('[Preview] {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
                 } else {
                     // If the active view is not a live preview...
@@ -162,8 +168,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     }
                     // Set the active view to live view.
                     this.livePreview = activePreview;
-                    const messageOut: MessageToWebview = { type: 'lockPreview', flag: false };
-                    activePreview.panel.webview.postMessage(messageOut);
+                    activePreview.panel.webview.postMessage({
+                        type: 'lockPreview',
+                        flag: false,
+                    } satisfies MessageToWebview);
                     activePreview.panel.title = vscode.l10n.t('Preview {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
                 }
             } else {
@@ -216,8 +224,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 for (const preview of previews) {
                     const node = preview.nodes?.find(node => (node.lineEnd >= line));
                     if (node) {
-                        const messageOut: MessageToWebview = { type: 'scrollPreview', elementId: `l${node.lineStart}` };
-                        preview.panel.webview.postMessage(messageOut);
+                        preview.panel.webview.postMessage({
+                            type: 'scrollPreview',
+                            elementId: `l${node.lineStart}`,
+                        } satisfies MessageToWebview);
                     }
                 }
                 this.lastScrollPreviewTimeStamp = now;
@@ -252,12 +262,11 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     // only delivered if the webview is live (either visible or in 
                     // the background with `retainContextWhenHidden`).
                     // However, it seems invisible webviews also handle the following messages.
-                    const messageOut: MessageToWebview = {
+                    preview.panel.webview.postMessage({
                         type: 'setTemplate',
                         template: getPlotlyTemplate(colorTheme.kind, preview.uri),
-                        callback: 'relayout'
-                    };
-                    preview.panel.webview.postMessage(messageOut);
+                        callback: 'relayout',
+                    } satisfies MessageToWebview);
                 }
             }
             this.colorThemeKind = colorTheme.kind;
@@ -457,68 +466,137 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     this.lastScrollEditorTimeStamp = now;
                 }
             } else if (messageIn.type === 'requestData') {
-                if (preview.nodes) {
-                    let index = 0;
-                    const node = preview.nodes.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
-                    if (node && node.type === 'scanData' && node.data.length) {
-                        if (messageIn.subtype === 'line') {
-                            const { x: xIndex, y1: y1Indexes, y2: y2Indexes } = messageIn.selections;
+                if (!preview.nodes) { return; };
 
-                            const xData = (xIndex >= 0 && xIndex < node.data.length) ?
-                                { label: node.headers[xIndex], array: node.data[xIndex] } :
-                                { label: 'point', array: Array(node.data[0].length).fill(0).map((_x, i) => i) };
-                            const y1Data = y1Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
-                            const y2Data = y2Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
+                let index = 0;
+                const node = preview.nodes.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
+                if (node && node.type === 'scanData' && node.data.length) {
+                    if (messageIn.plotType === 'line') {
+                        // Send back the selected data for line plot.
+                        const { x: xIndex, y1: y1Indexes, y2: y2Indexes } = messageIn.selections;
 
-                            const messageOut: MessageToWebview = {
-                                type: 'updatePlot',
-                                subtype: 'line',
-                                graphNumber: messageIn.graphNumber,
-                                x: xData,
-                                y1: y1Data,
-                                y2: y2Data,
-                                action: messageIn.callback
-                            };
-                            preview.panel.webview.postMessage(messageOut);
-                        } else if (messageIn.subtype === 'heatmap') {
-                            if (node.subtype === 'serial') {
-                                // TODO:
-                            } else {
-                                const messageOut: MessageToWebview = {
-                                    type: 'updatePlot',
-                                    subtype: 'heatmap',
-                                    graphNumber: messageIn.graphNumber,
-                                    z: node.data,
-                                    action: messageIn.callback
-                                };
-                                preview.panel.webview.postMessage(messageOut);
-                            }
+                        const xData = (xIndex >= 0 && xIndex < node.data.length) ?
+                            { label: node.headers[xIndex], array: node.data[xIndex] } :
+                            undefined; // { label: 'point', array: Array(node.data[0].length).fill(0).map((_x, i) => i) };
+                        const y1Data = y1Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
+                        const y2Data = y2Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
+
+                        preview.panel.webview.postMessage({
+                            type: 'updatePlot',
+                            plotType: 'line',
+                            graphNumber: messageIn.graphNumber,
+                            x: xData,
+                            y1: y1Data,
+                            y2: y2Data,
+                            action: messageIn.callback,
+                        } satisfies MessageToWebview);
+                    } else if (messageIn.plotType === 'heatmap' && messageIn.dataType === 'serial') {
+                        // Send back the selected data for heatmap, after reshaping the selected 1D data into a 2D array.
+
+                        // if (node.subtype !== 'serial') { return; }
+                        if (messageIn.selection < 0 || messageIn.selection >= node.data.length || !node.parameter || node.parameter.macro !== 'mesh') { return; }
+
+                        const expectedLength = (node.parameter.interval0 + 1) * (node.parameter.interval1 + 1);
+                        const selectedData = node.data[messageIn.selection];
+                        let tmpData: (number | null)[];
+                        if (selectedData.length === expectedLength) {
+                            tmpData = selectedData;
+                        } else if (selectedData.length < expectedLength) {
+                            tmpData = selectedData.concat(new Array(expectedLength - selectedData.length).fill(null));
+                        } else {
+                            // console.log('The length of the selected data is longer than expected. The extra data will be ignored.');
+                            tmpData = selectedData.slice(0, expectedLength);
                         }
+
+                        // Reshape the selected 1D data into a 2D array for heatmap.
+                        const zData: (number | null)[][] = [];
+                        for (let i = 0; i < node.parameter.interval1 + 1; i++) {
+                            zData.push(tmpData.slice(i * (node.parameter.interval0 + 1), (i + 1) * (node.parameter.interval0 + 1)));
+                        }
+
+                        // Send the data to webview.
+                        preview.panel.webview.postMessage({
+                            type: 'updatePlot',
+                            plotType: 'heatmap',
+                            dataType: 'matrix',
+                            graphNumber: messageIn.graphNumber,
+                            x: {
+                                label: node.headers[0],
+                                start: node.parameter.start0,
+                                delta: (node.parameter.finish0 - node.parameter.start0) / node.parameter.interval0,
+                            },
+                            y: {
+                                label: node.headers[1],
+                                start: node.parameter.start1,
+                                delta: (node.parameter.finish1 - node.parameter.start1) / node.parameter.interval1,
+                            },
+                            z: {
+                                label: node.headers[messageIn.selection],
+                                array: zData,
+                            },
+                            action: messageIn.callback,
+                        } satisfies MessageToWebview);
+                    } else if ((messageIn.plotType === 'heatmap' || messageIn.plotType === 'contour') && messageIn.dataType === 'matrix') {
+                        // Send back the original 2D array for a heatmap or contour plot.
+                        // No infomatioin about x- and y-scales are available in this format.
+
+                        // if (node.subtype !== 'matrix' && node.subtype !== 'matrix-wo-label') { return; }
+
+                        preview.panel.webview.postMessage({
+                            type: 'updatePlot',
+                            plotType: messageIn.plotType,
+                            dataType: 'matrix',
+                            graphNumber: messageIn.graphNumber,
+                            z: {
+                                // label: undefined,
+                                array: node.data,
+                            },
+                            action: messageIn.callback,
+                        } satisfies MessageToWebview);
+                    } else if (messageIn.plotType === 'contour' && messageIn.dataType === 'serial') {
+                        // Send back a set of 1D arrays of X, Y, and Z for contour plot.
+                        const { x: xIndex, y: yIndex, z: zIndex } = messageIn.selections;
+                        preview.panel.webview.postMessage({
+                            type: 'updatePlot',
+                            plotType: 'contour',
+                            dataType: 'serial',
+                            graphNumber: messageIn.graphNumber,
+                            x: { label: node.headers[xIndex], array: node.data[xIndex] },
+                            y: { label: node.headers[yIndex], array: node.data[yIndex] },
+                            z: { label: node.headers[zIndex], array: node.data[zIndex] },
+                            action: messageIn.callback,
+                        } satisfies MessageToWebview);
                     }
                 }
             } else if (messageIn.type === 'contentLoaded') {
                 // This will be called not only when the webview is created but also when it is revealed after it is hidden.
                 const config = vscode.workspace.getConfiguration('spec-data.preview');
-                let messageOut: MessageToWebview;
 
-                messageOut = { type: 'lockPreview', flag: this.livePreview?.panel !== preview.panel };
-                preview.panel.webview.postMessage(messageOut);
+                preview.panel.webview.postMessage({
+                    type: 'lockPreview',
+                    flag: this.livePreview?.panel !== preview.panel,
+                } satisfies MessageToWebview);
 
-                messageOut = { type: 'enableEditorScroll', flag: config.get<boolean>('scrollEditorWithPreview', true) };
-                preview.panel.webview.postMessage(messageOut);
+                preview.panel.webview.postMessage({
+                    type: 'enableEditorScroll',
+                    flag: config.get<boolean>('scrollEditorWithPreview', true),
+                } satisfies MessageToWebview);
 
-                messageOut = {
+                preview.panel.webview.postMessage({
                     type: 'setTemplate',
                     template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, preview.uri),
                     callback: 'newPlot',
-                };
-                preview.panel.webview.postMessage(messageOut);
+                } satisfies MessageToWebview);
 
-                messageOut = { type: 'setScrollBehavior', value: config.get<boolean>('smoothScrolling', true) ? 'smooth' : 'auto' };
-                preview.panel.webview.postMessage(messageOut);
+                preview.panel.webview.postMessage({
+                    type: 'setScrollBehavior',
+                    value: config.get<boolean>('smoothScrolling', true) ? 'smooth' : 'auto'
+                } satisfies MessageToWebview);
 
-                messageOut = { type: 'restoreScroll', delay: true };
-                preview.panel.webview.postMessage(messageOut);
+                preview.panel.webview.postMessage({
+                    type: 'restoreScroll',
+                    delay: true,
+                } satisfies MessageToWebview);
             }
         }, null, this.subscriptions);
 
@@ -635,7 +713,7 @@ function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscod
                 lines.push(`<p>
 <label>
 <input type="checkbox" class="showValueListInput"${hideTable ? '' : ' checked'} />
-Show Prescan Table
+Prescan Table
 </label>
 </p>
 <table class="valueListTable"${hideTable ? ' hidden' : ''}>
@@ -659,12 +737,28 @@ Show Prescan Table
 
             let modes: { label: string, value: GraphMode }[];
             if (node.subtype === 'serial') {
-                modes = [{ label: 'line', value: 'line' }];
-            } else {
-                modes = [
-                    { label: 'line', value: 'line' },
-                    { label: 'map', value: 'heatmap' },
-                ];
+                modes = [{ label: 'line', value: 'line-xy' }];
+                if (node.parameter?.macro === 'mesh') {
+                    modes.push(
+                        { label: 'heatmap', value: 'heatmap-serial' },
+                        { label: 'contour', value: 'contour-serial' },
+                    );
+                } else if (node.parameter?.macro === 'fscan' && node.headers.findIndex(header => header === 'Epoch') > 1) {
+                    // Enable 'contour' mode for 'fscan' with multiple motors.
+                    // The number of motors can be inferred from the number of column names before 'Epoch'.
+                    modes.push({ label: 'contour', value: 'contour-serial' });
+                }
+            } else { // 'matrix' | 'matrix-wo-label'
+                modes = [{ label: 'line', value: node.subtype === 'matrix-wo-label' ? 'line-y' : 'line-xy' }];
+                if (node.data.length > 1 && node.data[0].length > 1) {
+                    modes.push(
+                        { label: 'heatmap', value: 'heatmap-matrix' },
+                        { label: 'contour-2D', value: 'contour-matrix' },
+                    );
+                }
+                if (node.data.length > 2 && node.data[0].length > 1) {
+                    modes.push({ label: 'contour-XYZ', value: 'contour-serial' });
+                }
             }
 
             lines.push(`<div ${getAttributesForNode(node)}>`);
@@ -672,7 +766,7 @@ Show Prescan Table
                 lines.push(`<p>
 <label>
 <input type="checkbox" class="showPlotInput"${hidePlot ? '' : ' checked'} />
-Show Plot
+Plot
 </label>
 <span class="modeSpan"${modes.length <= 1 ? ' hidden' : ''}>
 ;
@@ -692,20 +786,9 @@ mode:
 <label class="x${i} dataLabel">
 <span class="x${i} dataAxisNameSpan"><var>x</var><sub>${i}</sub></span>:
 <select class="x${i} dataSelect">`);
-                    let selectedIndex: number;
-                    if (i === 0) {
-                        if (headers.length <= 1 || languageId === CSV_ROWS_FILTER.language) {
-                            selectedIndex = headers.length;
-                        } else {
-                            selectedIndex = 0;
-                        }
-                    } else if (i === 1) {
-                        selectedIndex = headers.length - 1;
-                    } else {
-                        selectedIndex = headers.length - 1;
-                    }
+
                     [...headers, '[extra]'].forEach((header, j) => {
-                        lines.push(`<option value="${j}"${selectedIndex === j ? ' selected' : ''}>${getSanitizedString(header)}</option>`);
+                        lines.push(`<option value="${j}">${getSanitizedString(header)}</option>`);
                     });
 
                     lines.push(`</select>
@@ -722,8 +805,8 @@ mode:
                 lines.push(`<div class="graphDiv"></div>`);
             }
             lines.push(`</div>`);
-        // } else if (node.type === 'unknown') {
-        //     lines.push(`<p>#${node.kind} ${node.value}</p>`);
+        } else if (node.type === 'unknown') {
+            // lines.push(`<p>#${node.kind} ${node.value}</p>`);
         }
     }
 

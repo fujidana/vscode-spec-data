@@ -3,7 +3,11 @@
 import type { Template } from 'plotly.js';
 // type Template = any;
 
-export type GraphMode = 'line' | 'heatmap';
+export type GraphMode = 'line-xy' | 'line-y' | 'heatmap-serial' | 'heatmap-matrix' | 'contour-serial' | 'contour-matrix';
+
+interface TableState {
+    hidden: boolean;
+}
 
 export interface GraphState {
     mode: GraphMode;
@@ -11,7 +15,7 @@ export interface GraphState {
     selections: [
         number | number[],
         number | number[],
-        number | number[]
+        number | number[],
     ];
     logs: [boolean, boolean, boolean];
 }
@@ -19,7 +23,7 @@ export interface GraphState {
 export interface State {
     fresh: boolean;
     template: Template | undefined;
-    tableStates: { hidden: boolean }[];
+    tableStates: TableState[];
     graphStates: GraphState[];
     sourceUri: string;
     lockPreview: boolean;
@@ -28,7 +32,7 @@ export interface State {
     scrollPosition: [number, number];
 }
 
-export interface BaseMessage {
+interface BaseMessage {
     type: string;
 }
 
@@ -40,6 +44,8 @@ export type MessageToWebview =
     | SetTemplateMessage
     | UpdateLinePlotMessage
     | UpdateHeatmapMessage
+    | UpdateContourPlotSerialMessage
+    | UpdateContourPlotMatrixMessage
     | EnableMultipleSelectionMessage
     | EnableRightAxisMessage
     | EnableEditorScrollMessage
@@ -64,21 +70,40 @@ interface SetTemplateMessage extends BaseMessage {
 
 interface BaseUpdatePlotMessage extends BaseMessage {
     type: 'updatePlot';
-    subtype: GraphMode;
+    plotType: 'line' | 'heatmap' | 'contour';
     graphNumber: number;
     action: CallbackType;
 }
 
 interface UpdateLinePlotMessage extends BaseUpdatePlotMessage {
-    subtype: 'line';
-    x: { label: string, array: number[] };
-    y1: { label: string, array: number[] }[];
-    y2: { label: string, array: number[] }[];
+    plotType: 'line';
+    x?: { label: string, array: (number | null)[] };
+    y1: { label: string, array: (number | null)[] }[];
+    y2: { label: string, array: (number | null)[] }[];
 }
 
 interface UpdateHeatmapMessage extends BaseUpdatePlotMessage {
-    subtype: 'heatmap';
-    z: number[][];
+    plotType: 'heatmap';
+    dataType: 'matrix';
+    x?: { label: string, start: number, delta: number };
+    y?: { label: string, start: number, delta: number };
+    z: { label?: string, array: (number | null)[][] };
+}
+
+interface UpdateContourPlotSerialMessage extends BaseUpdatePlotMessage {
+    plotType: 'contour';
+    dataType: 'serial';
+    x: { label: string, array: (number | null)[] };
+    y: { label: string, array: (number | null)[] };
+    z: { label?: string, array: (number | null)[] };
+}
+
+interface UpdateContourPlotMatrixMessage extends BaseUpdatePlotMessage {
+    plotType: 'contour';
+    dataType: 'matrix';
+    x?: { label: string, start: number, delta: number };
+    y?: { label: string, start: number, delta: number };
+    z: { label?: string, array: (number | null)[][] };
 }
 
 interface EnableMultipleSelectionMessage extends BaseMessage {
@@ -109,7 +134,10 @@ interface RestoreScrollMessage extends BaseMessage {
 export type MessageFromWebview =
     | ScrollEditorMessage
     | RequestLineDataMessage
-    | RequestHeatmapDataMessage
+    | RequestHeatmapSerialDataMessage
+    | RequestHeatmapMatrixDataMessage
+    | RequestContourSerialDataMessage
+    | RequestContourMatrixDataMessage
     | ContentLoadedMessage;
 
 interface ScrollEditorMessage extends BaseMessage {
@@ -119,13 +147,13 @@ interface ScrollEditorMessage extends BaseMessage {
 
 interface BaseRequestDataMessage extends BaseMessage {
     type: 'requestData';
-    subtype: GraphMode;
+    plotType: 'line' | 'heatmap' | 'contour';
     graphNumber: number;
     callback: CallbackType;
 }
 
 interface RequestLineDataMessage extends BaseRequestDataMessage {
-    subtype: 'line';
+    plotType: 'line';
     selections: {
         x: number;
         y1: number[];
@@ -133,8 +161,30 @@ interface RequestLineDataMessage extends BaseRequestDataMessage {
     };
 }
 
-interface RequestHeatmapDataMessage extends BaseRequestDataMessage {
-    subtype: 'heatmap';
+interface RequestHeatmapSerialDataMessage extends BaseRequestDataMessage {
+    plotType: 'heatmap';
+    dataType: 'serial';
+    selection: number;
+}
+
+interface RequestHeatmapMatrixDataMessage extends BaseRequestDataMessage {
+    plotType: 'heatmap';
+    dataType: 'matrix';
+}
+
+interface RequestContourSerialDataMessage extends BaseRequestDataMessage {
+    plotType: 'contour';
+    dataType: 'serial';
+    selections: {
+        x: number;
+        y: number;
+        z: number;
+    }
+}
+
+interface RequestContourMatrixDataMessage extends BaseRequestDataMessage {
+    plotType: 'contour';
+    dataType: 'matrix';
 }
 
 interface ContentLoadedMessage extends BaseMessage {

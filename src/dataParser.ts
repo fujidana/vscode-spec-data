@@ -24,8 +24,29 @@ interface CommentNode extends BaseNode { type: 'comment', value: string }
 interface NameListNode extends BaseNode { type: 'nameList', kind: 'motor' | 'counter', values: string[], subtype: 'name' | 'mnemonic' }
 interface ValueListNode extends BaseNode { type: 'valueList', kind: 'motor', values: number[], subtype: 'position' }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
-interface ScanDataNode extends BaseNode { type: 'scanData', subtype: 'serial' | 'matrix', headers: string[], data: number[][] }
+interface ScanDataNode extends BaseNode { type: 'scanData', subtype: 'serial' | 'matrix' | 'matrix-wo-label', headers: string[], data: number[][], parameter?: ScanParameter }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
+
+type ScanParameter = MeshScanParameter | FScanParameter;
+
+interface MeshScanParameter {
+    macro: 'mesh';
+    motor0: string;
+    start0: number;
+    finish0: number;
+    interval0: number;
+    motor1: string;
+    start1: number;
+    finish1: number;
+    interval1: number;
+    time: number;
+}
+
+interface FScanParameter {
+    macro: 'fscan';
+    file: string;
+    time: string | number;
+}
 
 export type ParserResult = ParserSuccess | ParserFailure | undefined;
 
@@ -156,7 +177,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
     const documentSymbols: vscode.DocumentSymbol[] = [];
 
     // Parameters used for making folding ranges and document symbols.
-    const scanLineRegex = /^(#S [0-9]+)\s*(\S.*)?$/;
+    const scanLineRegex = /^(#S [0-9]+)\s+(\S.*)?$/;
     const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
     let prevEmptyLineNumber = -1;
 
@@ -165,7 +186,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
     const dateRegex = /^(#D) (.*)$/;
     const commentRegex = /^(#C) (.*)$/;
     const listRegex = /^(?:#([OJojP])([0-9]+)) (.*)$/;
-    const scanHeadRegex = /^(#S) ([0-9]+) (.*)$/;
+    const scanHeadRegex = /^(#S) ([0-9]+) {1,2}(.*)$/;
     const scanNumberRegex = /^(#N) ([0-9]+)$/;
     const scanDataRegex = /^(#L) (.*)$/;
     const unknownRegex = /^#(?:([a-zA-Z][0-9]*) (.*)|.*)$/;
@@ -174,6 +195,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
     let prevNodeIndex = -1;
     let columnCountInHeader = -1;
     let columnCountInBody = -1;
+    let prevScanHeadNode: ScanHeadNode | undefined;
 
     for (let lineNumber = 0; lineNumber < lineCount; lineNumber++) {
         if (token && token.isCancellationRequested === true) { return; }
@@ -195,6 +217,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                 }
             }
             prevEmptyLineNumber = lineNumber;
+            prevScanHeadNode = undefined;
         } else if ((matches = line.match(fileRegex)) !== null) {
             nodes.push({ type: 'file', lineStart: lineNumber, lineEnd: lineNumber, value: matches[2] });
         } else if ((matches = line.match(dateRegex)) !== null) {
@@ -249,7 +272,9 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                 prevNodeIndex = listIndex; // normally 0.
             }
         } else if ((matches = line.match(scanHeadRegex)) !== null) {
-            nodes.push({ type: 'scanHead', lineStart: lineNumber, lineEnd: lineNumber, index: parseInt(matches[2]), code: matches[3] });
+            const node = { type: 'scanHead' as const, lineStart: lineNumber, lineEnd: lineNumber, index: parseInt(matches[2]), code: matches[3] };
+            nodes.push(node);
+            prevScanHeadNode = node;
         } else if ((matches = line.match(scanNumberRegex)) !== null) {
             columnCountInHeader = parseInt(matches[2]);
         } else if ((matches = line.match(scanDataRegex)) !== null) {
@@ -270,7 +295,8 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
             }
             const lineStart = lineNumber;
 
-            // read succeeding lines until EOF or non-data line.
+            // Read the rest of lines until the next empty line, unknown line, or EOF,
+            // and make a two-dimensional array of numeric data.
             const data0: number[][] = [];
             for (; lineNumber + 1 < lineCount; lineNumber++) {
                 const blockline = lines[lineNumber + 1];
@@ -306,8 +332,10 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
             // Transpose the two-dimensional data array.
             const data = data0.length > 0 ? data0[0].map((_, colIndex) => data0.map(row => row[colIndex])) : data0;
 
+            const parameter = prevScanHeadNode ? _parseSpecScanParameter(prevScanHeadNode.code) : undefined;
+
             // Add the scan data to the nodes.
-            nodes.push({ type: 'scanData', subtype: 'serial', lineStart: lineStart, lineEnd: lineNumber, headers, data });
+            nodes.push({ type: 'scanData', subtype: 'serial', lineStart: lineStart, lineEnd: lineNumber, headers, data, parameter });
             columnCountInHeader = -1;
             columnCountInBody = -1;
         } else if ((matches = line.match(unknownRegex)) !== null) {
@@ -316,6 +344,30 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
     }
     // return nodes.length !== 0 ? nodes : undefined;
     return { language, nodes, diagnostics, foldingRanges, documentSymbols };
+
+    function _parseSpecScanParameter(code: string): ScanParameter | undefined {
+        let matches: RegExpMatchArray | null;
+        if ((matches = code.match(/^\s*(mesh)\s+(\S+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+)\s+(\S+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+)\s+(\d+(?:\.\d+)?)(?=\s|$)/)) !== null) {
+            return {
+                macro: matches[1] as 'mesh',
+                motor0: matches[2],
+                start0: parseFloat(matches[3]),
+                finish0: parseFloat(matches[4]),
+                interval0: parseInt(matches[5]),
+                motor1: matches[6],
+                start1: parseFloat(matches[7]),
+                finish1: parseFloat(matches[8]),
+                interval1: parseInt(matches[9]),
+                time: parseFloat(matches[10]),
+            };
+        } else if ((matches = code.match(/\s*(fscan)\s+(.+)\s+(\d+(?:\.\d+)?|\S+)$/)) !== null) {
+            return {
+                macro: matches[1] as 'fscan',
+                file: matches[2],
+                time: matches[3],
+            };
+        }
+    }
 }
 
 // character-separated values. The delimiter is auto-detected from a horizontal tab, a whitespace, or a comma. 
@@ -434,19 +486,24 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
         }
 
         // Add the read data to the nodes.
+        let subtype: 'matrix' | 'matrix-wo-label';
         if (language === 'csv-column') {
             // Transpose the two-dimensional data array.
             data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
             // Create a header if not exists.
-            if (!headers) {
+            if (headers) {
+                subtype = 'matrix';
+            } else {
+                subtype = 'matrix-wo-label';
                 headers = Array(data.length).fill(0).map((_x, i) => `column ${i}`);
             }
         } else { // language === 'csv-row'
             // Create a header.
+            subtype = 'matrix-wo-label';
             headers = Array(data.length).fill(0).map((_x, i) => `row ${i}`);
         }
 
-        nodes.push({ type: 'scanData', subtype: 'matrix', lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers, data });
+        nodes.push({ type: 'scanData', subtype, lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers, data });
     }
 
     if (nodes.some(node => node.type === 'scanData')) {

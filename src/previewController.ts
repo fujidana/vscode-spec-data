@@ -60,59 +60,61 @@ const updateForEnableMultipleSelection = function (index: number, scanDataDiv: H
 
     const graphState = state.graphStates[index];
 
-    if (graphState.mode === 'line') {
+    if (graphState.mode === 'line-y' || graphState.mode === 'line-xy') {
         if (state.enableMultipleSelection === true) {
-            // Set 'size' attributes for all axes, which makes the dropdown lists become list boxes.
-            [...dataSelects].forEach(select => {
+            [...dataSelects].forEach((select, j) => {
+                // Set 'size' attributes for all axes, which makes the dropdown lists become list boxes.
                 select.size = Math.min(4, select.options.length);
-            });
 
-            // Set 'multiple' attributes and hide '[none]' option for y1- and y2-axis.
-            // Unselect all if '[none]' was selected.
-            [dataSelects[1], dataSelects[2]].forEach((select, j) => {
-                const noneOption = select.options[select.options.length - 1];
-                select.multiple = true;
-                if (updateSelection) {
-                    if (noneOption.selected) {
+                if (j === 1 || j === 2) { // y1- or y2-axis
+                    // Set 'multiple' attributes and hide '[none]' option for y1- and y2-axis.
+                    // Unselect all options if '[none]' was previously selected.
+                    const noneOption = select.options[select.options.length - 1];
+                    select.multiple = true;
+                    if (j === 2) { // y2-axis
+                        noneOption.hidden = true;
+                    }
+                    if (updateSelection && noneOption.selected) {
                         noneOption.selected = false;
                         select.selectedIndex = -1;
-                        graphState.selections[j + 1] = [];
-                    } else {
-                        graphState.selections[j + 1] = [...select.selectedOptions].map(option => option.index);
                     }
                 }
-
-                if (j === 1) { // y2-axis
-                    noneOption.hidden = true;
+                if (updateSelection) {
+                    graphState.selections[j] = [...select.selectedOptions].map(option => option.index);
                 }
             });
         } else {
             // Clear 'size' attributes for all axes, which makes the list boxes become dropdown lists.
-            [...dataSelects].forEach(select => select.size = 0);
-            // [...dataSelects].forEach(select => select.removeAttribute('size'));
+            [...dataSelects].forEach((select, j) => {
+                select.size = 0;
+                // select.removeAttribute('size');
 
-            // Clear 'multiple' attributes and  show '[none]' option for y1- and y2-axis.
-            // Select it if nothing was selected.
-            [dataSelects[1], dataSelects[2]].forEach((select, j) => {
-                const noneOption = select.options[select.options.length - 1];
-                if (updateSelection) {
-                    if (select.selectedIndex === -1) {
+                if (j === 1 || j === 2) { // y1- or y2-axis
+                    const noneOption = select.options[select.options.length - 1];
+                    if (updateSelection && select.selectedIndex === -1) {
                         noneOption.selected = true;
-                        graphState.selections[j + 1] = noneOption.index;
-                    } else {
-                        graphState.selections[j + 1] = select.selectedIndex;
+                    }
+                    select.multiple = false;
+                    // select.removeAttribute('multiple');
+
+                    if (j === 2) { // y2-axis
+                        noneOption.hidden = false;
                     }
                 }
-                select.multiple = false;
-                // select.removeAttribute('multiple');
-
-                if (j === 1) { // y2-axis
-                    noneOption.hidden = false;
+                if (updateSelection) {
+                    graphState.selections[j] = select.selectedIndex;
                 }
             });
         }
-    } else {
-        // Do nothing for heatmap and contour modes, since they do not support multiple selection.
+    } else if (graphState.mode === 'heatmap-serial' || graphState.mode === 'heatmap-matrix' || graphState.mode === 'contour-serial' || graphState.mode === 'contour-matrix') {
+        // Multiple selection is not allowed for heatmap and contour plots.
+        [...dataSelects].forEach((select, j) => {
+            select.size = 0;
+            select.multiple = false;
+            if (updateSelection) {
+                graphState.selections[j] = select.selectedIndex;
+            }
+        });
     }
 };
 
@@ -138,30 +140,64 @@ const updateForShowPlotInput = function (index: number, scanDataDiv: HTMLDivElem
  * This updates the visibility and labels of related input elements according to the state.
  * Note that the `mode` property of the graph state (not the value of the
  * corresponding HTML element) is referred.
+ * `updateForEnableMultipleSelection()` must be called after this function to
+ * update the `multiple` attribute of data selection dropdowns according to the state.
  */
-const updateForModeSelect = function (index: number, scanDataDiv: HTMLDivElement) {
+const updateForModeSelect = function (index: number, scanDataDiv: HTMLDivElement, updateSelection: boolean) {
     const axisSpans = scanDataDiv.getElementsByClassName('axisSpan') as HTMLCollectionOf<HTMLSpanElement>;
     const dataSelects = scanDataDiv.getElementsByClassName('dataSelect') as HTMLCollectionOf<HTMLSelectElement>;
     const dataAxisNameSpans = scanDataDiv.getElementsByClassName('dataAxisNameSpan') as HTMLCollectionOf<HTMLSpanElement>;
+    const logSpans = scanDataDiv.getElementsByClassName('logSpan') as HTMLCollectionOf<HTMLSpanElement>;
 
-    if ([axisSpans, dataSelects, dataAxisNameSpans].some(element => element.length !== 3) || state.graphStates.length <= index) { return; }
+    if ([axisSpans, dataSelects, dataAxisNameSpans, logSpans].some(element => element.length !== 3) || state.graphStates.length <= index) { return; }
 
-    if (state.graphStates[index].mode === 'line') {
-        axisSpans[0].hidden = false;
-        axisSpans[1].hidden = false;
-        axisSpans[2].hidden = !state.enableRightAxis;
-        dataAxisNameSpans[0].innerHTML = '<var>x</var>';
-        dataAxisNameSpans[1].innerHTML = '<var>y</var><sub>1</sub>';
-        dataAxisNameSpans[2].innerHTML = '<var>y</var><sub>2</sub>';
-        dataSelects[0].options[dataSelects[0].options.length - 1].label = '[point]';
-        dataSelects[1].options[dataSelects[1].options.length - 1].label = '[none]';
-        dataSelects[2].options[dataSelects[2].options.length - 1].label = '[none]';
-        dataSelects[1].options[dataSelects[1].options.length - 1].hidden = true;
-    } else if (state.graphStates[index].mode === 'heatmap') {
-        axisSpans[0].hidden = true;
-        axisSpans[1].hidden = true;
-        axisSpans[2].hidden = true;
-        dataAxisNameSpans[2].innerHTML = '<var>z</var>';
+    const graphState = state.graphStates[index];
+
+    if (graphState.mode === 'line-y' || graphState.mode === 'line-xy') {
+        const hideAxes = [false, false, !state.enableRightAxis];
+        const axisNameHTMLs = ['<var>x</var>', '<var>y</var>', '<var>y</var><sub>2</sub>'];
+        const extraLabels = ['[point]', '[none]', '[none]'];
+        const hideExtraOptions = [false, true, false];
+        const hideLogSpans = [true, false, false];
+        const selections = [
+            dataSelects[0].length <= 2 || graphState.mode === 'line-y' ? dataSelects[0].length - 1 : 0,
+            dataSelects[1].length - 2,
+            dataSelects[2].length - 1
+        ];
+        for (let j = 0; j < 3; j++) {
+            const options = dataSelects[j].options;
+            axisSpans[j].hidden = hideAxes[j];
+            dataAxisNameSpans[j].innerHTML = axisNameHTMLs[j];
+            options[options.length - 1].label = extraLabels[j];
+            options[options.length - 1].hidden = hideExtraOptions[j];
+            logSpans[j].hidden = hideLogSpans[j];
+            if (updateSelection) {
+                dataSelects[j].selectedIndex = selections[j];
+                graphState.selections[j] = selections[j];
+            }
+        }
+    } else if (graphState.mode === 'heatmap-serial' || graphState.mode === 'heatmap-matrix' || graphState.mode === 'contour-serial' || graphState.mode === 'contour-matrix') {
+        const hideXYAxes = graphState.mode !== 'contour-serial'; // graphState.mode === 'heatmap-serial' || graphState.mode === 'heatmap-matrix' || graphState.mode === 'contour-matrix';
+        const hideZAxis = graphState.mode === 'heatmap-matrix' || graphState.mode === 'contour-matrix';
+
+        const hideAxes = [hideXYAxes, hideXYAxes, hideZAxis];
+        const axisNames = ['x', 'y', 'z'];
+        const extraLabels = ['[point]', '[point]', '[none]'];
+        // const hideExtraOptions = [true, true, true];
+        // const hideLogSpans = [true, true, true];
+        const selections = [0, 1, dataSelects[2].length - 2];
+        for (let j = 0; j < 3; j++) {
+            const options = dataSelects[j].options;
+            axisSpans[j].hidden = hideAxes[j];
+            dataAxisNameSpans[j].innerHTML = `<var>${axisNames[j]}</var>`;
+            options[options.length - 1].label = extraLabels[j];
+            options[options.length - 1].hidden = true;
+            logSpans[j].hidden = true;
+            if (updateSelection) {
+                dataSelects[j].selectedIndex = selections[j];
+                graphState.selections[j] = selections[j];
+            }
+        }
     }
 };
 
@@ -176,14 +212,14 @@ const updatePlotContent = function (index: number, scanDataDiv: HTMLDivElement, 
 
     const graphState = state.graphStates[index];
 
+    const convertToNumberIfNeeded = (selection: number | number[]) => !Array.isArray(selection) ? selection : selection.length > 0 ? selection[0] : -1;
+    const convertToArrayIfNeeded = (selection: number | number[]) => Array.isArray(selection) ? selection : [selection];
+
     if (!graphState.hidden) {
-        if (graphState.mode === 'line') {
-            // X-axis is always a single number and thus the following function is safe.
-            const convertToNumberIfNeeded = (selection: number | number[]) => Array.isArray(selection) ? selection[0] : selection;
-            const convertToArrayIfNeeded = (selection: number | number[]) => Array.isArray(selection) ? selection : [selection];
-            const messageOut: MessageFromWebview = {
+        if (graphState.mode === 'line-y' || graphState.mode === 'line-xy') {
+            vscode.postMessage({
                 type: 'requestData',
-                subtype: 'line',
+                plotType: 'line',
                 graphNumber: index,
                 selections: {
                     x: convertToNumberIfNeeded(graphState.selections[0]),
@@ -191,16 +227,37 @@ const updatePlotContent = function (index: number, scanDataDiv: HTMLDivElement, 
                     y2: state.enableRightAxis ? convertToArrayIfNeeded(graphState.selections[2]) : [],
                 },
                 callback,
-            };
-            vscode.postMessage(messageOut);
-        } else if (graphState.mode === 'heatmap') {
-            const messageOut: MessageFromWebview = {
+            } satisfies MessageFromWebview);
+        } else if (graphState.mode === 'heatmap-serial') {
+            vscode.postMessage({
                 type: 'requestData',
-                subtype: 'heatmap',
+                plotType: 'heatmap',
+                dataType: 'serial',
+                graphNumber: index,
+                selection: convertToNumberIfNeeded(graphState.selections[2]), // z-axis selection
+                callback,
+            } satisfies MessageFromWebview);
+        } else if (graphState.mode === 'heatmap-matrix' || graphState.mode === 'contour-matrix') {
+            vscode.postMessage({
+                type: 'requestData',
+                plotType: graphState.mode === 'heatmap-matrix' ? 'heatmap' : 'contour',
+                dataType: 'matrix',
                 graphNumber: index,
                 callback,
-            };
-            vscode.postMessage(messageOut);
+            } satisfies MessageFromWebview);
+        } else if (graphState.mode === 'contour-serial') {
+            vscode.postMessage({
+                type: 'requestData',
+                plotType: 'contour',
+                dataType: 'serial',
+                graphNumber: index,
+                selections: {
+                    x: convertToNumberIfNeeded(graphState.selections[0]),
+                    y: convertToNumberIfNeeded(graphState.selections[1]),
+                    z: convertToNumberIfNeeded(graphState.selections[2]),
+                },
+                callback,
+            } satisfies MessageFromWebview);
         }
     }
 };
@@ -276,7 +333,7 @@ const modeSelectChangeHandler = function (event: Event) {
         state.graphStates[i].mode = modeSelect.value as GraphState['mode'];
 
         // Update the control elements and redraw the graph.
-        updateForModeSelect(i, scanDataDiv);
+        updateForModeSelect(i, scanDataDiv, true);
         updateForEnableMultipleSelection(i, scanDataDiv, true);
         updatePlotContent(i, scanDataDiv, 'react');
 
@@ -330,7 +387,7 @@ const logInputChangeHandler = function (event: Event) {
 
         if (graphDivs.length !== 1) { return; }
 
-        if (graphState.mode === 'line') {
+        if (graphState.mode === 'line-y' || graphState.mode === 'line-xy') {
             // Save the current state.
             graphState.logs[j] = logInput.checked;
             vscode.setState(state);
@@ -342,7 +399,7 @@ const logInputChangeHandler = function (event: Event) {
             } else if (j === 2) {
                 Plotly.relayout(graphDivs[0], { 'yaxis2.type': axisTypeValue });
             }
-        } else if (graphState.mode === 'heatmap') {
+        } else {
             // Do nothing.
         }
     }
@@ -398,48 +455,53 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
 
         const graphState = state.graphStates[messageIn.graphNumber];
 
-        let data: Partial<Plotly.PlotData>[];
-        let layout: Partial<Plotly.Layout> = {
+        // `PlotData` in @types/plotly.js@3.0.10 does not have several properties
+        // for heatmap and contour plots,
+        // so we need to extend the type here.
+        type ModifiedPlotlyData = Plotly.PlotData & {
+            x0: number,
+            dx: number,
+            y0: number,
+            dy: number,
+        };
+
+        const data: Partial<ModifiedPlotlyData>[] = []; //Partial<Plotly.PlotData>[];
+        const layout: Partial<Plotly.Layout> = {
             template: state.template,
             height: plotHeight,
             margin: { t: 20, r: 20 },
         };
 
-        if (messageIn.subtype === 'line') {
-            if (graphState.mode !== 'line') { return; }
+        if (messageIn.plotType === 'line') {
+            // Draw a line plot.
+            // if (graphState.mode !== 'line-y' && graphState.mode !== 'line-xy') { return; }
 
-            const y1Data: Partial<Plotly.PlotData>[] = messageIn.y1.map(y_i => {
+            data.push(...messageIn.y1.map(y_i => {
                 return {
-                    x: messageIn.x.array,
+                    x: messageIn.x?.array,
                     y: y_i.array,
-                    type: 'scatter',
-                    name: y_i.label
-                };
-            });
-            const y2Data: Partial<Plotly.PlotData>[] = messageIn.y2.map(y_i => {
+                    type: 'scatter' as const,
+                    name: y_i.label,
+                }; // } satisfies Partial<Plotly.PlotData>;
+            }));
+            data.push(...messageIn.y2.map(y_i => {
                 return {
-                    x: messageIn.x.array,
+                    x: messageIn.x?.array,
                     y: y_i.array,
                     yaxis: 'y2',
-                    type: 'scatter',
-                    name: y_i.label
-                };
-            });
-            data = y1Data.concat(y2Data);
+                    type: 'scatter' as const,
+                    name: y_i.label,
+                }; // } satisfies Partial<Plotly.PlotData>;
+            }));
 
             const getAxisLabel = function (headers: { label: string }[]): string {
-                if (headers.length < 1) {
-                    return '';
-                } else if (headers.length < 2) {
-                    return headers[0].label;
-                } else if (headers.length < 3) {
-                    return headers[0].label + ', ' + headers[1].label;
-                } else {
-                    return headers[0].label + ', ' + headers[1].label + ', ...';
-                }
+                const tmpHeaderLabels = headers.length > 2 ?
+                    [...headers.slice(0, 2).map(header => header.label), '...'] :
+                    headers.map(header => header.label);
+                return tmpHeaderLabels.join(', ');
             };
 
-            layout.xaxis = { title: { text: messageIn.x.label } };;
+            layout.xaxis = { title: { text: messageIn.x ? messageIn.x.label : 'point' } };;
             layout.yaxis = {
                 title: { text: getAxisLabel(messageIn.y1) },
                 type: graphState.logs[1] ? 'log' : 'linear'
@@ -450,13 +512,36 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
                 overlaying: 'y',
                 side: 'right'
             };
-        } else if (messageIn.subtype === 'heatmap') {
-            if (graphState.mode !== 'heatmap') { return; }
+        } else if (messageIn.plotType === 'heatmap' || (messageIn.plotType === 'contour' && messageIn.dataType === 'matrix')) {
+            // Draw a heatmap or contour plot from the provided 2D array.
+            // if (graphState.mode !== 'heatmap-serial' && graphState.mode !== 'heatmap-matrix') { return; }
 
-            data = [{
-                z: messageIn.z,
-                type: 'heatmap',
-            }];
+            data.push({
+                x0: messageIn.x ? messageIn.x.start : 0,
+                dx: messageIn.x ? messageIn.x.delta : 1,
+                y0: messageIn.y ? messageIn.y.start : 0,
+                dy: messageIn.y ? messageIn.y.delta : 1,
+                z: messageIn.z.array,
+                name: messageIn.z.label,
+                colorbar: { title: { text: messageIn.z.label, side: 'right' } },
+                type: messageIn.plotType, // 'heatmap' or 'contour'
+            }); // } satisfies Partial<Plotly.PlotData>);
+            layout.xaxis = { title: { text: messageIn.x ? messageIn.x.label : 'point' } };
+            layout.yaxis = { title: { text: messageIn.y ? messageIn.y.label : 'point' } };
+            // layout.title = { text: messageIn.z.label };
+        } else if (messageIn.plotType === 'contour' && messageIn.dataType === 'serial') {
+            // Draw a contour plot from the provided 1D arrays.
+            data.push({
+                x: messageIn.x.array,
+                y: messageIn.y.array,
+                z: messageIn.z.array,
+                name: messageIn.z.label,
+                colorbar: { title: { text: messageIn.z.label, side: 'right' } },
+                type: 'contour',
+            }); // } satisfies Partial<Plotly.PlotData>);
+            layout.xaxis = { title: { text: messageIn.x.label } };
+            layout.yaxis = { title: { text: messageIn.y.label } };
+            // layout.title = { text: messageIn.z.label };
         } else {
             return;
         }
@@ -490,13 +575,12 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         // Update the visibility and attributes of related input elements according to the flag.
         const scanDataDivs = document.body.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>;
         for (let i = 0; i < scanDataDivs.length; i++) {
-            const modeSelects = scanDataDivs[i].getElementsByClassName('modeSelect') as HTMLCollectionOf<HTMLSelectElement>;
             const x2Spans = scanDataDivs[i].getElementsByClassName('x2 axisSpan') as HTMLCollectionOf<HTMLSpanElement>;
             const x2DataSelects = scanDataDivs[i].getElementsByClassName('x2 dataSelect') as HTMLCollectionOf<HTMLSelectElement>;
 
-            if ([modeSelects, x2DataSelects, x2Spans].some(element => element.length !== 1)) { continue; }
+            if ([x2DataSelects, x2Spans].some(element => element.length !== 1) || state.graphStates.length < i) { continue; }
 
-            if (modeSelects[0].value === 'line') {
+            if (state.graphStates[i].mode === 'line-y' || state.graphStates[i].mode === 'line-xy') {
                 x2Spans[0].hidden = !messageIn.flag;
             } else {
                 // Do nothing.
@@ -596,7 +680,7 @@ window.addEventListener('DOMContentLoaded', _event => {
             graphState = {
                 mode: modeSelects[0].value as GraphState['mode'],
                 hidden: !showPlotInputs[0].checked,
-                selections: [...dataSelects].map(dataSelect => dataSelect.selectedIndex) as [number, number, number],
+                selections: [0, 0, 0], // [...dataSelects].map(dataSelect => dataSelect.selectedIndex) as [number, number, number],
                 logs: [...logInputs].map(logInput => logInput.checked) as [boolean, boolean, boolean],
             };
             state.graphStates.push(graphState);
@@ -613,7 +697,8 @@ window.addEventListener('DOMContentLoaded', _event => {
 
         // Update the visibility and attributes of related input elements according to the current mode.
         // This also refrects the state of 'enableRightAxis'.
-        updateForModeSelect(i, scanDataDiv);
+        // If the state is fresh, the initial selections are set here.
+        updateForModeSelect(i, scanDataDiv, state.fresh);
 
         // Update the multiple' attribute of data selection dropdowns according to the state.
         updateForEnableMultipleSelection(i, scanDataDiv, false);
@@ -643,10 +728,9 @@ window.addEventListener('DOMContentLoaded', _event => {
     state.fresh = false;
     vscode.setState(state);
 
-    const messageOut: MessageFromWebview = {
+    vscode.postMessage({
         type: 'contentLoaded',
-    };
-    vscode.postMessage(messageOut);
+    } satisfies MessageFromWebview);
 });
 
 
@@ -687,11 +771,11 @@ window.addEventListener('scroll', event => {
             for (const element of document.body.childNodes) {
                 if (element instanceof HTMLElement && element.getBoundingClientRect().y >= 0 && (matches = element.id.match(idPattern)) !== null) {
                     // console.log(element.id, element.tagName, ...element.classList);
-                    const messageOut: MessageFromWebview = {
+                    vscode.postMessage({
                         type: 'scrollEditor',
-                        line: parseInt(matches[1])
-                    };
-                    vscode.postMessage(messageOut);
+                        line: parseInt(matches[1]),
+                    } satisfies MessageFromWebview);
+
                     lastScrollEditorTimeStamp = event.timeStamp;
                     break;
                 }
