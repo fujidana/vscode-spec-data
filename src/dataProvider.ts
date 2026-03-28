@@ -540,13 +540,14 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                         // Send back the original 2D array for a heatmap or contour plot.
                         // No infomatioin about x- and y-scales are available in this format.
 
-                        // if (node.subtype !== 'matrix' && node.subtype !== 'matrix-wo-label') { return; }
+                        // if (node.subtype !== 'matrix-xy' && node.subtype !== 'matrix-yx') { return; }
 
                         preview.panel.webview.postMessage({
                             type: 'updatePlot',
                             plotType: messageIn.plotType,
                             dataType: 'matrix',
                             graphNumber: messageIn.graphNumber,
+                            transposed: node.subtype === 'matrix-yx',
                             z: {
                                 // label: undefined,
                                 array: node.data,
@@ -659,7 +660,7 @@ function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscod
 
     // Apply CSP regardless of user settings when in untrusted workspaces.
     const metaCspStr = !vscode.workspace.isTrusted || config.get<boolean>('applyContentSecurityPolicy', true)
-        ? `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src ${cspSource};">`
+        ? `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src ${cspSource}; connect-src ${cspSource};">`
         : '';
 
     function getSanitizedString(text: string) {
@@ -748,8 +749,8 @@ Prescan Table
                     // The number of motors can be inferred from the number of column names before 'Epoch'.
                     modes.push({ label: 'contour', value: 'contour-serial' });
                 }
-            } else { // 'matrix' | 'matrix-wo-label'
-                modes = [{ label: 'line', value: node.subtype === 'matrix-wo-label' ? 'line-y' : 'line-xy' }];
+            } else { // 'matrix-xy' | 'matrix-yx'
+                modes = [{ label: 'line', value: node.subtype === 'matrix-xy' ? 'line-y' : 'line-xy' }];
                 if (node.data.length > 1 && node.data[0].length > 1) {
                     modes.push(
                         { label: 'heatmap', value: 'heatmap-matrix' },

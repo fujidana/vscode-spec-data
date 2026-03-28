@@ -75,6 +75,15 @@ interface BaseUpdatePlotMessage extends BaseMessage {
     action: CallbackType;
 }
 
+interface BaseUpdatePlotMatrixMessage extends BaseUpdatePlotMessage {
+    dataType: 'matrix';
+    plotType: 'heatmap' | 'contour';
+    transposed?: boolean;
+    x?: { label: string, start: number, delta: number };
+    y?: { label: string, start: number, delta: number };
+    z: { label?: string, array: (number | null)[][] };
+}
+
 interface UpdateLinePlotMessage extends BaseUpdatePlotMessage {
     plotType: 'line';
     x?: { label: string, array: (number | null)[] };
@@ -82,12 +91,8 @@ interface UpdateLinePlotMessage extends BaseUpdatePlotMessage {
     y2: { label: string, array: (number | null)[] }[];
 }
 
-interface UpdateHeatmapMessage extends BaseUpdatePlotMessage {
+interface UpdateHeatmapMessage extends BaseUpdatePlotMatrixMessage {
     plotType: 'heatmap';
-    dataType: 'matrix';
-    x?: { label: string, start: number, delta: number };
-    y?: { label: string, start: number, delta: number };
-    z: { label?: string, array: (number | null)[][] };
 }
 
 interface UpdateContourPlotSerialMessage extends BaseUpdatePlotMessage {
@@ -98,12 +103,8 @@ interface UpdateContourPlotSerialMessage extends BaseUpdatePlotMessage {
     z: { label?: string, array: (number | null)[] };
 }
 
-interface UpdateContourPlotMatrixMessage extends BaseUpdatePlotMessage {
+interface UpdateContourPlotMatrixMessage extends BaseUpdatePlotMatrixMessage {
     plotType: 'contour';
-    dataType: 'matrix';
-    x?: { label: string, start: number, delta: number };
-    y?: { label: string, start: number, delta: number };
-    z: { label?: string, array: (number | null)[][] };
 }
 
 interface EnableMultipleSelectionMessage extends BaseMessage {

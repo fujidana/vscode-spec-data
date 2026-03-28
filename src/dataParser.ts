@@ -24,7 +24,7 @@ interface CommentNode extends BaseNode { type: 'comment', value: string }
 interface NameListNode extends BaseNode { type: 'nameList', kind: 'motor' | 'counter', values: string[], subtype: 'name' | 'mnemonic' }
 interface ValueListNode extends BaseNode { type: 'valueList', kind: 'motor', values: number[], subtype: 'position' }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
-interface ScanDataNode extends BaseNode { type: 'scanData', subtype: 'serial' | 'matrix' | 'matrix-wo-label', headers: string[], data: number[][], parameter?: ScanParameter }
+interface ScanDataNode extends BaseNode { type: 'scanData', subtype: 'serial' | 'matrix-xy' | 'matrix-yx', headers: string[], data: number[][], parameter?: ScanParameter }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
 type ScanParameter = MeshScanParameter | FScanParameter;
@@ -486,20 +486,18 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
         }
 
         // Add the read data to the nodes.
-        let subtype: 'matrix' | 'matrix-wo-label';
+        let subtype: 'matrix-xy' | 'matrix-yx';
         if (language === 'csv-column') {
+            subtype = 'matrix-yx';
             // Transpose the two-dimensional data array.
             data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
             // Create a header if not exists.
-            if (headers) {
-                subtype = 'matrix';
-            } else {
-                subtype = 'matrix-wo-label';
+            if (!headers) {
                 headers = Array(data.length).fill(0).map((_x, i) => `column ${i}`);
             }
         } else { // language === 'csv-row'
+            subtype = 'matrix-xy';
             // Create a header.
-            subtype = 'matrix-wo-label';
             headers = Array(data.length).fill(0).map((_x, i) => `row ${i}`);
         }
 

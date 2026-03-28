@@ -522,6 +522,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
                 y0: messageIn.y ? messageIn.y.start : 0,
                 dy: messageIn.y ? messageIn.y.delta : 1,
                 z: messageIn.z.array,
+                transpose: messageIn.transposed,
                 name: messageIn.z.label,
                 colorbar: { title: { text: messageIn.z.label, side: 'right' } },
                 type: messageIn.plotType, // 'heatmap' or 'contour'
