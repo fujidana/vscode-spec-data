@@ -24,9 +24,9 @@ importers:
       '@types/node':
         specifier: 22.x
         version: 22.19.15
-      '@types/plotly.js-basic-dist-min':
-        specifier: ^2.12.4
-        version: 2.12.4
+      '@types/plotly.js':
+        specifier: ^3.0.10
+        version: 3.0.10
       '@types/vscode':
         specifier: ^1.110.0
         version: 1.110.0
@@ -344,9 +344,6 @@ packages:
 
   '@types/node@22.19.15':
     resolution: {integrity: sha512-F0R/h2+dsy5wJAUe3tAU6oqa2qbWY5TpNfL/RGmo1y38hiyO1w3x2jPtt76wmuaJI4DQnOBu21cNXQ2STIUUWg==}
-
-  '@types/plotly.js-basic-dist-min@2.12.4':
-    resolution: {integrity: sha512-BtvgBR52ZQ9N346gq8eAom9vwh1HAcGTxIUDrQXRMEP75XrSaOF/bXm8PtrZ9WGNUIxo9NxZ6+juKWamJKkYyQ==}
 
   '@types/plotly.js@3.0.10':
     resolution: {integrity: sha512-q+MgO4aajC2HrO7FllTYWzrpdfbTjboSMfjkz/aXKjg1v7HNo1zMEFfAW7quKfk6SL+bH74A5ThBEps/7hZxOA==}
@@ -2245,10 +2242,6 @@ snapshots:
   '@types/node@22.19.15':
     dependencies:
       undici-types: 6.21.0
-
-  '@types/plotly.js-basic-dist-min@2.12.4':
-    dependencies:
-      '@types/plotly.js': 3.0.10
 
   '@types/plotly.js@3.0.10': {}
 

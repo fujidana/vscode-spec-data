@@ -1,14 +1,14 @@
 import * as vscode from 'vscode';
 import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
-import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './dataParser';
+import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR, CSV_ROWS_FILTER } from './dataParser';
 import type { Node, ParserResult, ParserSuccess } from './dataParser';
 
 // @types/plotly.js contains DOM objects and thus
 // `tsc -p .` fails without `skipLibCheck`.
-import type { PlotData, Layout } from 'plotly.js-basic-dist-min';
+import type { PlotData, Layout, Template } from 'plotly.js';
 // type PlotData = any;
 // type Layout = any;
-import type { State, MessageToWebview, MessageFromWebview } from './previewTypes';
+import type { State, GraphMode, MessageToWebview, MessageFromWebview } from './previewTypes';
 
 type Preview = {
     readonly panel: vscode.WebviewPanel;
@@ -31,7 +31,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     private readonly subscriptions;
     private readonly previews: Preview[] = [];
     private readonly parserSessionMap: Map<string, ParserSession> = new Map();
-    private readonly diagnosticCollection: vscode.DiagnosticCollection;
+    private readonly diagnosticCollection = vscode.languages.createDiagnosticCollection('spec-data');
 
     private enablePreviewScroll: boolean;
     private livePreview: Preview | undefined = undefined;
@@ -48,7 +48,6 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         this.extensionUri = context.extensionUri;
         this.subscriptions = context.subscriptions;
 
-        this.diagnosticCollection = vscode.languages.createDiagnosticCollection('spec-data');
         this.colorThemeKind = vscode.window.activeColorTheme.kind;
 
         const config = vscode.workspace.getConfiguration('spec-data.preview');
@@ -62,9 +61,13 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 // it can be inferred from the active editor.
                 let uris: vscode.Uri[];
                 if (args && args.length > 0) {
-                    // typically, the type of args is [vscode.Uri, vscode.Uri[]]
-                    if (args.length >= 2 && Array.isArray(args[1]) && args[1].every(item => item instanceof vscode.Uri)) {
+                    // Typically, the type of args is [vscode.Uri, vscode.Uri[]].
+                    if (args.length >= 2 && Array.isArray(args[1]) && args[1].length > 0 && args[1].every(item => item instanceof vscode.Uri)) {
                         uris = args[1];
+                        // If not locked, a single preview is reused for multiple URIs and thus the URIs except the last one are not needed.
+                        if (!lockPreview) {
+                            uris = [uris[uris.length - 1]];
+                        }
                     } else if (args[0] instanceof vscode.Uri) {
                         uris = [args[0]];
                     } else {
@@ -72,7 +75,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                         return;
                     }
                 } else {
-                    // If the URI is not provided via the arguments, returns the URI and contents of the active editor.
+                    // If the URI is not provided via the arguments, get an URI from the active editor.
                     const editor = vscode.window.activeTextEditor;
                     if (editor) {
                         uris = [editor.document.uri];
@@ -83,15 +86,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 }
 
                 // Show the preview(s).
-                if (lockPreview) {
-                    for (const uri of uris) {
-                        this.showPreview(uri, lockPreview, showToSide);
-                    }
-                } else {
-                    if (uris.length > 0) {
-                        this.showPreview(uris[uris.length - 1], lockPreview, showToSide);
-                    }
-                }
+                uris.forEach(uri => { this.showPreview(uri, lockPreview, showToSide); });
             };
         };
 
@@ -128,8 +123,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             if (activePreview) {
                 const flag = !activePreview.enableMultipleSelection;
                 activePreview.enableMultipleSelection = flag;
-                const messageOut: MessageToWebview = { type: 'enableMultipleSelection', flag: flag };
-                activePreview.panel.webview.postMessage(messageOut);
+                activePreview.panel.webview.postMessage({
+                    type: 'enableMultipleSelection',
+                    flag: flag
+                } satisfies MessageToWebview);
             } else {
                 vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
@@ -141,8 +138,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             if (activePreview) {
                 const flag = !activePreview.enableRightAxis;
                 activePreview.enableRightAxis = flag;
-                const messageOut: MessageToWebview = { type: 'enableRightAxis', flag: flag };
-                activePreview.panel.webview.postMessage(messageOut);
+                activePreview.panel.webview.postMessage({
+                    type: 'enableRightAxis',
+                    flag: flag,
+                } satisfies MessageToWebview);
             } else {
                 vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
@@ -156,19 +155,23 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 if (this.livePreview && activePreview === this.livePreview) {
                     // If the active view is a live preview, lock the view to the file.
                     this.livePreview = undefined;
-                    const messageOut: MessageToWebview = { type: 'lockPreview', flag: true };
-                    activePreview.panel.webview.postMessage(messageOut);
+                    activePreview.panel.webview.postMessage({
+                        type: 'lockPreview',
+                        flag: true,
+                    } satisfies MessageToWebview);
                     activePreview.panel.title = vscode.l10n.t('[Preview] {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
                 } else {
                     // If the active view is not a live preview...
                     if (this.livePreview) {
-                        // close the previous live view if it exists...
+                        // Close the previous live view if it exists.
                         this.livePreview.panel.dispose();
                     }
-                    // and set the active view to live view.
+                    // Set the active view to live view.
                     this.livePreview = activePreview;
-                    const messageOut: MessageToWebview = { type: 'lockPreview', flag: false };
-                    activePreview.panel.webview.postMessage(messageOut);
+                    activePreview.panel.webview.postMessage({
+                        type: 'lockPreview',
+                        flag: false,
+                    } satisfies MessageToWebview);
                     activePreview.panel.title = vscode.l10n.t('Preview {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
                 }
             } else {
@@ -221,8 +224,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 for (const preview of previews) {
                     const node = preview.nodes?.find(node => (node.lineEnd >= line));
                     if (node) {
-                        const messageOut: MessageToWebview = { type: 'scrollPreview', elementId: `l${node.lineStart}` };
-                        preview.panel.webview.postMessage(messageOut);
+                        preview.panel.webview.postMessage({
+                            type: 'scrollPreview',
+                            elementId: `l${node.lineStart}`,
+                        } satisfies MessageToWebview);
                     }
                 }
                 this.lastScrollPreviewTimeStamp = now;
@@ -241,7 +246,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 this.enablePreviewScroll = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollPreviewWithEditor', true);
             }
             if (event.affectsConfiguration('spec-data.preview.smoothScrolling')) {
-                const flag = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('smoothScrolling', true);
+                const flag = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('smoothScrolling', false);
                 const messageOut: MessageToWebview = { type: 'setScrollBehavior', value: flag ? 'smooth' : 'auto' };
                 for (const preview of this.previews) {
                     preview.panel.webview.postMessage(messageOut);
@@ -257,25 +262,26 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     // only delivered if the webview is live (either visible or in 
                     // the background with `retainContextWhenHidden`).
                     // However, it seems invisible webviews also handle the following messages.
-                    const messageOut: MessageToWebview = {
+                    preview.panel.webview.postMessage({
                         type: 'setTemplate',
                         template: getPlotlyTemplate(colorTheme.kind, preview.uri),
-                        callback: 'relayout'
-                    };
-                    preview.panel.webview.postMessage(messageOut);
+                        callback: 'relayout',
+                    } satisfies MessageToWebview);
                 }
             }
             this.colorThemeKind = colorTheme.kind;
         };
 
-        // When the extension is activated by opening a file for this extension.
+        // When the extension is activated by opening a file for this extension,
+        // the `onDidOpenTextDocument` event is not fired.
+        // Thus, run the parser session for each open document here.
         for (const document of vscode.workspace.textDocuments) {
             if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
                 this.runParserSession(document);
             }
         }
 
-        // register providers and commands
+        // Register providers and commands.
         context.subscriptions.push(
             vscode.commands.registerCommand('spec-data.showPreview', makeShowPreviewCallback(false, false)),
             vscode.commands.registerCommand('spec-data.showPreviewToSide', makeShowPreviewCallback(false, true)),
@@ -301,9 +307,9 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     }
 
     /**
-     * Required implementation of vscode.FoldingRangeProvider
+     * Required implementation of vscode.FoldingRangeProvider.
      */
-    public provideFoldingRanges(document: vscode.TextDocument, context: vscode.FoldingContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
+    public provideFoldingRanges(document: vscode.TextDocument, _context: vscode.FoldingContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
         if (token.isCancellationRequested) { return; }
 
         return this.parserSessionMap.get(document.uri.toString())?.promise.then(
@@ -312,7 +318,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     }
 
     /**
-     * Required implementation of vscode.DocumentSymbolProvider
+     * Required implementation of vscode.DocumentSymbolProvider.
      */
     public provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.SymbolInformation[] | vscode.DocumentSymbol[]> {
         if (token.isCancellationRequested) { return; }
@@ -345,7 +351,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     }
 
     /**
-     * Parse document contents.
+     * Parse the document content.
      * Cancellation token is integrated.
      */
     private runParserSession(document: vscode.TextDocument): void {
@@ -459,53 +465,139 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     }
                     this.lastScrollEditorTimeStamp = now;
                 }
-            } else if (messageIn.type === 'requestPlotData') {
-                if (preview.nodes) {
-                    let index = 0;
-                    const node = preview.nodes.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
-                    if (node && node.type === 'scanData' && node.data.length) {
+            } else if (messageIn.type === 'requestData') {
+                if (!preview.nodes) { return; };
+
+                let index = 0;
+                const node = preview.nodes.find(node => node.type === 'scanData' && index++ === messageIn.graphNumber);
+                if (node && node.type === 'scanData' && node.data.length) {
+                    if (messageIn.plotType === 'line') {
+                        // Send back the selected data for line plot.
                         const { x: xIndex, y1: y1Indexes, y2: y2Indexes } = messageIn.selections;
 
                         const xData = (xIndex >= 0 && xIndex < node.data.length) ?
                             { label: node.headers[xIndex], array: node.data[xIndex] } :
-                            { label: 'point', array: Array(node.data[0].length).fill(0).map((_x, i) => i) };
+                            undefined; // { label: 'point', array: Array(node.data[0].length).fill(0).map((_x, i) => i) };
                         const y1Data = y1Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
                         const y2Data = y2Indexes.filter(y_i => y_i < node.data.length).map(y_i => { return { label: node.headers[y_i], array: node.data[y_i] }; });
 
-                        const messageOut: MessageToWebview = {
+                        preview.panel.webview.postMessage({
                             type: 'updatePlot',
+                            plotType: 'line',
                             graphNumber: messageIn.graphNumber,
                             x: xData,
                             y1: y1Data,
                             y2: y2Data,
-                            action: messageIn.callback
-                        };
-                        preview.panel.webview.postMessage(messageOut);
+                            action: messageIn.callback,
+                        } satisfies MessageToWebview);
+                    } else if (messageIn.plotType === 'heatmap' && messageIn.dataType === 'serial') {
+                        // Send back the selected data for heatmap, after reshaping the selected 1D data into a 2D array.
+
+                        // if (node.subtype !== 'serial') { return; }
+                        if (messageIn.selection < 0 || messageIn.selection >= node.data.length || !node.parameter || node.parameter.macro !== 'mesh') { return; }
+
+                        const expectedLength = (node.parameter.interval0 + 1) * (node.parameter.interval1 + 1);
+                        const selectedData = node.data[messageIn.selection];
+                        let tmpData: (number | null)[];
+                        if (selectedData.length === expectedLength) {
+                            tmpData = selectedData;
+                        } else if (selectedData.length < expectedLength) {
+                            tmpData = selectedData.concat(new Array(expectedLength - selectedData.length).fill(null));
+                        } else {
+                            // console.log('The length of the selected data is longer than expected. The extra data will be ignored.');
+                            tmpData = selectedData.slice(0, expectedLength);
+                        }
+
+                        // Reshape the selected 1D data into a 2D array for heatmap.
+                        const zData: (number | null)[][] = [];
+                        for (let i = 0; i < node.parameter.interval1 + 1; i++) {
+                            zData.push(tmpData.slice(i * (node.parameter.interval0 + 1), (i + 1) * (node.parameter.interval0 + 1)));
+                        }
+
+                        // Send the data to webview.
+                        preview.panel.webview.postMessage({
+                            type: 'updatePlot',
+                            plotType: 'heatmap',
+                            dataType: 'matrix',
+                            graphNumber: messageIn.graphNumber,
+                            x: {
+                                label: node.headers[0],
+                                start: node.parameter.start0,
+                                delta: (node.parameter.finish0 - node.parameter.start0) / node.parameter.interval0,
+                            },
+                            y: {
+                                label: node.headers[1],
+                                start: node.parameter.start1,
+                                delta: (node.parameter.finish1 - node.parameter.start1) / node.parameter.interval1,
+                            },
+                            z: {
+                                label: node.headers[messageIn.selection],
+                                array: zData,
+                            },
+                            action: messageIn.callback,
+                        } satisfies MessageToWebview);
+                    } else if ((messageIn.plotType === 'heatmap' || messageIn.plotType === 'contour') && messageIn.dataType === 'matrix') {
+                        // Send back the original 2D array for a heatmap or contour plot.
+                        // No infomatioin about x- and y-scales are available in this format.
+
+                        // if (node.subtype !== 'matrix-xy' && node.subtype !== 'matrix-yx') { return; }
+
+                        preview.panel.webview.postMessage({
+                            type: 'updatePlot',
+                            plotType: messageIn.plotType,
+                            dataType: 'matrix',
+                            graphNumber: messageIn.graphNumber,
+                            transposed: node.subtype === 'matrix-yx',
+                            z: {
+                                // label: undefined,
+                                array: node.data,
+                            },
+                            action: messageIn.callback,
+                        } satisfies MessageToWebview);
+                    } else if (messageIn.plotType === 'contour' && messageIn.dataType === 'serial') {
+                        // Send back a set of 1D arrays of X, Y, and Z for contour plot.
+                        const { x: xIndex, y: yIndex, z: zIndex } = messageIn.selections;
+                        preview.panel.webview.postMessage({
+                            type: 'updatePlot',
+                            plotType: 'contour',
+                            dataType: 'serial',
+                            graphNumber: messageIn.graphNumber,
+                            x: { label: node.headers[xIndex], array: node.data[xIndex] },
+                            y: { label: node.headers[yIndex], array: node.data[yIndex] },
+                            z: { label: node.headers[zIndex], array: node.data[zIndex] },
+                            action: messageIn.callback,
+                        } satisfies MessageToWebview);
                     }
                 }
             } else if (messageIn.type === 'contentLoaded') {
                 // This will be called not only when the webview is created but also when it is revealed after it is hidden.
                 const config = vscode.workspace.getConfiguration('spec-data.preview');
-                let messageOut: MessageToWebview;
 
-                messageOut = { type: 'lockPreview', flag: this.livePreview?.panel !== preview.panel };
-                preview.panel.webview.postMessage(messageOut);
+                preview.panel.webview.postMessage({
+                    type: 'lockPreview',
+                    flag: this.livePreview?.panel !== preview.panel,
+                } satisfies MessageToWebview);
 
-                messageOut = { type: 'enableEditorScroll', flag: config.get<boolean>('scrollEditorWithPreview', true) };
-                preview.panel.webview.postMessage(messageOut);
+                preview.panel.webview.postMessage({
+                    type: 'enableEditorScroll',
+                    flag: config.get<boolean>('scrollEditorWithPreview', true),
+                } satisfies MessageToWebview);
 
-                messageOut = {
+                preview.panel.webview.postMessage({
                     type: 'setTemplate',
                     template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, preview.uri),
-                    callback: 'newPlot'
-                };
-                preview.panel.webview.postMessage(messageOut);
+                    callback: 'newPlot',
+                } satisfies MessageToWebview);
 
-                messageOut = { type: 'setScrollBehavior', value: config.get<boolean>('smoothScrolling', true) ? 'smooth' : 'auto' };
-                preview.panel.webview.postMessage(messageOut);
+                preview.panel.webview.postMessage({
+                    type: 'setScrollBehavior',
+                    value: config.get<boolean>('smoothScrolling', true) ? 'smooth' : 'auto'
+                } satisfies MessageToWebview);
 
-                messageOut = { type: 'restoreScroll', delay: true };
-                preview.panel.webview.postMessage(messageOut);
+                preview.panel.webview.postMessage({
+                    type: 'restoreScroll',
+                    delay: true,
+                } satisfies MessageToWebview);
             }
         }, null, this.subscriptions);
 
@@ -523,7 +615,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      */
     private async reloadPreview(preview: Preview, uri: vscode.Uri, forcesReload = false): Promise<Preview | undefined> {
         // If the source URI is the same as the preview URI, do not reload.
-        if (forcesReload === false && preview.uri.toString() === uri.toString()) {
+        if (!forcesReload && preview.uri.toString() === uri.toString()) {
             return preview;
         }
 
@@ -542,7 +634,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     private updatePreviewWithNodes(preview: Preview, language: string, nodes: Node[]) {
         const webview = preview.panel.webview;
         const filePath = preview.uri.path;
-        const plotlyUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-basic-dist-min', 'plotly-basic.min.js'));
+        const plotlyUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-cartesian-dist-min', 'plotly-cartesian.min.js'));
         const controllerUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewController.js'));
 
         preview.nodes = nodes;
@@ -568,7 +660,7 @@ function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscod
 
     // Apply CSP regardless of user settings when in untrusted workspaces.
     const metaCspStr = !vscode.workspace.isTrusted || config.get<boolean>('applyContentSecurityPolicy', true)
-        ? `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src 'unsafe-inline'; script-src ${cspSource};">`
+        ? `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src ${cspSource}; connect-src ${cspSource};">`
         : '';
 
     function getSanitizedString(text: string) {
@@ -581,36 +673,9 @@ function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscod
         return `id="l${node.lineStart}" class="${node.type}"`;
     }
 
-    /** create components to select arrays (<select>) and select log-linear <input> */
-    function getAxisSelectAndOptions(axis: string, headers: string[], size: number, useLogInput: boolean, hidden: boolean) {
-        const hiddenStr = hidden === true ? ' hidden' : '';
-        const sizeStr = size !== undefined ? ` data-size-for-multiple="${size}"` : '';
-        // const multipleStr = isMultiple ? ` multiple size="${size}"` : '';
-        let tmpStr;
-        tmpStr = `<span class="${axis}"${hiddenStr}>; </span>
-<label class="${axis}"${hiddenStr}>
-<var>${axis}</var>:
-<select class="${axis} ${axis}AxisSelect"${hiddenStr}${sizeStr}>
-`;
-        tmpStr += headers.map((item, index) => `<option value="${index}">${getSanitizedString(item)}</option>`).join('\n');
-        tmpStr += `</select>
-</label>
-`;
-        if (useLogInput) {
-            tmpStr += `<span class="${axis}"${hiddenStr}>,</span>
-<label class="${axis}"${hiddenStr}>
-<input type="checkbox" class="${axis} ${axis}LogInput"${hiddenStr}>
-log
-</label>
-`;
-        }
-
-        return tmpStr;
-    }
-
     const header = `<!DOCTYPE html>
 <html lang="en">
-<head data-maximum-plots="${maximumPlots}" data-plot-height="${plotHeight}" data-hide-table="${Number(hideTable)}" data-source-uri="${preview.uri.toString()}" data-enable-multiple-selection="${Number(preview.enableMultipleSelection)}" data-enable-right-axis="${Number(preview.enableRightAxis)}">
+<head data-plot-height="${plotHeight}" data-source-uri="${preview.uri.toString()}" data-enable-multiple-selection="${Number(preview.enableMultipleSelection)}" data-enable-right-axis="${Number(preview.enableRightAxis)}">
 	<meta charset="UTF-8">
     ${metaCspStr}
     <title>Preview of spec-data</title>
@@ -622,6 +687,8 @@ log
 `;
 
     const lines: string[] = [];
+    let scanDataCount = 0;
+
     for (const node of preview.nodes) {
         if (node.type === 'file') {
             lines.push(`<h1 ${getAttributesForNode(node)}>${getSanitizedString(node.value)}</h1>`);
@@ -646,12 +713,13 @@ log
             } else {
                 lines.push(`<p>
 <label>
-<input type="checkbox" class="showValueListInput">
-Show Prescan Table
+<input type="checkbox" class="showValueListInput"${hideTable ? '' : ' checked'} />
+Prescan Table
 </label>
 </p>
-<table class="valueListTable">
+<table class="valueListTable"${hideTable ? ' hidden' : ''}>
 <caption>${getSanitizedString(node.kind)}</caption>`);
+
                 for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
                     if (headerList) {
                         const headerListInRow = headerList.slice(row * columnsPerLine, Math.min((row + 1) * columnsPerLine, headerList.length));
@@ -666,24 +734,80 @@ Show Prescan Table
         } else if (node.type === 'scanData') {
             const data = node.data;
             const headers = node.headers;
+            const hidePlot = scanDataCount++ >= maximumPlots;
+
+            let modes: { label: string, value: GraphMode }[];
+            if (node.subtype === 'serial') {
+                modes = [{ label: 'line', value: 'line-xy' }];
+                if (node.parameter?.macro === 'mesh') {
+                    modes.push(
+                        { label: 'heatmap', value: 'heatmap-serial' },
+                        { label: 'contour', value: 'contour-serial' },
+                    );
+                } else if (node.parameter?.macro === 'fscan' && node.headers.findIndex(header => header === 'Epoch') > 1) {
+                    // Enable 'contour' mode for 'fscan' with multiple motors.
+                    // The number of motors can be inferred from the number of column names before 'Epoch'.
+                    modes.push({ label: 'contour', value: 'contour-serial' });
+                }
+            } else { // 'matrix-xy' | 'matrix-yx'
+                modes = [{ label: 'line', value: node.subtype === 'matrix-xy' ? 'line-y' : 'line-xy' }];
+                if (node.data.length > 1 && node.data[0].length > 1) {
+                    modes.push(
+                        { label: 'heatmap', value: 'heatmap-matrix' },
+                        { label: 'contour-2D', value: 'contour-matrix' },
+                    );
+                }
+                if (node.data.length > 2 && node.data[0].length > 1) {
+                    modes.push({ label: 'contour-XYZ', value: 'contour-serial' });
+                }
+            }
 
             lines.push(`<div ${getAttributesForNode(node)}>`);
             if (data.length) {
                 lines.push(`<p>
 <label>
-<input type="checkbox" class="showPlotInput">
-Show Plot
-</label>`);
-                const size = Math.min((node.xAxisSelectable ? headers.length + 1 : headers.length), 4);
-                lines.push(getAxisSelectAndOptions('x', [...headers, '[point]'], size, false, !node.xAxisSelectable));
-                lines.push(getAxisSelectAndOptions('y1', headers, size, true, false));
-                lines.push(getAxisSelectAndOptions('y2', [...headers, '[none]'], size, true, !preview.enableRightAxis));
-                lines.push(`.</p>
-<div class="graphDiv"></div>`);
+<input type="checkbox" class="showPlotInput"${hidePlot ? '' : ' checked'} />
+Plot
+</label>
+<span class="modeSpan"${modes.length <= 1 ? ' hidden' : ''}>
+;
+<label class="modeLabel">
+mode: 
+<select class="modeSelect">`);
+
+                lines.push(...modes.map(mode => `<option value="${mode.value}">${mode.label}</option>`));
+                lines.push(`</select>
+</label>
+</span>
+<span class="axesSpan">`);
+
+                for (let i = 0; i < 3; i++) {
+                    lines.push(`<span class="x${i} axisSpan">
+;
+<label class="x${i} dataLabel">
+<span class="x${i} dataAxisNameSpan"><var>x</var><sub>${i}</sub></span>:
+<select class="x${i} dataSelect">`);
+
+                    [...headers, '[extra]'].forEach((header, j) => {
+                        lines.push(`<option value="${j}">${getSanitizedString(header)}</option>`);
+                    });
+
+                    lines.push(`</select>
+</label>
+<span class="x${i} logSpan"${i === 0 ? ' hidden' : ''}>
+,
+<label class="x${i} logLabel">
+<input type="checkbox" class="x${i} logInput" />log
+</label>
+</span>
+</span>`);
+                }
+                lines.push(`</span></p>`);
+                lines.push(`<div class="graphDiv"></div>`);
             }
             lines.push(`</div>`);
-            // } else if (node.type === 'unknown') {
-            //     lines.push(`<p>#${node.kind} ${node.value}</p>`);
+        } else if (node.type === 'unknown') {
+            // lines.push(`<p>#${node.kind} ${node.value}</p>`);
         }
     }
 
@@ -693,7 +817,7 @@ Show Plot
 
 type ColorThemeKind = 'light' | 'dark' | 'highContrast' | 'highContrastLight';
 
-function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope) {
+function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope): Template {
     let traceTemplate: Partial<PlotData>[]; // Record<string, unknown>[];
     let layoutTemplate: Partial<Layout>; // Record<string, unknown>;
 

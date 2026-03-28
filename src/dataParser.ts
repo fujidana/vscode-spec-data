@@ -6,20 +6,47 @@ export const CSV_COLUMNS_FILTER = { language: 'csv-column' } as const;
 export const CSV_ROWS_FILTER = { language: 'csv-row' } as const;
 export const DPPMCA_FILTER = { language: 'dppmca' } as const;
 export const CHIPLOT_FILTER = { language: 'chiplot' } as const;
+
+const CSV_DOCUMENT_SELECTOR = [CSV_COLUMNS_FILTER, CSV_ROWS_FILTER] as const;
+// const CSV_LANGUAGES = CSV_DOCUMENT_SELECTOR.map(filter => filter.language);
+// typeof CSV_LANGUAGES[number];
+type CsvLanguage = typeof CSV_DOCUMENT_SELECTOR[number]['language'];
+
 export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER] as const;
-export const LANGUAGE_IDS = DOCUMENT_SELECTOR.map(filter => filter.language);
-export type LanguageIds = typeof LANGUAGE_IDS[number];
+const LANGUAGE_IDS = DOCUMENT_SELECTOR.map(filter => filter.language);
+type SupportedLanguage = typeof LANGUAGE_IDS[number];
 
 export type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
 interface BaseNode { type: string, lineStart: number, lineEnd: number }
 interface FileNode extends BaseNode { type: 'file', value: string }
 interface DateNode extends BaseNode { type: 'date', value: string }
 interface CommentNode extends BaseNode { type: 'comment', value: string }
-interface NameListNode extends BaseNode { type: 'nameList', kind: string, values: string[], subtype: string }
-interface ValueListNode extends BaseNode { type: 'valueList', kind: string, values: number[], subtype: string }
+interface NameListNode extends BaseNode { type: 'nameList', kind: 'motor' | 'counter', values: string[], subtype: 'name' | 'mnemonic' }
+interface ValueListNode extends BaseNode { type: 'valueList', kind: 'motor', values: number[], subtype: 'position' }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
-interface ScanDataNode extends BaseNode { type: 'scanData', headers: string[], data: number[][], xAxisSelectable: boolean }
+interface ScanDataNode extends BaseNode { type: 'scanData', subtype: 'serial' | 'matrix-xy' | 'matrix-yx', headers: string[], data: number[][], parameter?: ScanParameter }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
+
+type ScanParameter = MeshScanParameter | FScanParameter;
+
+interface MeshScanParameter {
+    macro: 'mesh';
+    motor0: string;
+    start0: number;
+    finish0: number;
+    interval0: number;
+    motor1: string;
+    start1: number;
+    finish1: number;
+    interval1: number;
+    time: number;
+}
+
+interface FScanParameter {
+    macro: 'fscan';
+    file: string;
+    time: string | number;
+}
 
 export type ParserResult = ParserSuccess | ParserFailure | undefined;
 
@@ -49,9 +76,9 @@ export function parseDocument(document: vscode.TextDocument, token: vscode.Cance
     if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
         parserResult = parseSpecDataContent(document.getText(), token);
     } else if (vscode.languages.match(CSV_COLUMNS_FILTER, document)) {
-        parserResult = parseCsvContent(document.getText(), true, token);
+        parserResult = parseCsvContent(document.getText(), CSV_COLUMNS_FILTER.language, token);
     } else if (vscode.languages.match(CSV_ROWS_FILTER, document)) {
-        parserResult = parseCsvContent(document.getText(), false, token);
+        parserResult = parseCsvContent(document.getText(), CSV_ROWS_FILTER.language, token);
     } else if (vscode.languages.match(DPPMCA_FILTER, document)) {
         parserResult = parseDppmcaContent(document.getText(), token);
     } else if (vscode.languages.match(CHIPLOT_FILTER, document)) {
@@ -122,9 +149,9 @@ export async function parseTextFromUri(uri: vscode.Uri): Promise<ParserResult> {
     if (language === SPEC_DATA_FILTER.language) {
         return parseSpecDataContent(text);
     } else if (language === CSV_COLUMNS_FILTER.language) {
-        return parseCsvContent(text, true);
+        return parseCsvContent(text, language);
     } else if (language === CSV_ROWS_FILTER.language) {
-        return parseCsvContent(text, false);
+        return parseCsvContent(text, language);
     } else if (language === DPPMCA_FILTER.language) {
         return parseDppmcaContent(text);
     } else if (language === CHIPLOT_FILTER.language) {
@@ -150,7 +177,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
     const documentSymbols: vscode.DocumentSymbol[] = [];
 
     // Parameters used for making folding ranges and document symbols.
-    const scanLineRegex = /^(#S [0-9]+)\s*(\S.*)?$/;
+    const scanLineRegex = /^(#S [0-9]+)\s+(\S.*)?$/;
     const otherLineRegex = /^(#[a-zA-Z][0-9]*)\s(\S.*)?$/;
     let prevEmptyLineNumber = -1;
 
@@ -159,7 +186,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
     const dateRegex = /^(#D) (.*)$/;
     const commentRegex = /^(#C) (.*)$/;
     const listRegex = /^(?:#([OJojP])([0-9]+)) (.*)$/;
-    const scanHeadRegex = /^(#S) ([0-9]+) (.*)$/;
+    const scanHeadRegex = /^(#S) ([0-9]+) {1,2}(.*)$/;
     const scanNumberRegex = /^(#N) ([0-9]+)$/;
     const scanDataRegex = /^(#L) (.*)$/;
     const unknownRegex = /^#(?:([a-zA-Z][0-9]*) (.*)|.*)$/;
@@ -168,6 +195,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
     let prevNodeIndex = -1;
     let columnCountInHeader = -1;
     let columnCountInBody = -1;
+    let prevScanHeadNode: ScanHeadNode | undefined;
 
     for (let lineNumber = 0; lineNumber < lineCount; lineNumber++) {
         if (token && token.isCancellationRequested === true) { return; }
@@ -189,6 +217,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                 }
             }
             prevEmptyLineNumber = lineNumber;
+            prevScanHeadNode = undefined;
         } else if ((matches = line.match(fileRegex)) !== null) {
             nodes.push({ type: 'file', lineStart: lineNumber, lineEnd: lineNumber, value: matches[2] });
         } else if ((matches = line.match(dateRegex)) !== null) {
@@ -196,34 +225,23 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
         } else if ((matches = line.match(commentRegex)) !== null) {
             nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: matches[2] });
         } else if ((matches = line.match(listRegex)) !== null) {
-            let listType: 'valueList' | 'nameList', kind: string, subtype: string, separator: string;
-            if (matches[1] === 'P') {
-                listType = 'valueList';
-                kind = 'motor';
-                subtype = 'position';
-                separator = ' ';
-            } else {
-                listType = 'nameList';
-                if (matches[1] === matches[1].toLowerCase()) {
-                    subtype = 'mnemonic';
-                    separator = ' ';
-                } else {
-                    subtype = 'name';
-                    separator = '  ';
-                }
-                if (matches[1].toLowerCase() === 'o') {
-                    kind = 'motor';
-                } else if (matches[1].toLowerCase() === 'j') {
-                    kind = 'counter';
-                } else {
-                    kind = matches[1];
-                }
-            }
+            const typeHint = matches[1] === 'P' ? {
+                listType: 'valueList',
+                kind: 'motor',
+                subtype: 'position',
+                separator: ' '
+            } as const : {
+                listType: 'nameList',
+                kind: matches[1].toLowerCase() === 'o' ? 'motor' : 'counter',
+                subtype: matches[1] === matches[1].toLowerCase() ? 'mnemonic' : 'name',
+                separator: matches[1] === matches[1].toLowerCase() ? ' ' : '  '
+            } as const;
+
             const listIndex = parseInt(matches[2]);
             const prevNode = nodes.length > 0 ? nodes[nodes.length - 1] : undefined;
-            const values = matches[3].trimEnd().split(separator);
+            const values = matches[3].trimEnd().split(typeHint.separator);
 
-            if (prevNode && prevNode.type === listType && prevNode.kind === kind && prevNode.subtype === subtype) {
+            if (prevNode && prevNode.type === typeHint.listType && prevNode.kind === typeHint.kind && prevNode.subtype === typeHint.subtype) {
                 if (prevNodeIndex !== listIndex - 1) {
                     diagnostics.push(new vscode.Diagnostic(
                         new vscode.Range(lineNumber, 0, lineNumber, 2 + matches[2].length),
@@ -246,15 +264,17 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                         vscode.DiagnosticSeverity.Warning,
                     ));
                 }
-                if (listType === 'valueList') {
-                    nodes.push({ type: listType, lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: values.map(value => parseFloat(value)), subtype: subtype });
+                if (typeHint.listType === 'valueList') {
+                    nodes.push({ type: typeHint.listType, lineStart: lineNumber, lineEnd: lineNumber, kind: typeHint.kind, values: values.map(value => parseFloat(value)), subtype: typeHint.subtype });
                 } else {
-                    nodes.push({ type: listType, lineStart: lineNumber, lineEnd: lineNumber, kind: kind, values: values, subtype: subtype });
+                    nodes.push({ type: typeHint.listType, lineStart: lineNumber, lineEnd: lineNumber, kind: typeHint.kind, values: values, subtype: typeHint.subtype });
                 }
                 prevNodeIndex = listIndex; // normally 0.
             }
         } else if ((matches = line.match(scanHeadRegex)) !== null) {
-            nodes.push({ type: 'scanHead', lineStart: lineNumber, lineEnd: lineNumber, index: parseInt(matches[2]), code: matches[3] });
+            const node = { type: 'scanHead' as const, lineStart: lineNumber, lineEnd: lineNumber, index: parseInt(matches[2]), code: matches[3] };
+            nodes.push(node);
+            prevScanHeadNode = node;
         } else if ((matches = line.match(scanNumberRegex)) !== null) {
             columnCountInHeader = parseInt(matches[2]);
         } else if ((matches = line.match(scanDataRegex)) !== null) {
@@ -275,8 +295,9 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
             }
             const lineStart = lineNumber;
 
-            // read succeeding lines until EOF or non-data line.
-            const data: number[][] = [];
+            // Read the rest of lines until the next empty line, unknown line, or EOF,
+            // and make a two-dimensional array of numeric data.
+            const data0: number[][] = [];
             for (; lineNumber + 1 < lineCount; lineNumber++) {
                 const blockline = lines[lineNumber + 1];
                 if (blockline.match(unknownRegex) || blockline.match(emptyLineRegex)) {
@@ -306,12 +327,15 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                     ));
                     return { language, nodes: undefined, diagnostics };
                 }
-                data.push(rows.map(item => parseFloat(item)));
+                data0.push(rows.map(item => parseFloat(item)));
             }
-            // transpose the two-dimensional data array
-            const data2 = data.length > 0 ? data[0].map((_, colIndex) => data.map(row => row[colIndex])) : data;
+            // Transpose the two-dimensional data array.
+            const data = data0.length > 0 ? data0[0].map((_, colIndex) => data0.map(row => row[colIndex])) : data0;
 
-            nodes.push({ type: 'scanData', lineStart: lineStart, lineEnd: lineNumber, headers: headers, data: data2, xAxisSelectable: true });
+            const parameter = prevScanHeadNode ? _parseSpecScanParameter(prevScanHeadNode.code) : undefined;
+
+            // Add the scan data to the nodes.
+            nodes.push({ type: 'scanData', subtype: 'serial', lineStart: lineStart, lineEnd: lineNumber, headers, data, parameter });
             columnCountInHeader = -1;
             columnCountInBody = -1;
         } else if ((matches = line.match(unknownRegex)) !== null) {
@@ -320,14 +344,37 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
     }
     // return nodes.length !== 0 ? nodes : undefined;
     return { language, nodes, diagnostics, foldingRanges, documentSymbols };
+
+    function _parseSpecScanParameter(code: string): ScanParameter | undefined {
+        let matches: RegExpMatchArray | null;
+        if ((matches = code.match(/^\s*(mesh)\s+(\S+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+)\s+(\S+)\s+(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)\s+(\d+)\s+(\d+(?:\.\d+)?)(?=\s|$)/)) !== null) {
+            return {
+                macro: matches[1] as 'mesh',
+                motor0: matches[2],
+                start0: parseFloat(matches[3]),
+                finish0: parseFloat(matches[4]),
+                interval0: parseInt(matches[5]),
+                motor1: matches[6],
+                start1: parseFloat(matches[7]),
+                finish1: parseFloat(matches[8]),
+                interval1: parseInt(matches[9]),
+                time: parseFloat(matches[10]),
+            };
+        } else if ((matches = code.match(/\s*(fscan)\s+(.+)\s+(\d+(?:\.\d+)?|\S+)$/)) !== null) {
+            return {
+                macro: matches[1] as 'fscan',
+                file: matches[2],
+                time: matches[3],
+            };
+        }
+    }
 }
 
 // character-separated values. The delimiter is auto-detected from a horizontal tab, a whitespace, or a comma. 
-function parseCsvContent(text: string, columnWise: boolean, token?: vscode.CancellationToken): ParserResult {
+function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.CancellationToken): ParserResult {
     const lines = text.split(/\r\n|\n/);
     const lineCount = lines.length;
 
-    const language = columnWise ? CSV_COLUMNS_FILTER.language : CSV_ROWS_FILTER.language;
     const nodes: Node[] = [];
     const diagnostics: vscode.Diagnostic[] = [];
 
@@ -353,7 +400,7 @@ function parseCsvContent(text: string, columnWise: boolean, token?: vscode.Cance
                 // Skip a comment line after appending the text to the nodes.
                 nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: line.substring(1) });
                 continue;
-            } else if (!columnWise && line.startsWith('@A ')) {
+            } else if (language === 'csv-row' && line.startsWith('@A ')) {
                 // If the line starts with "@A", it is data in ESRF's MCA format.
                 // Trim the prefix: "@A ".
                 isEsrfMca = true;
@@ -439,15 +486,22 @@ function parseCsvContent(text: string, columnWise: boolean, token?: vscode.Cance
         }
 
         // Add the read data to the nodes.
-        if (columnWise) {
+        let subtype: 'matrix-xy' | 'matrix-yx';
+        if (language === 'csv-column') {
+            subtype = 'matrix-yx';
+            // Transpose the two-dimensional data array.
             data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));
+            // Create a header if not exists.
             if (!headers) {
                 headers = Array(data.length).fill(0).map((_x, i) => `column ${i}`);
             }
-        } else {
+        } else { // language === 'csv-row'
+            subtype = 'matrix-xy';
+            // Create a header.
             headers = Array(data.length).fill(0).map((_x, i) => `row ${i}`);
         }
-        nodes.push({ type: 'scanData', lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers: headers, data: data, xAxisSelectable: columnWise });
+
+        nodes.push({ type: 'scanData', subtype, lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers, data });
     }
 
     if (nodes.some(node => node.type === 'scanData')) {
@@ -487,8 +541,8 @@ function parseDppmcaContent(text: string, token?: vscode.CancellationToken): Par
                     documentSymbols.push(new vscode.DocumentSymbol(prevHeader.name, '', vscode.SymbolKind.Object, range, prevHeader.range));
                 }
                 if (prevHeader.name === 'DATA') {
-                    const data1d = prevHeader.items.map(line => parseInt(line));
-                    nodes.push({ type: 'scanData', lineStart: prevHeader.range.start.line, lineEnd: lineNumber, headers: ['count'], data: [data1d], xAxisSelectable: false });
+                    const data = [prevHeader.items.map(line => parseInt(line))];
+                    nodes.push({ type: 'scanData', subtype: 'serial', lineStart: prevHeader.range.start.line, lineEnd: lineNumber, headers: ['count'], data });
                 }
             }
             if (matches[1].endsWith('END')) {
@@ -604,7 +658,7 @@ function parseChiplotContent(text: string, token?: vscode.CancellationToken): Pa
 
     const nodes: Node[] = [];
     nodes.push({ type: 'file', lineStart: 0, lineEnd: 0, value: title });
-    nodes.push({ type: 'scanData', lineStart: 4, lineEnd: lineNumber, headers: headers2, data: data2, xAxisSelectable: true });
+    nodes.push({ type: 'scanData', subtype: 'serial', lineStart: 4, lineEnd: lineNumber, headers: headers2, data: data2 });
 
     return { language, nodes, diagnostics };
 }
