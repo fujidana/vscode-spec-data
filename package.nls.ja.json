@@ -17,6 +17,7 @@
 	"spec-data.configuration.preview.plot.maximumNumberOfPlots.description": "プレビューが作成されたときに描画されるグラフの最大数。多数のプロットを描画すると、長い時間と膨大なメモリフットプリントが必要になります。",
 	"spec-data.configuration.preview.plot.height.description": "グラフの高さ (ピクセル単位)",
 	"spec-data.configuration.preview.plot.templates.description": "線の色などのプロット外観をカスタマイズします。この設定オブジェクトのキーは `\"light\"`、`\"dark\"`、`\"highContrast\"`、または `\"highContrastLight\"` のいずれかであり、値は対応する配色テーマを表すPlotly.jsテンプレートオブジェクトです。README.mdの「拡張機能設定」セクションを参照してください。テンプレート属性の完全なリストは [Plotly.js Reference](https://plotly.com/javascript/reference/index/) ページで確認できます。",
+	"spec-data.configuration.preview.plot.colorScale.description": "ヒートマップおよび等値線図 (コンタープロット) のカラースケール",
 	"spec-data.configuration.preview.plot.traceTemplate.description": "トレースの色などのトレース外観をカスタマイズします。キーは `\"light\"`、`\"dark\"`、`\"highContrast\"`、または `\"highContrastLight\"` のいずれかでなければならず、値はPlotly.jsスキャッターテンプレートの配列でなければなりません。README.mdの「拡張機能設定」セクションを参照してください。テンプレート属性の完全なリストは [Plotly.js Reference](https://plotly.com/javascript/reference/index/) ページで確認できます。",
 	"spec-data.configuration.preview.plot.layoutTemplate.description": "背景色などのレイアウト外観をカスタマイズします。キーは `\"light\"`、`\"dark\"`、`\"highContrast\"`、または `\"highContrastLight\"` のいずれかでなければならず、値はPlotly.jsレイアウトテンプレートでなければなりません。README.mdの「拡張機能設定」セクションを参照してください。テンプレート属性の完全なリストは [Plotly.js Reference](https://plotly.com/javascript/reference/index/) ページで確認できます。",
 	"spec-data.configuration.preview.plot.enableMultipleSelection.description": "プレビューが作成されたときに、複数のデータ列をグラフ用に選択可能にします。",

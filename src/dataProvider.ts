@@ -252,6 +252,15 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     preview.panel.webview.postMessage(messageOut);
                 }
             }
+            if (event.affectsConfiguration('spec-data.preview.plot.colorScale')) {
+                for (const preview of this.previews) {
+                    preview.panel.webview.postMessage({
+                        type: 'setTemplate',
+                        template: getPlotlyTemplate(this.colorThemeKind, preview.uri),
+                        callback: 'relayout',
+                    } satisfies MessageToWebview);
+                }
+            }
         };
 
         const activeColorThemeChangeListener = (colorTheme: vscode.ColorTheme) => {
@@ -824,6 +833,7 @@ function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.Configura
     const config = vscode.workspace.getConfiguration('spec-data.preview.plot', scope);
     const userTraceTemplate = config.get<{ [key in ColorThemeKind]?: Partial<PlotData>[] }>('traceTemplate');
     const userLayoutTemplate = config.get<{ [key in ColorThemeKind]?: Partial<Layout> }>('layoutTemplate');
+    const heatmapTemplate = [{ colorscale: config.get<string>('colorScale', 'Viridis') }] satisfies Partial<PlotData>[];
 
     switch (kind) {
         case vscode.ColorThemeKind.Light:
@@ -847,5 +857,5 @@ function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.Configura
             layoutTemplate = {};
     }
 
-    return { data: { scatter: traceTemplate }, layout: layoutTemplate };
+    return { data: { scatter: traceTemplate, heatmap: heatmapTemplate, contour: heatmapTemplate }, layout: layoutTemplate };
 }

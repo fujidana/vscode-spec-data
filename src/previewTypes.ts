@@ -36,7 +36,7 @@ interface BaseMessage {
     type: string;
 }
 
-export type CallbackType = 'newPlot' | 'relayout' | 'react';
+// type CallbackType = 'newPlot' | 'relayout' | 'react';
 
 export type MessageToWebview =
     | LockPreviewMessage
@@ -72,7 +72,7 @@ interface BaseUpdatePlotMessage extends BaseMessage {
     type: 'updatePlot';
     plotType: 'line' | 'heatmap' | 'contour';
     graphNumber: number;
-    action: CallbackType;
+    action: 'newPlot' | 'react';
 }
 
 interface BaseUpdatePlotMatrixMessage extends BaseUpdatePlotMessage {
@@ -150,7 +150,7 @@ interface BaseRequestDataMessage extends BaseMessage {
     type: 'requestData';
     plotType: 'line' | 'heatmap' | 'contour';
     graphNumber: number;
-    callback: CallbackType;
+    callback: 'newPlot' | 'react';
 }
 
 interface RequestLineDataMessage extends BaseRequestDataMessage {

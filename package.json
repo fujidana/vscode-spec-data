@@ -339,6 +339,55 @@
 					"markdownDeprecationMessage": "**Deprecated**: Please use `#spec-data.preview.plot.traceTemplate#` and `#spec-data.preview.plot.layoutTemplate#` instead.",
 					"markdownDescription": "%spec-data.configuration.preview.plot.templates.description%"
 				},
+				"spec-data.preview.plot.colorScale": {
+					"type": "string",
+					"default": "RdBu",
+					"enum": [
+						"Blackbody",
+						"Bluered",
+						"Blues",
+						"Cividis",
+						"Earth",
+						"Electric",
+						"Greens",
+						"Greys",
+						"Hot",
+						"Jet",
+						"Picnic",
+						"Portland",
+						"Rainbow",
+						"RdBu",
+						"Reds",
+						"Viridis",
+						"YlGnBu",
+						"YlOrRd"
+					],
+					"enumItemLabels": [
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"Red-Blue",
+						"",
+						"",
+						"Yellow-Green-Blue",
+						"Yellow-Orange-Red"
+					],
+					"scope": "language-overridable",
+					"description": "%spec-data.configuration.preview.plot.colorScale.description%",
+					"tags": [
+						"preview"
+					]
+				},
 				"spec-data.preview.plot.traceTemplate": {
 					"type": "object",
 					"scope": "language-overridable",
