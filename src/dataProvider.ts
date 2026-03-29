@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
-import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR, CSV_ROWS_FILTER } from './dataParser';
-import type { Node, ParserResult, ParserSuccess } from './dataParser';
+import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './dataParser';
+import type { Node, ParserResult, ParserSuccess, SupportedLanguage } from './dataParser';
 
 // @types/plotly.js contains DOM objects and thus
 // `tsc -p .` fails without `skipLibCheck`.
@@ -13,6 +13,7 @@ import type { State, GraphMode, MessageToWebview, MessageFromWebview } from './p
 type Preview = {
     readonly panel: vscode.WebviewPanel;
     uri: vscode.Uri;
+    language: SupportedLanguage;
     enableMultipleSelection: boolean;
     enableRightAxis: boolean;
     nodes?: Node[];
@@ -50,8 +51,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
         this.colorThemeKind = vscode.window.activeColorTheme.kind;
 
-        const config = vscode.workspace.getConfiguration('spec-data.preview');
-        this.enablePreviewScroll = config.get<boolean>('scrollPreviewWithEditor', true);
+        this.enablePreviewScroll = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollPreviewWithEditor', true);
 
         // Create a command handler function that shows a preview.
         const makeShowPreviewCallback = (lockPreview: boolean, showToSide: boolean) => {
@@ -252,11 +252,12 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     preview.panel.webview.postMessage(messageOut);
                 }
             }
-            if (event.affectsConfiguration('spec-data.preview.plot.colorScale')) {
-                for (const preview of this.previews) {
+            for (const preview of this.previews) {
+                const scope = { languageId: preview.language, uri: preview.uri };
+                if (event.affectsConfiguration('spec-data.preview.plot.colorScale', scope)) {
                     preview.panel.webview.postMessage({
                         type: 'setTemplate',
-                        template: getPlotlyTemplate(this.colorThemeKind, preview.uri),
+                        template: getPlotlyTemplate(this.colorThemeKind, scope),
                         callback: 'relayout',
                     } satisfies MessageToWebview);
                 }
@@ -273,7 +274,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     // However, it seems invisible webviews also handle the following messages.
                     preview.panel.webview.postMessage({
                         type: 'setTemplate',
-                        template: getPlotlyTemplate(colorTheme.kind, preview.uri),
+                        template: getPlotlyTemplate(colorTheme.kind, { uri: preview.uri, languageId: preview.language }),
                         callback: 'relayout',
                     } satisfies MessageToWebview);
                 }
@@ -347,15 +348,21 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return;
         }
         const uri = vscode.Uri.parse(state.sourceUri);
-        const parsedData = await this.parseDataOfFileUri(uri);
-        if (!parsedData || parsedData.nodes === undefined) {
+        const parserResult = await this.parseDataOfFileUri(uri);
+        if (!parserResult || parserResult.nodes === undefined) {
             const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
             vscode.window.showErrorMessage(message);
             return;
         }
 
-        const preview: Preview = { panel, uri, enableMultipleSelection: state.enableMultipleSelection, enableRightAxis: state.enableRightAxis, };
-        await this.postCreatePreview(preview, parsedData, state.lockPreview);
+        const preview: Preview = {
+            panel,
+            uri,
+            language: parserResult.language,
+            enableMultipleSelection: state.enableMultipleSelection,
+            enableRightAxis: state.enableRightAxis,
+        };
+        await this.postCreatePreview(preview, parserResult, state.lockPreview);
         return;
     }
 
@@ -399,8 +406,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return this.livePreview;
         } else {
             // Else create a new webview panel.
-            const parsedData = await this.parseDataOfFileUri(uri);
-            if (!parsedData || parsedData.nodes === undefined) {
+            const parserResult = await this.parseDataOfFileUri(uri);
+            if (!parserResult || !parserResult.nodes) {
                 const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
                 vscode.window.showErrorMessage(message);
                 return;
@@ -417,13 +424,17 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                     retainContextWhenHidden: config.get<boolean>('retainContextWhenHidden', false),
                 }
             );
-            const enableMultipleSelection = config.get<boolean>('plot.enableMultipleSelection', false);
-            const enableRightAxis = config.get<boolean>('plot.enableRightAxis', false);
-            const preview: Preview = { panel, uri, enableMultipleSelection, enableRightAxis };
+            const preview: Preview = {
+                panel,
+                uri,
+                language: parserResult.language,
+                enableMultipleSelection: config.get<boolean>('plot.enableMultipleSelection', false),
+                enableRightAxis: config.get<boolean>('plot.enableRightAxis', false)
+            };
             if (showToSide && config.get<boolean>('autoLockGroup', false)) {
                 vscode.commands.executeCommand('workbench.action.lockEditorGroup');
             }
-            return await this.postCreatePreview(preview, parsedData, lockPreview);
+            return await this.postCreatePreview(preview, parserResult, lockPreview);
         }
     }
 
@@ -437,11 +448,11 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
     /**
      * Register event handlers and then make a content from source.
      * @param preview Preview object created during deserialization process or `showPreview`-type action command.
-     * @param parsedData ParsedData object
+     * @param parserResult ParserSuccess object
      * @param lockPreview flag to lock preview with source URI.
      * @returns Preview object if succeeded in parsing a file or `undefined`.
      */
-    private async postCreatePreview(preview: Preview, parsedData: ParserSuccess, lockPreview: boolean) {
+    private async postCreatePreview(preview: Preview, parserResult: ParserSuccess, lockPreview: boolean) {
         this.previews.push(preview);
         preview.panel.iconPath = new vscode.ThemeIcon('graph-line');
 
@@ -580,7 +591,8 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 }
             } else if (messageIn.type === 'contentLoaded') {
                 // This will be called not only when the webview is created but also when it is revealed after it is hidden.
-                const config = vscode.workspace.getConfiguration('spec-data.preview');
+                const scope = { languageId: preview.language, uri: preview.uri };
+                const config = vscode.workspace.getConfiguration('spec-data.preview', scope);
 
                 preview.panel.webview.postMessage({
                     type: 'lockPreview',
@@ -594,13 +606,13 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
 
                 preview.panel.webview.postMessage({
                     type: 'setTemplate',
-                    template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, preview.uri),
+                    template: getPlotlyTemplate(vscode.window.activeColorTheme.kind, scope),
                     callback: 'newPlot',
                 } satisfies MessageToWebview);
 
                 preview.panel.webview.postMessage({
                     type: 'setScrollBehavior',
-                    value: config.get<boolean>('smoothScrolling', true) ? 'smooth' : 'auto'
+                    value: config.get<boolean>('smoothScrolling', false) ? 'smooth' : 'auto'
                 } satisfies MessageToWebview);
 
                 preview.panel.webview.postMessage({
@@ -610,7 +622,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         }, null, this.subscriptions);
 
-        this.updatePreviewWithNodes(preview, parsedData.language, parsedData.nodes);
+        this.updatePreviewWithNodes(preview, parserResult.language, parserResult.nodes);
 
         return preview;
     }
@@ -628,15 +640,15 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             return preview;
         }
 
-        const parsedData = await this.parseDataOfFileUri(uri);
-        if (!parsedData || parsedData.nodes === undefined) {
+        const parserResult = await this.parseDataOfFileUri(uri);
+        if (!parserResult || !parserResult.nodes) {
             const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
             vscode.window.showErrorMessage(message);
             return undefined;
         }
 
         preview.uri = uri;
-        this.updatePreviewWithNodes(preview, parsedData.language, parsedData.nodes);
+        this.updatePreviewWithNodes(preview, parserResult.language, parserResult.nodes);
         return preview;
     }
 
@@ -827,13 +839,13 @@ mode:
 type ColorThemeKind = 'light' | 'dark' | 'highContrast' | 'highContrastLight';
 
 function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope): Template {
-    let traceTemplate: Partial<PlotData>[]; // Record<string, unknown>[];
-    let layoutTemplate: Partial<Layout>; // Record<string, unknown>;
+    let traceTemplate: Partial<PlotData>[];
+    let layoutTemplate: Partial<Layout>;
 
     const config = vscode.workspace.getConfiguration('spec-data.preview.plot', scope);
     const userTraceTemplate = config.get<{ [key in ColorThemeKind]?: Partial<PlotData>[] }>('traceTemplate');
     const userLayoutTemplate = config.get<{ [key in ColorThemeKind]?: Partial<Layout> }>('layoutTemplate');
-    const heatmapTemplate = [{ colorscale: config.get<string>('colorScale', 'Viridis') }] satisfies Partial<PlotData>[];
+    const heatmapTemplate = [{ colorscale: config.get<string>('colorScale', 'RdBu') }] satisfies Partial<PlotData>[];
 
     switch (kind) {
         case vscode.ColorThemeKind.Light:
