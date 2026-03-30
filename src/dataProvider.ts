@@ -1,14 +1,13 @@
 import * as vscode from 'vscode';
-import { defaultTraceTemplate, defaultLayoutTemplate } from './previewTemplates';
+import { defaultDataTemplate, defaultLayoutTemplate } from './previewTemplates';
 import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './dataParser';
 import type { Node, ParserResult, ParserSuccess, SupportedLanguage } from './dataParser';
 
 // @types/plotly.js contains DOM objects and thus
 // `tsc -p .` fails without `skipLibCheck`.
-import type { PlotData, Layout, Template } from 'plotly.js';
-// type PlotData = any;
-// type Layout = any;
+import type { Template } from 'plotly.js';
 import type { State, GraphMode, MessageToWebview, MessageFromWebview } from './previewTypes';
+import type { ColorThemeKindLabel } from './previewTemplates';
 
 type Preview = {
     readonly panel: vscode.WebviewPanel;
@@ -254,7 +253,10 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
             for (const preview of this.previews) {
                 const scope = { languageId: preview.language, uri: preview.uri };
-                if (event.affectsConfiguration('spec-data.preview.plot.colorScale', scope)) {
+                if (
+                    event.affectsConfiguration('spec-data.preview.plot.colorScale', scope) ||
+                    event.affectsConfiguration('spec-data.preview.plot.template', scope)
+                ) {
                     preview.panel.webview.postMessage({
                         type: 'setTemplate',
                         template: getPlotlyTemplate(this.colorThemeKind, scope),
@@ -836,38 +838,44 @@ mode:
     </html>`;
 }
 
-type ColorThemeKind = 'light' | 'dark' | 'highContrast' | 'highContrastLight';
-
 function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope): Template {
-    let traceTemplate: Partial<PlotData>[];
-    let layoutTemplate: Partial<Layout>;
-
     const config = vscode.workspace.getConfiguration('spec-data.preview.plot', scope);
-    const userTraceTemplate = config.get<{ [key in ColorThemeKind]?: Partial<PlotData>[] }>('traceTemplate');
-    const userLayoutTemplate = config.get<{ [key in ColorThemeKind]?: Partial<Layout> }>('layoutTemplate');
-    const heatmapTemplate = [{ colorscale: config.get<string>('colorScale', 'RdBu') }] satisfies Partial<PlotData>[];
+    const colorscale = config.get<string>('colorScale', 'RdBu');
+    const userDataTemplate = config.get<{ [key in ColorThemeKindLabel]?: Template['data'] }>('template.data', {});
+    const userLayoutTemplate = config.get<{ [key in ColorThemeKindLabel]?: Template['layout'] }>('template.layout', {});
+    const additionalDataTemplate: Template['data'] = {
+        heatmap: [{ colorscale }], contour: [{ colorscale }],
+    };
 
+    let colorLabel: ColorThemeKindLabel;
     switch (kind) {
         case vscode.ColorThemeKind.Light:
-            traceTemplate = userTraceTemplate?.light ?? defaultTraceTemplate.light;
-            layoutTemplate = userLayoutTemplate?.light ?? defaultLayoutTemplate.light;
+            colorLabel = 'light';
             break;
         case vscode.ColorThemeKind.Dark:
-            traceTemplate = userTraceTemplate?.dark ?? defaultTraceTemplate.dark;
-            layoutTemplate = userLayoutTemplate?.dark ?? defaultLayoutTemplate.dark;
+            colorLabel = 'dark';
             break;
         case vscode.ColorThemeKind.HighContrast:
-            traceTemplate = userTraceTemplate?.highContrast ?? defaultTraceTemplate.highContrast;
-            layoutTemplate = userLayoutTemplate?.highContrast ?? defaultLayoutTemplate.highContrast;
+            colorLabel = 'highContrast';
             break;
         case vscode.ColorThemeKind.HighContrastLight:
-            traceTemplate = userTraceTemplate?.highContrastLight ?? defaultTraceTemplate.highContrastLight;
-            layoutTemplate = userLayoutTemplate?.highContrastLight ?? defaultLayoutTemplate.highContrastLight;
+            colorLabel = 'highContrastLight';
             break;
         default:
-            traceTemplate = [];
-            layoutTemplate = {};
+            // This case will not be hit. Return an empty template to satisfy the return type.
+            return {};
     }
 
-    return { data: { scatter: traceTemplate, heatmap: heatmapTemplate, contour: heatmapTemplate }, layout: layoutTemplate };
+    // Shallow merge the default template and user template.
+    const dataTemplate: NonNullable<Template['data']> =
+        colorLabel in userDataTemplate ?
+            { ...defaultDataTemplate[colorLabel], ...additionalDataTemplate, ...userDataTemplate[colorLabel] } :
+            { ...defaultDataTemplate[colorLabel], ...additionalDataTemplate };
+
+    const layoutTemplate: NonNullable<Template['layout']> =
+        colorLabel in userLayoutTemplate ?
+            { ...defaultLayoutTemplate[colorLabel], ...userLayoutTemplate[colorLabel] } :
+            defaultLayoutTemplate[colorLabel];
+
+    return { data: dataTemplate, layout: layoutTemplate };
 }
