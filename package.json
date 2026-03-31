@@ -18,7 +18,7 @@
 		"data acquisition"
 	],
 	"icon": "resources/icon.png",
-	"license": "SEE LICENSE IN LICENSE",
+	"license": "MIT",
 	"bugs": {
 		"url": "https://github.com/fujidana/vscode-spec-data/issues"
 	},
