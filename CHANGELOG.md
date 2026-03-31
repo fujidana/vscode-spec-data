@@ -7,10 +7,19 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Added
 
 - Enable to draw heatmaps and contour plots. `spec-data` scan data using multiple motors (`mesh` and `fscan`) and a matrix data in CSV file can be displayed as these plot types. Issue [#35](https://github.com/fujidana/vscode-spec-data/issues/35).
+- Add `spec-data.preview.plot.colorScale` setting to control the color scale for these plot types.
 
 ### Changed
 
 - Change the Plotly.js bundle from `plotly.js-basic-dist-min` to `plotly.js-cartesian-dist-min` to support heatmaps and contour plots.
+- Redesign the settings to controle the appearance so that heatmaps nad contour plots are configurable. Issue [#37](https://github.com/fujidana/vscode-spec-data/issues/37).
+  - Add `spec-data.preview.plot.template.data` and `spec-data.preview.plot.template.layout` settings.
+  - Deprecate `spec-data.preview.traceTemplate` and `spec-data.preview.layoutTemplate` settings.
+  - Delete previously deprecated `spec-data.preview.plot.templates` setting.
+
+### Fix
+
+- Fix a problem where in some situations language-overridable settings were not reflected.
 
 ## [2.1.0] -- 2026-03-17
 

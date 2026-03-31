@@ -3,7 +3,7 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "2.1.0",
+	"version": "2.2.0-alpha.0",
 	"engines": {
 		"vscode": "^1.110.0"
 	},
@@ -308,7 +308,7 @@
 					"default": true,
 					"scope": "resource",
 					"description": "%spec-data.configuration.preview.applyContentSecurityPolicy.description%",
-					"deprecationMessage": "**Deprecated**: This setting will be removed in a future release. The CSP will always be applied to the preview."
+					"markdownDeprecationMessage": "**Deprecated**: This setting will be removed in a future release. The CSP will always be applied to the preview."
 				},
 				"spec-data.preview.autoLockGroup": {
 					"type": "boolean",
@@ -333,28 +333,125 @@
 					"scope": "language-overridable",
 					"description": "%spec-data.configuration.preview.plot.height.description%"
 				},
-				"spec-data.preview.plot.templates": {
-					"type": "object",
-					"scope": "resource",
-					"markdownDeprecationMessage": "**Deprecated**: Please use `#spec-data.preview.plot.traceTemplate#` and `#spec-data.preview.plot.layoutTemplate#` instead.",
-					"markdownDescription": "%spec-data.configuration.preview.plot.templates.description%"
+				"spec-data.preview.plot.colorScale": {
+					"type": "string",
+					"default": "RdBu",
+					"enum": [
+						"Blackbody",
+						"Bluered",
+						"Blues",
+						"Cividis",
+						"Earth",
+						"Electric",
+						"Greens",
+						"Greys",
+						"Hot",
+						"Jet",
+						"Picnic",
+						"Portland",
+						"Rainbow",
+						"RdBu",
+						"Reds",
+						"Viridis",
+						"YlGnBu",
+						"YlOrRd"
+					],
+					"enumItemLabels": [
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"",
+						"Red-Blue",
+						"",
+						"",
+						"Yellow-Green-Blue",
+						"Yellow-Orange-Red"
+					],
+					"scope": "language-overridable",
+					"description": "%spec-data.configuration.preview.plot.colorScale.description%",
+					"tags": [
+						"preview"
+					]
 				},
 				"spec-data.preview.plot.traceTemplate": {
 					"type": "object",
 					"scope": "language-overridable",
 					"markdownDescription": "%spec-data.configuration.preview.plot.traceTemplate.description%",
+					"markdownDeprecationMessage": "**Deprecated**: Please use `#spec-data.preview.plot.template.data#` instead."
+				},
+				"spec-data.preview.plot.template.data": {
+					"type": "object",
+					"scope": "language-overridable",
+					"markdownDescription": "%spec-data.configuration.preview.plot.template.data.description%",
 					"properties": {
 						"light": {
-							"type": "array"
+							"type": "object",
+							"properties": {
+								"scatter": {
+									"type": "array"
+								},
+								"heatmap": {
+									"type": "array"
+								},
+								"contour": {
+									"type": "array"
+								}
+							},
+							"additionalProperties": false
 						},
 						"dark": {
-							"type": "array"
+							"type": "object",
+							"properties": {
+								"scatter": {
+									"type": "array"
+								},
+								"heatmap": {
+									"type": "array"
+								},
+								"contour": {
+									"type": "array"
+								}
+							},
+							"additionalProperties": false
 						},
 						"highContrast": {
-							"type": "array"
+							"type": "object",
+							"properties": {
+								"scatter": {
+									"type": "array"
+								},
+								"heatmap": {
+									"type": "array"
+								},
+								"contour": {
+									"type": "array"
+								}
+							},
+							"additionalProperties": false
 						},
 						"highContrastLight": {
-							"type": "array"
+							"type": "object",
+							"properties": {
+								"scatter": {
+									"type": "array"
+								},
+								"heatmap": {
+									"type": "array"
+								},
+								"contour": {
+									"type": "array"
+								}
+							},
+							"additionalProperties": false
 						},
 						"additionalProperties": false
 					}
@@ -363,6 +460,12 @@
 					"type": "object",
 					"scope": "language-overridable",
 					"markdownDescription": "%spec-data.configuration.preview.plot.layoutTemplate.description%",
+					"markdownDeprecationMessage": "**Deprecated**: Please use `#spec-data.preview.plot.template.layout#` instead."
+				},
+				"spec-data.preview.plot.template.layout": {
+					"type": "object",
+					"scope": "language-overridable",
+					"markdownDescription": "%spec-data.configuration.preview.plot.template.layout.description%",
 					"additionalProperties": false,
 					"properties": {
 						"light": {
@@ -429,8 +532,8 @@
 			"supported": "limited",
 			"description": "%spec-data.capabilities.untrustedWorkspaces.description%",
 			"restrictedConfigurations": [
-				"spec-data.preview.plot.traceTemplate",
-				"spec-data.preview.plot.layoutTemplate",
+				"spec-data.preview.plot.template.data",
+				"spec-data.preview.plot.template.layout",
 				"spec-data.preview.applyContentSecurityPolicy"
 			]
 		}

@@ -14,7 +14,7 @@ type CsvLanguage = typeof CSV_DOCUMENT_SELECTOR[number]['language'];
 
 export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER] as const;
 const LANGUAGE_IDS = DOCUMENT_SELECTOR.map(filter => filter.language);
-type SupportedLanguage = typeof LANGUAGE_IDS[number];
+export type SupportedLanguage = typeof LANGUAGE_IDS[number];
 
 export type Node = FileNode | DateNode | CommentNode | NameListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
 interface BaseNode { type: string, lineStart: number, lineEnd: number }
@@ -51,7 +51,7 @@ interface FScanParameter {
 export type ParserResult = ParserSuccess | ParserFailure | undefined;
 
 export type ParserSuccess = {
-    language: string,
+    language: SupportedLanguage,
     nodes: Node[],
     diagnostics: vscode.Diagnostic[],
     foldingRanges?: vscode.FoldingRange[],

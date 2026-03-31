@@ -1,60 +1,73 @@
 /**
- * This file defines default template objects passed to Plotly.js graphs.
+ * The two constants defined in this file, `defaultTemplate.data` and 
+ * `defaultTemplate.layout` are used as the default templates for Plotly.js 
+ * graphs.
  * 
- * Users can override the appearance defined in this file using the following
- * settings:
- * - `spec-data.preview.plot.traceTemplate`
- * - `spec-data.preview.plot.layoutTemplate`
+ * Users can customize the appearance of the graphs by defining their own 
+ * templates in the following settings, which will override the default 
+ * templates defined in this file:
  * 
- * The values for the respective color theme keys (such as `light`) in this
- * objects are passed to Plotly.js graphs as template, unless a user defined
- * the settings above.
- * The right value of the constant definition, i.e., a string between `=` and
- * `;`, in this file is wrtten in a JSON-compatible format, which allows a 
- * user to use this part as the base of value for the setting key above.
+ * - `spec-data.preview.plot.template.data`
+ * - `spec-data.preview.plot.template.layout`
  * 
- * Color can be defined in various ways: it seems the color format Plotly.js
- * accepts in a template is the same as that of CSS. 
- * 
- * Shorthand such as "marker.color" is not available as a key of the object.
+ * The JSON objects for the the setting above have the same
+ * structure as the objects defined in this file.
+ * See Plotly.js's [Figure Reference](https://plotly.com/javascript/reference/index)
+ * for details about available parameters.
+ * For a user to use the content of this file as a starting point for customizing the templates, 
+ * the code in this file is written in a format close to JSON.
  */
 
+import type { Template } from 'plotly.js';
+
+export type ColorThemeKindLabel = 'light' | 'dark' | 'highContrast' | 'highContrastLight';
+
 /**
- * Template of traces in Plotly.js graphs for the respective color themes.
+ * Template for the data in Plotly.js graphs.
  * 
- * The structure is the same as `spec-data.preview.plot.traceTemplate` key 
- * in setting.json.
- * See https://plotly.com/javascript/reference/scatter/ for details about 
- * parameters.
- * Trace templates are applied cyclically in case the graph contains multiple
- * traces.
+ * The object has the name of the color theme as its key, and the _data template_
+ * for the respective color theme as its value.
+ * The _data template_ has data types such as `scatter`, `heatmap` and `contour`
+ * as its keys and an array of _settings_ as its value.
+ * The _settings_ are applied cyclically in case the graph contains multiple
+ * plots.
+ * See Plotly.js's [Figure Reference](https://plotly.com/javascript/reference/index)
+ * for details about available parameters.
+ * 
+ * The `spec-data.preview.plot.template.data` key in setting.json has the same
+ * structure as this object.
  */
-export const defaultTraceTemplate = {
-    "light": [
-    ],
-    "dark": [
-    ],
-    "highContrast": [
-        { "marker": { "color": "#0ff" }, "line": { "color": "#0ff" } },
-        { "marker": { "color": "#f0f" }, "line": { "color": "#f0f" } },
-        { "marker": { "color": "#ff0" }, "line": { "color": "#ff0" } }
-    ],
-    "highContrastLight": [
-        { "marker": { "color": "#f00" }, "line": { "color": "#f00" } },
-        { "marker": { "color": "#0f0" }, "line": { "color": "#0f0" } },
-        { "marker": { "color": "#00f" }, "line": { "color": "#00f" } }
-    ]
+export const defaultDataTemplate: { [key in ColorThemeKindLabel]: NonNullable<Template['data']> } = {
+    "light": {},
+    "dark": {},
+    "highContrast": {
+        "scatter": [
+            { "marker": { "color": "#0ff" }, "line": { "color": "#0ff" } },
+            { "marker": { "color": "#f0f" }, "line": { "color": "#f0f" } },
+            { "marker": { "color": "#ff0" }, "line": { "color": "#ff0" } }
+        ]
+    },
+    "highContrastLight": {
+        "scatter": [
+            { "marker": { "color": "#f00" }, "line": { "color": "#f00" } },
+            { "marker": { "color": "#0f0" }, "line": { "color": "#0f0" } },
+            { "marker": { "color": "#00f" }, "line": { "color": "#00f" } }
+        ]
+    }
 };
 
 /**
- * Template of the layout in Plotly.js graphs for the respective color themes.
+ * Template for the layout in Plotly.js graphs.
  * 
- * The structure is the same as `spec-data.preview.plot.layoutTemplate` key 
- * in setting.json.
-* See https://plotly.com/javascript/reference/layout/ for details about 
-* parameters.
+ * The object has the name of the color theme as its key, and the _layout template_
+ * for the respective color theme as its value.
+ * See Plotly.js's [Figure Reference](https://plotly.com/javascript/reference/index)
+ * for details about available parameters.
+ * 
+ * The `spec-data.preview.plot.template.layout` key in setting.json has the same
+ * structure as this object.
 */
-export const defaultLayoutTemplate = {
+export const defaultLayoutTemplate: { [key in ColorThemeKindLabel]: NonNullable<Template['layout']> } = {
     "light": {
         "plot_bgcolor": "rgba(255, 255, 255, 0.0)",
         "paper_bgcolor": "rgba(255, 255, 255, 0.0)"
