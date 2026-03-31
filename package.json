@@ -3,7 +3,7 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data file support for VS Code",
-	"version": "2.2.0-alpha.0",
+	"version": "2.2.0",
 	"engines": {
 		"vscode": "^1.110.0"
 	},
@@ -330,6 +330,7 @@
 					"type": "number",
 					"default": 400,
 					"minimum": 200,
+					"maximum": 1600,
 					"scope": "language-overridable",
 					"description": "%spec-data.configuration.preview.plot.height.description%"
 				},
@@ -377,10 +378,7 @@
 						"Yellow-Orange-Red"
 					],
 					"scope": "language-overridable",
-					"description": "%spec-data.configuration.preview.plot.colorScale.description%",
-					"tags": [
-						"preview"
-					]
+					"description": "%spec-data.configuration.preview.plot.colorScale.description%"
 				},
 				"spec-data.preview.plot.traceTemplate": {
 					"type": "object",

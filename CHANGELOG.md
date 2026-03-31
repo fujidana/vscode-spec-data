@@ -4,6 +4,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [2.2.0] -- 2026-03-31
+
 ### Added
 
 - Enable to draw heatmaps and contour plots. `spec-data` scan data using multiple motors (`mesh` and `fscan`) and a matrix data in CSV file can be displayed as these plot types. Issue [#35](https://github.com/fujidana/vscode-spec-data/issues/35).
@@ -11,11 +13,12 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ### Changed
 
-- Change the Plotly.js bundle from `plotly.js-basic-dist-min` to `plotly.js-cartesian-dist-min` to support heatmaps and contour plots.
-- Redesign the settings to controle the appearance so that heatmaps nad contour plots are configurable. Issue [#37](https://github.com/fujidana/vscode-spec-data/issues/37).
+- Redesign the settings to control the graph appearance. Issue [#37](https://github.com/fujidana/vscode-spec-data/issues/37).
   - Add `spec-data.preview.plot.template.data` and `spec-data.preview.plot.template.layout` settings.
   - Deprecate `spec-data.preview.traceTemplate` and `spec-data.preview.layoutTemplate` settings.
   - Delete previously deprecated `spec-data.preview.plot.templates` setting.
+- Change the Plotly.js bundle from `plotly.js-basic-dist-min` to `plotly.js-cartesian-dist-min` to support heatmaps and contour plots.
+- Bump `minimatch` dependency to 9.0.4.
 
 ### Fix
 
@@ -403,7 +406,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/fujidana/vscode-spec-data/compare/v1.7.4...v2.0.0

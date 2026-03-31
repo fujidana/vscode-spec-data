@@ -254,6 +254,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             for (const preview of this.previews) {
                 const scope = { languageId: preview.language, uri: preview.uri };
                 if (
+                    // event.affectsConfiguration('spec-data.preview.plot.height', scope)) ||
                     event.affectsConfiguration('spec-data.preview.plot.colorScale', scope) ||
                     event.affectsConfiguration('spec-data.preview.plot.template', scope)
                 ) {
@@ -841,6 +842,7 @@ mode:
 function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope): Template {
     const config = vscode.workspace.getConfiguration('spec-data.preview.plot', scope);
     const colorscale = config.get<string>('colorScale', 'RdBu');
+    // const height = config.get<number>('height', 400);
     const userDataTemplate = config.get<{ [key in ColorThemeKindLabel]?: Template['data'] }>('template.data', {});
     const userLayoutTemplate = config.get<{ [key in ColorThemeKindLabel]?: Template['layout'] }>('template.layout', {});
     const additionalDataTemplate: Template['data'] = {
@@ -876,6 +878,8 @@ function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.Configura
         colorLabel in userLayoutTemplate ?
             { ...defaultLayoutTemplate[colorLabel], ...userLayoutTemplate[colorLabel] } :
             defaultLayoutTemplate[colorLabel];
+    // { ...defaultLayoutTemplate[colorLabel], height, ...userLayoutTemplate[colorLabel] } :
+    // { ...defaultLayoutTemplate[colorLabel], height };
 
     return { data: dataTemplate, layout: layoutTemplate };
 }
