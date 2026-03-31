@@ -20,7 +20,6 @@ const plotHeight = parseInt(headDataset.plotHeight ?? '100');
 let state = vscode.getState();
 if (state === undefined) {
     state = {
-        fresh: true,
         template: undefined,
         tableStates: [],
         graphStates: [],
@@ -32,7 +31,6 @@ if (state === undefined) {
     };
     vscode.setState(state);
 } else if (state.sourceUri !== headDataset.sourceUri) {
-    state.fresh = true;
     state.tableStates = [];
     state.graphStates = [];
     state.sourceUri = headDataset.sourceUri ?? '';
@@ -617,44 +615,55 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
 window.addEventListener('DOMContentLoaded', _event => {
     // Set up value list elements (i.e., motor-position table).
     const valueListDivs = document.body.getElementsByClassName('valueList') as HTMLCollectionOf<HTMLDivElement>;
+
+    // If there are more table states than the number of tables in the HTML, remove the extra states.
+    if (state.tableStates.length > valueListDivs.length) {
+        state.tableStates.length = valueListDivs.length;
+    }
+
     for (let i = 0; i < valueListDivs.length; i++) {
         const valueListDiv = valueListDivs[i];
-        valueListDiv.setAttribute('id', `valueList${i}`);
+        valueListDiv.id = `valueList${i}`;
 
         const showValueListInputs = valueListDiv.getElementsByClassName('showValueListInput') as HTMLCollectionOf<HTMLInputElement>;
         const valueListTables = valueListDiv.getElementsByClassName('valueListTable') as HTMLCollectionOf<HTMLTableElement>;
 
-        if (showValueListInputs.length === 1 && valueListTables.length === 1) {
-            const showValueListInput = showValueListInputs[0];
-            const valueListTable = valueListTables[0];
-            showValueListInput.setAttribute('id', `showValueListInput${i}`);
-            valueListTable.setAttribute('id', `valueListTable${i}`);
-
-            // If the state is fresh, set the state according to the initial visibility of the tables.
-            // Otherwise, set the visibility of HTML elements according to the state.
-            if (state.fresh) {
-                state.tableStates.push({ hidden: !showValueListInput.checked });
-            } else {
-                const hideTable = state.tableStates[i].hidden;
-                showValueListInput.checked = !hideTable;
-                valueListTable.hidden = hideTable;
-            }
-
-            // Register event handler for the checkbox to show/hide the table.
-            showValueListInputs[0].onchange = showValueListInputChangeHandler;
-        } else {
-            console.log(`Warning: input or table element in "valueList" div #${i} is missing or duplicated.`);
-            if (state.fresh) {
-                state.tableStates.push({ hidden: true });
-            }
+        if (showValueListInputs.length !== 1 || valueListTables.length !== 1) {
+            break;
         }
+
+        const showValueListInput = showValueListInputs[0];
+        const valueListTable = valueListTables[0];
+        showValueListInput.id = `showValueListInput${i}`;
+        valueListTable.id = `valueListTable${i}`;
+
+        // If the state is fresh, create a new state according to the initial visibility of the tables.
+        // Otherwise, set the visibility of HTML elements according to the state.
+        if (state.tableStates.length <= i) {
+            state.tableStates.push({ hidden: !showValueListInput.checked });
+        } else {
+            const hideTable = state.tableStates[i].hidden;
+            showValueListInput.checked = !hideTable;
+            valueListTable.hidden = hideTable;
+        }
+
+        // Register event handler for the checkbox to show/hide the table.
+        showValueListInputs[0].onchange = showValueListInputChangeHandler;
     }
 
     // Configure graph elements.
     const scanDataDivs = document.body.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>;
+
+    // If there are more graph states than the number of scan data divs in the HTML, remove the extra states.
+    if (state.graphStates.length > scanDataDivs.length) {
+        state.graphStates.length = scanDataDivs.length;
+    }
+
     for (let i = 0; i < scanDataDivs.length; i++) {
         const scanDataDiv = scanDataDivs[i];
-        scanDataDiv.setAttribute('id', `scanData${i}`);
+        scanDataDiv.id = `scanData${i}`;
+
+        const isGraphStateFresh = state.graphStates.length <= i;
 
         const showPlotInputs = scanDataDiv.getElementsByClassName('showPlotInput') as HTMLCollectionOf<HTMLInputElement>;
         const modeSelects = scanDataDiv.getElementsByClassName('modeSelect') as HTMLCollectionOf<HTMLSelectElement>;
@@ -666,18 +675,18 @@ window.addEventListener('DOMContentLoaded', _event => {
             break;
         }
 
-        showPlotInputs[0].setAttribute('id', `showPlotInput${i}`);
-        modeSelects[0].setAttribute('id', `modeSelect${i}`);
-        graphDivs[0].setAttribute('id', `graphDiv${i}`);
+        showPlotInputs[0].id = `showPlotInput${i}`;
+        modeSelects[0].id = `modeSelect${i}`;
+        graphDivs[0].id = `graphDiv${i}`;
         for (let j = 0; j < dataSelects.length; j++) {
-            dataSelects[j].setAttribute('id', `x${j}DataSelect${i}`);
-            logInputs[j].setAttribute('id', `x${j}LogInput${i}`);
+            dataSelects[j].id = `x${j}DataSelect${i}`;
+            logInputs[j].id = `x${j}LogInput${i}`;
         }
 
         // If the state is fresh, set the state according to the static HTML content.
         // Otherwise, set the attributes of HTML elements according to the state.
         let graphState: GraphState;
-        if (state.fresh) {
+        if (isGraphStateFresh) {
             graphState = {
                 mode: modeSelects[0].value as GraphState['mode'],
                 hidden: !showPlotInputs[0].checked,
@@ -699,12 +708,12 @@ window.addEventListener('DOMContentLoaded', _event => {
         // Update the visibility and attributes of related input elements according to the current mode.
         // This also refrects the state of 'enableRightAxis'.
         // If the state is fresh, the initial selections are set here.
-        updateForModeSelect(i, scanDataDiv, state.fresh);
+        updateForModeSelect(i, scanDataDiv, isGraphStateFresh);
 
         // Update the multiple' attribute of data selection dropdowns according to the state.
         updateForEnableMultipleSelection(i, scanDataDiv, false);
 
-        if (!state.fresh) {
+        if (!isGraphStateFresh) {
             // Restore 'selections' attributes here because 'multiple' attributes must be set beforehand.
             for (let j = 0; j < dataSelects.length; j++) {
                 const selection = graphState.selections[j];
@@ -726,7 +735,6 @@ window.addEventListener('DOMContentLoaded', _event => {
         }
     }
 
-    state.fresh = false;
     vscode.setState(state);
 
     vscode.postMessage({

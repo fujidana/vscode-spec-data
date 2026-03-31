@@ -21,7 +21,6 @@ export interface GraphState {
 }
 
 export interface State {
-    fresh: boolean;
     template: Template | undefined;
     tableStates: TableState[];
     graphStates: GraphState[];
