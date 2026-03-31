@@ -730,7 +730,7 @@ function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscod
         } else if (node.type === 'valueList') {
             const valueList = node.values;
             const headerList = (headerType === 'Name') ? nameLists['motor'] : (headerType === 'Mnemonic') ? mnemonicLists['motor'] : undefined;
-            lines.push(`<div ${getAttributesForNode(node)}>`);
+            lines.push(`<div ${getAttributesForNode(node)}><div class="valueListDiv">`);
             if (headerList && (headerList.length !== valueList.length)) {
                 lines.push('<p><em>The number of scan headers and data columns mismatched.</em></p>');
             } else {
@@ -753,7 +753,7 @@ Prescan Table
                 }
                 lines.push(`</table>`);
             }
-            lines.push(`</div>`);
+            lines.push(`</div></div>`);
         } else if (node.type === 'scanData') {
             const data = node.data;
             const headers = node.headers;
@@ -785,7 +785,7 @@ Prescan Table
                 }
             }
 
-            lines.push(`<div ${getAttributesForNode(node)}>`);
+            lines.push(`<div ${getAttributesForNode(node)}><div class="scanDataDiv">`);
             if (data.length) {
                 lines.push(`<p>
 <label>
@@ -828,7 +828,7 @@ mode:
                 lines.push(`</span></p>`);
                 lines.push(`<div class="graphDiv"></div>`);
             }
-            lines.push(`</div>`);
+            lines.push(`</div></div>`);
         } else if (node.type === 'unknown') {
             // lines.push(`<p>#${node.kind} ${node.value}</p>`);
         }

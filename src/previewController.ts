@@ -292,7 +292,7 @@ const showPlotInputChangeHandler = function (event: Event) {
         const showPlotInput = event.target;
         const i = parseInt(matches[1]);
 
-        const scanDataDiv = document.getElementById(`scanData${i}`) as HTMLDivElement | null;
+        const scanDataDiv = document.getElementById(`scanDataDiv${i}`) as HTMLDivElement | null;
         if (!scanDataDiv || state.graphStates.length <= i) { return; }
 
         const graphDivs = scanDataDiv.getElementsByClassName('graphDiv') as HTMLCollectionOf<HTMLDivElement>;
@@ -323,7 +323,7 @@ const modeSelectChangeHandler = function (event: Event) {
     if (event.target && event.target instanceof HTMLSelectElement && (matches = event.target.id.match(/^modeSelect(\d+)$/)) !== null) {
         const modeSelect = event.target;
         const i = parseInt(matches[1]);
-        const scanDataDiv = document.getElementById(`scanData${i}`) as HTMLDivElement | null;
+        const scanDataDiv = document.getElementById(`scanDataDiv${i}`) as HTMLDivElement | null;
 
         if (!scanDataDiv || state.graphStates.length <= i) { return; }
 
@@ -350,7 +350,7 @@ const axisDataSelectChangeHandler = function (event: Event) {
         const modeSelect = event.target;
         const i = parseInt(matches[2]);
         const j = parseInt(matches[1]);
-        const scanDataDiv = document.getElementById(`scanData${i}`) as HTMLDivElement | null;
+        const scanDataDiv = document.getElementById(`scanDataDiv${i}`) as HTMLDivElement | null;
 
         if (!scanDataDiv || state.graphStates.length <= i || j < 0 || j > 2) { return; }
 
@@ -376,7 +376,7 @@ const logInputChangeHandler = function (event: Event) {
         const logInput = event.target;
         const i = parseInt(matches[2]);
         const j = parseInt(matches[1]);
-        const scanDataDiv = document.getElementById(`scanData${i}`) as HTMLDivElement | null;
+        const scanDataDiv = document.getElementById(`scanDataDiv${i}`) as HTMLDivElement | null;
 
         if (!scanDataDiv || state.graphStates.length <= i || j < 0 || j > 2) { return; }
 
@@ -614,7 +614,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
 
 window.addEventListener('DOMContentLoaded', _event => {
     // Set up value list elements (i.e., motor-position table).
-    const valueListDivs = document.body.getElementsByClassName('valueList') as HTMLCollectionOf<HTMLDivElement>;
+    const valueListDivs = document.body.getElementsByClassName('valueListDiv') as HTMLCollectionOf<HTMLDivElement>;
 
     // If there are more table states than the number of tables in the HTML, remove the extra states.
     if (state.tableStates.length > valueListDivs.length) {
@@ -652,7 +652,7 @@ window.addEventListener('DOMContentLoaded', _event => {
     }
 
     // Configure graph elements.
-    const scanDataDivs = document.body.getElementsByClassName('scanData') as HTMLCollectionOf<HTMLDivElement>;
+    const scanDataDivs = document.body.getElementsByClassName('scanDataDiv') as HTMLCollectionOf<HTMLDivElement>;
 
     // If there are more graph states than the number of scan data divs in the HTML, remove the extra states.
     if (state.graphStates.length > scanDataDivs.length) {
@@ -661,7 +661,7 @@ window.addEventListener('DOMContentLoaded', _event => {
 
     for (let i = 0; i < scanDataDivs.length; i++) {
         const scanDataDiv = scanDataDivs[i];
-        scanDataDiv.id = `scanData${i}`;
+        scanDataDiv.id = `scanDataDiv${i}`;
 
         const isGraphStateFresh = state.graphStates.length <= i;
 
