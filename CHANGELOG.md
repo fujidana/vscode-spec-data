@@ -4,6 +4,10 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Changed
+
+- Rename several command IDs. This affects users who have customized keyboard shortcuts for these commands.
+
 ## [2.2.0] -- 2026-03-31
 
 ### Added

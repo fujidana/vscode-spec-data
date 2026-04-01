@@ -89,7 +89,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             };
         };
 
-        // callback of 'spec-data.showSource'.
+        // callback of 'spec-data.preview.showSource'.
         const showSourceCallback = (..._args: unknown[]) => {
             const activePreview = this.activePreview;
             if (activePreview) {
@@ -106,7 +106,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'spec-data.refreshPreview'.
+        // callback of 'spec-data.preview.refresh'.
         const refreshPreviewCallback = (..._args: unknown[]) => {
             const activePreview = this.activePreview;
             if (activePreview) {
@@ -116,7 +116,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'spec-data.toggleMultipleSelection'.
+        // callback of 'spec-data.preview.toggleMultipleSelection'.
         const toggleMultipleSelectionCallback = (..._args: unknown[]) => {
             const activePreview = this.activePreview;
             if (activePreview) {
@@ -131,7 +131,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'spec-data.toggleRightAxis'.
+        // callback of 'spec-data.preview.toggleRightAxis'.
         const toggleRightAxisCallback = (..._args: unknown[]) => {
             const activePreview = this.activePreview;
             if (activePreview) {
@@ -146,7 +146,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             }
         };
 
-        // callback of 'spec-data.togglePreviewLock'.
+        // callback of 'spec-data.preview.toggleLock'.
         const togglePreviewLockCallback = (..._args: unknown[]) => {
             const activePreview = this.activePreview;
             if (activePreview) {
@@ -300,11 +300,11 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
             vscode.commands.registerCommand('spec-data.showPreviewToSide', makeShowPreviewCallback(false, true)),
             vscode.commands.registerCommand('spec-data.showLockedPreview', makeShowPreviewCallback(true, false)),
             vscode.commands.registerCommand('spec-data.showLockedPreviewToSide', makeShowPreviewCallback(true, true)),
-            vscode.commands.registerCommand('spec-data.showSource', showSourceCallback),
-            vscode.commands.registerCommand('spec-data.refreshPreview', refreshPreviewCallback),
-            vscode.commands.registerCommand('spec-data.toggleMultipleSelection', toggleMultipleSelectionCallback),
-            vscode.commands.registerCommand('spec-data.toggleRightAxis', toggleRightAxisCallback),
-            vscode.commands.registerCommand('spec-data.togglePreviewLock', togglePreviewLockCallback),
+            vscode.commands.registerCommand('spec-data.preview.showSource', showSourceCallback),
+            vscode.commands.registerCommand('spec-data.preview.refresh', refreshPreviewCallback),
+            vscode.commands.registerCommand('spec-data.preview.toggleMultipleSelection', toggleMultipleSelectionCallback),
+            vscode.commands.registerCommand('spec-data.preview.toggleRightAxis', toggleRightAxisCallback),
+            vscode.commands.registerCommand('spec-data.preview.toggleLock', togglePreviewLockCallback),
             vscode.languages.registerFoldingRangeProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.languages.registerDocumentSymbolProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.window.registerWebviewPanelSerializer('spec-data.preview', this),

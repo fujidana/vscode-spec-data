@@ -117,53 +117,53 @@
 		"commands": [
 			{
 				"command": "spec-data.showPreview",
-				"title": "%spec-data.commands.showPreview.title%",
+				"title": "%command.spec-data.showPreview.title%",
 				"category": "spec data",
 				"icon": "$(graph-line)"
 			},
 			{
 				"command": "spec-data.showPreviewToSide",
-				"title": "%spec-data.commands.showPreviewToSide.title%",
+				"title": "%command.spec-data.showPreviewToSide.title%",
 				"category": "spec data",
 				"icon": "$(open-preview)"
 			},
 			{
 				"command": "spec-data.showLockedPreview",
-				"title": "%spec-data.commands.showLockedPreview.title%",
+				"title": "%command.spec-data.showLockedPreview.title%",
 				"category": "spec data"
 			},
 			{
 				"command": "spec-data.showLockedPreviewToSide",
-				"title": "%spec-data.commands.showLockedPreviewToSide.title%",
+				"title": "%command.spec-data.showLockedPreviewToSide.title%",
 				"category": "spec data"
 			},
 			{
-				"command": "spec-data.showSource",
-				"title": "%spec-data.commands.showSource.title%",
+				"command": "spec-data.preview.showSource",
+				"title": "%command.spec-data.preview.showSource.title%",
 				"category": "spec data",
 				"icon": "$(go-to-file)"
 			},
 			{
-				"command": "spec-data.refreshPreview",
-				"title": "%spec-data.commands.refreshPreview.title%",
+				"command": "spec-data.preview.refresh",
+				"title": "%command.spec-data.preview.refresh.title%",
 				"category": "spec data",
 				"icon": "$(refresh)"
 			},
 			{
-				"command": "spec-data.toggleMultipleSelection",
-				"title": "%spec-data.commands.toggleMultipleSelection.title%",
+				"command": "spec-data.preview.toggleMultipleSelection",
+				"title": "%command.spec-data.preview.toggleMultipleSelection.title%",
 				"category": "spec data",
 				"icon": "$(list-unordered)"
 			},
 			{
-				"command": "spec-data.toggleRightAxis",
-				"title": "%spec-data.commands.toggleRightAxis.title%",
+				"command": "spec-data.preview.toggleRightAxis",
+				"title": "%command.spec-data.preview.toggleRightAxis.title%",
 				"category": "spec data",
 				"icon": "$(list-selection)"
 			},
 			{
-				"command": "spec-data.togglePreviewLock",
-				"title": "%spec-data.commands.togglePreviewLock.title%",
+				"command": "spec-data.preview.toggleLock",
+				"title": "%command.spec-data.preview.toggleLock.title%",
 				"category": "spec data",
 				"icon": "$(lock)"
 			}
@@ -195,23 +195,23 @@
 					"group": "2_specdata"
 				},
 				{
-					"command": "spec-data.showSource",
+					"command": "spec-data.preview.showSource",
 					"group": "navigation",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
-					"command": "spec-data.toggleMultipleSelection",
-					"alt": "spec-data.toggleRightAxis",
+					"command": "spec-data.preview.toggleMultipleSelection",
+					"alt": "spec-data.preview.toggleRightAxis",
 					"group": "navigation",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
-					"command": "spec-data.refreshPreview",
+					"command": "spec-data.preview.refresh",
 					"group": "2_specdata",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
-					"command": "spec-data.togglePreviewLock",
+					"command": "spec-data.preview.toggleLock",
 					"group": "2_specdata",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				}
@@ -241,23 +241,23 @@
 					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 				},
 				{
-					"command": "spec-data.showSource",
+					"command": "spec-data.preview.showSource",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
-					"command": "spec-data.refreshPreview",
+					"command": "spec-data.preview.refresh",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
-					"command": "spec-data.toggleMultipleSelection",
+					"command": "spec-data.preview.toggleMultipleSelection",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
-					"command": "spec-data.toggleRightAxis",
+					"command": "spec-data.preview.toggleRightAxis",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
-					"command": "spec-data.togglePreviewLock",
+					"command": "spec-data.preview.toggleLock",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				}
 			]
@@ -283,38 +283,38 @@
 					"type": "boolean",
 					"default": true,
 					"scope": "window",
-					"description": "%spec-data.configuration.preview.scrollEditorWithPreview.description%"
+					"description": "%configuration.spec-data.preview.scrollEditorWithPreview.description%"
 				},
 				"spec-data.preview.scrollPreviewWithEditor": {
 					"type": "boolean",
 					"default": true,
 					"scope": "window",
-					"description": "%spec-data.configuration.preview.scrollPreviewWithEditor.description%"
+					"description": "%configuration.spec-data.preview.scrollPreviewWithEditor.description%"
 				},
 				"spec-data.preview.smoothScrolling": {
 					"type": "boolean",
 					"default": false,
 					"scope": "window",
-					"markdownDescription": "%spec-data.configuration.preview.smoothScrolling.description%"
+					"markdownDescription": "%configuration.spec-data.preview.smoothScrolling.description%"
 				},
 				"spec-data.preview.retainContextWhenHidden": {
 					"type": "boolean",
 					"default": false,
 					"scope": "window",
-					"description": "%spec-data.configuration.preview.retainContextWhenHidden.description%"
+					"description": "%configuration.spec-data.preview.retainContextWhenHidden.description%"
 				},
 				"spec-data.preview.applyContentSecurityPolicy": {
 					"type": "boolean",
 					"default": true,
 					"scope": "resource",
-					"description": "%spec-data.configuration.preview.applyContentSecurityPolicy.description%",
+					"description": "%configuration.spec-data.preview.applyContentSecurityPolicy.description%",
 					"markdownDeprecationMessage": "**Deprecated**: This setting will be removed in a future release. The CSP will always be applied to the preview."
 				},
 				"spec-data.preview.autoLockGroup": {
 					"type": "boolean",
 					"default": false,
 					"scope": "window",
-					"markdownDescription": "%spec-data.configuration.preview.autoLockGroup.description%",
+					"markdownDescription": "%configuration.spec-data.preview.autoLockGroup.description%",
 					"tags": [
 						"preview"
 					]
@@ -324,7 +324,7 @@
 					"default": 25,
 					"minimum": 0,
 					"scope": "language-overridable",
-					"description": "%spec-data.configuration.preview.plot.maximumNumberOfPlots.description%"
+					"description": "%configuration.spec-data.preview.plot.maximumNumberOfPlots.description%"
 				},
 				"spec-data.preview.plot.height": {
 					"type": "number",
@@ -332,7 +332,7 @@
 					"minimum": 200,
 					"maximum": 1600,
 					"scope": "language-overridable",
-					"description": "%spec-data.configuration.preview.plot.height.description%"
+					"description": "%configuration.spec-data.preview.plot.height.description%"
 				},
 				"spec-data.preview.plot.colorScale": {
 					"type": "string",
@@ -378,18 +378,18 @@
 						"Yellow-Orange-Red"
 					],
 					"scope": "language-overridable",
-					"description": "%spec-data.configuration.preview.plot.colorScale.description%"
+					"description": "%configuration.spec-data.preview.plot.colorScale.description%"
 				},
 				"spec-data.preview.plot.traceTemplate": {
 					"type": "object",
 					"scope": "language-overridable",
-					"markdownDescription": "%spec-data.configuration.preview.plot.traceTemplate.description%",
+					"markdownDescription": "%configuration.spec-data.preview.plot.traceTemplate.description%",
 					"markdownDeprecationMessage": "**Deprecated**: Please use `#spec-data.preview.plot.template.data#` instead."
 				},
 				"spec-data.preview.plot.template.data": {
 					"type": "object",
 					"scope": "language-overridable",
-					"markdownDescription": "%spec-data.configuration.preview.plot.template.data.description%",
+					"markdownDescription": "%configuration.spec-data.preview.plot.template.data.description%",
 					"properties": {
 						"light": {
 							"type": "object",
@@ -457,13 +457,13 @@
 				"spec-data.preview.plot.layoutTemplate": {
 					"type": "object",
 					"scope": "language-overridable",
-					"markdownDescription": "%spec-data.configuration.preview.plot.layoutTemplate.description%",
+					"markdownDescription": "%configuration.spec-data.preview.plot.layoutTemplate.description%",
 					"markdownDeprecationMessage": "**Deprecated**: Please use `#spec-data.preview.plot.template.layout#` instead."
 				},
 				"spec-data.preview.plot.template.layout": {
 					"type": "object",
 					"scope": "language-overridable",
-					"markdownDescription": "%spec-data.configuration.preview.plot.template.layout.description%",
+					"markdownDescription": "%configuration.spec-data.preview.plot.template.layout.description%",
 					"additionalProperties": false,
 					"properties": {
 						"light": {
@@ -484,26 +484,26 @@
 					"type": "boolean",
 					"default": false,
 					"scope": "window",
-					"description": "%spec-data.configuration.preview.plot.enableMultipleSelection.description%"
+					"description": "%configuration.spec-data.preview.plot.enableMultipleSelection.description%"
 				},
 				"spec-data.preview.plot.enableRightAxis": {
 					"type": "boolean",
 					"default": false,
 					"scope": "window",
-					"description": "%spec-data.configuration.preview.plot.enableRightAxis.description%"
+					"description": "%configuration.spec-data.preview.plot.enableRightAxis.description%"
 				},
 				"spec-data.preview.table.hide": {
 					"type": "boolean",
 					"default": true,
 					"scope": "language-overridable",
-					"description": "%spec-data.configuration.preview.table.hide.description%"
+					"description": "%configuration.spec-data.preview.table.hide.description%"
 				},
 				"spec-data.preview.table.columnsPerLine": {
 					"type": "number",
 					"default": 8,
 					"minimum": 1,
 					"scope": "language-overridable",
-					"description": "%spec-data.configuration.preview.table.columnsPerLine.description%"
+					"description": "%configuration.spec-data.preview.table.columnsPerLine.description%"
 				},
 				"spec-data.preview.table.headerType": {
 					"type": "string",
@@ -514,7 +514,7 @@
 						"None"
 					],
 					"scope": "language-overridable",
-					"description": "%spec-data.configuration.preview.table.headerType.description%"
+					"description": "%configuration.spec-data.preview.table.headerType.description%"
 				}
 			}
 		},
@@ -528,7 +528,7 @@
 		"virtualWorkspaces": true,
 		"untrustedWorkspaces": {
 			"supported": "limited",
-			"description": "%spec-data.capabilities.untrustedWorkspaces.description%",
+			"description": "%capabilities.untrustedWorkspaces.description%",
 			"restrictedConfigurations": [
 				"spec-data.preview.plot.template.data",
 				"spec-data.preview.plot.template.layout",
