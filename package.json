@@ -527,6 +527,12 @@
 			}
 		},
 		"configurationDefaults": {
+			"[csv-row]": {
+				"editor.insertSpaces": false
+			},
+			"[csv-column]": {
+				"editor.insertSpaces": false
+			},
 			"[dppmca]": {
 				"files.encoding": "windows1252"
 			}
