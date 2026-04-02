@@ -25,6 +25,7 @@
 	"configuration.spec-data.preview.plot.enableRightAxis.description": "Makes the right axis available for plotting a graph when a preview is created.",
 	"configuration.spec-data.preview.table.hide.description": "Hides motor-position tables when a preview is created.",
 	"configuration.spec-data.preview.table.columnsPerLine.description": "Maximum column number of motor-position tables. Overflowed columns are folded in the next row.",
+	"configuration.spec-data.preview.table.columnsPerRow.description": "Maximum column number of motor-position tables. Overflowed columns are folded in the next row.",
 	"configuration.spec-data.preview.table.headerType.description": "Header type of data cells in motor-position tables.",
 	"capabilities.untrustedWorkspaces.description": "In untrusted workspaces, the content security policy is forcibly applied to the preview and Plotly.js templates in workspace settings are ignored."
 }

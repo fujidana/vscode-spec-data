@@ -503,7 +503,15 @@
 					"default": 8,
 					"minimum": 1,
 					"scope": "language-overridable",
-					"description": "%configuration.spec-data.preview.table.columnsPerLine.description%"
+					"description": "%configuration.spec-data.preview.table.columnsPerLine.description%",
+					"markdownDeprecationMessage": "**Deprecated**: Use `spec-data.preview.table.columnsPerRow` instead."
+				},
+				"spec-data.preview.table.columnsPerRow": {
+					"type": "number",
+					"default": 8,
+					"minimum": 1,
+					"scope": "language-overridable",
+					"description": "%configuration.spec-data.preview.table.columnsPerRow.description%"
 				},
 				"spec-data.preview.table.headerType": {
 					"type": "string",

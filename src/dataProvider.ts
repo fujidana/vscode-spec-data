@@ -677,7 +677,7 @@ function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscod
 
     const config = vscode.workspace.getConfiguration('spec-data.preview', { languageId, uri: preview.uri });
     const hideTable = config.get<boolean>('table.hide', true);
-    const columnsPerLine = config.get<number>('table.columnsPerLine', 8);
+    const columnsPerRow = config.get<number>('table.columnsPerRow', 8);
     const headerType = config.get<string>('table.headerType', 'Mnemonic');
     const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
     const plotHeight = config.get<number>('plot.height', 400);
@@ -744,12 +744,12 @@ Prescan Table
 <table class="valueListTable"${hideTable ? ' hidden' : ''}>
 <caption>${getSanitizedString(node.kind)}</caption>`);
 
-                for (let row = 0; row < Math.ceil(valueList.length / columnsPerLine); row++) {
+                for (let row = 0; row < Math.ceil(valueList.length / columnsPerRow); row++) {
                     if (headerList) {
-                        const headerListInRow = headerList.slice(row * columnsPerLine, Math.min((row + 1) * columnsPerLine, headerList.length));
+                        const headerListInRow = headerList.slice(row * columnsPerRow, Math.min((row + 1) * columnsPerRow, headerList.length));
                         lines.push(`<tr>${headerListInRow.map(item => `<td><strong>${item}</td></strong>`).join('')}</tr>`);
                     }
-                    const valueListInRow = valueList.slice(row * columnsPerLine, Math.min((row + 1) * columnsPerLine, valueList.length));
+                    const valueListInRow = valueList.slice(row * columnsPerRow, Math.min((row + 1) * columnsPerRow, valueList.length));
                     lines.push(`<tr>${valueListInRow.map(item => `<td>${item}</td>`).join('')}</tr>`);
                 }
                 lines.push(`</table>`);

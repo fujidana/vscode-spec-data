@@ -7,6 +7,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Changed
 
 - Rename several command IDs. This affects users who have customized keyboard shortcuts for these commands.
+- Rename the `spec-data.preview.table.columnsPerLine` setting key to `spec-data.preview.table.columnsPerRow`.
 
 ## [2.2.0] -- 2026-03-31
 

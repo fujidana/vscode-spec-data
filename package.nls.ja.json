@@ -25,6 +25,7 @@
 	"configuration.spec-data.preview.plot.enableRightAxis.description": "プレビューが作成されたときに、右軸をグラフ用に利用可能にします。",
 	"configuration.spec-data.preview.table.hide.description": "プレビューが作成されたときに、モーター位置テーブルを非表示にします。",
 	"configuration.spec-data.preview.table.columnsPerLine.description": "モーター位置テーブルの最大列数。溢れた列は次の段に折り返されて表示されます。",
+	"configuration.spec-data.preview.table.columnsPerRow.description": "モーター位置テーブルの最大列数。溢れた列は次の行に折り返されて表示されます。",
 	"configuration.spec-data.preview.table.headerType.description": "モーター位置テーブルのデータセルのヘッダー形式",
 	"capabilities.untrustedWorkspaces.description": "信頼されていないワークスペースでは、コンテンツセキュリティポリシーが強制的にプレビューに適用され、ワークスペース設定のPlotly.jsテンプレートは無視されます。"
 }
