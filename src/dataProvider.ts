@@ -353,16 +353,25 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
      */
     public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: State): Promise<void> {
         if (!state) {
-            const message = vscode.l10n.t('Failed to restore the preview content because the previous state is not recorded. The tab will be closed.');
-            vscode.window.showErrorMessage(message, 'OK').then(() => panel.dispose());
-            return;
+            const message = vscode.l10n.t('Failed to restore the preview content because the previous state is not recorded. This tab will be closed.');
+            return vscode.window.showErrorMessage(message, 'OK').then(() => panel.dispose());
         }
+
+        // When a preview tab carried over form the previous session is hidden
+        // (i.e., behind another tab), deserialization is triggered when the
+        // preview is revealed, not when the window is re-opened.
+        // Another live preview can exist when deserialization is triggered.
+        // In such cases, the deserialized preview will be closed.
+        if (!state.lockPreview && this.livePreview) {
+            const message = vscode.l10n.t('Another preview tab already exists. This tab will be closed.');
+            return vscode.window.showWarningMessage(message, 'OK').then(() => panel.dispose());
+        }
+
         const uri = vscode.Uri.parse(state.sourceUri);
         const parserResult = await this.parseDataOfFileUri(uri);
         if (!parserResult || parserResult.nodes === undefined) {
-            const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
-            vscode.window.showErrorMessage(message);
-            return;
+            const message = vscode.l10n.t('Failed to parse file: "{0}". This tab will be closed.', vscode.workspace.asRelativePath(uri));
+            return vscode.window.showErrorMessage(message, 'OK').then(() => panel.dispose());
         }
 
         const preview: Preview = {
