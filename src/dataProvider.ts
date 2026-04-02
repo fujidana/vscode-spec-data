@@ -221,7 +221,14 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                 const line = event.visibleRanges[0].start.line;
                 const previews = this.previews.filter(preview => preview.uri.toString() === document.uri.toString());
                 for (const preview of previews) {
-                    const node = preview.nodes?.find(node => (node.lineEnd >= line));
+                    // Find the first node that includes the top visible line in the editor.
+                    // Note that not all nodes are expressed as HTML elements in the webview.
+                    const node = preview.nodes?.find(node => {
+                        return (
+                            node.lineEnd >= line &&
+                            (node.type === 'file' || node.type === 'date' || node.type === 'comment' || node.type === 'scanHead' || node.type === 'valueList' || node.type === 'scanData')
+                        );
+                    });
                     if (node) {
                         preview.panel.webview.postMessage({
                             type: 'scrollPreview',
