@@ -196,31 +196,52 @@
 				},
 				{
 					"command": "spec-data.preview.showSource",
-					"group": "navigation",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+					"alt": "spec-data.preview.refresh",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"group": "navigation@1"
 				},
 				{
 					"command": "spec-data.preview.toggleMultipleSelection",
 					"alt": "spec-data.preview.toggleRightAxis",
-					"group": "navigation",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
-				},
-				{
-					"command": "spec-data.preview.refresh",
-					"group": "2_specdata",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"group": "navigation@0"
 				},
 				{
 					"command": "spec-data.preview.toggleLock",
-					"group": "2_specdata",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"group": "2_specdata"
 				}
 			],
 			"editor/title/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
+					"group": "1_open"
+				},
+				{
+					"command": "spec-data.preview.showSource",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"group": "1_open"
+				},
+				{
+					"command": "spec-data.preview.refresh",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
 					"group": "3_preview"
+				},
+				{
+					"command": "spec-data.preview.toggleLock",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"group": "3_preview"
+				},
+				{
+					"command": "spec-data.preview.toggleMultipleSelection",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"group": "4_specdata"
+				},
+				{
+					"command": "spec-data.preview.toggleRightAxis",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"group": "4_specdata"
 				}
 			],
 			"commandPalette": [
