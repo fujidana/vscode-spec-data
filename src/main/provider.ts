@@ -1,13 +1,10 @@
 import * as vscode from 'vscode';
-import { defaultDataTemplate, defaultLayoutTemplate } from './previewTemplates';
-import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './dataParser';
-import type { Node, ParserResult, ParserSuccess, SupportedLanguage } from './dataParser';
-
-// @types/plotly.js contains DOM objects and thus
-// `tsc -p .` fails without `skipLibCheck`.
 import type { Template } from 'plotly.js';
-import type { State, GraphMode, MessageToWebview, MessageFromWebview } from './previewTypes';
-import type { ColorThemeKindLabel } from './previewTemplates';
+
+import { defaultDataTemplate, defaultLayoutTemplate, type ColorThemeKindLabel } from './template';
+import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './parser';
+import type { Node, ParserResult, ParserSuccess, SupportedLanguage } from './parser';
+import type { State, GraphMode, MessageToWebview, MessageFromWebview } from '../types';
 
 type Preview = {
     readonly panel: vscode.WebviewPanel;
@@ -26,7 +23,7 @@ type ParserSession = {
 /**
  * Provider class for "spec-data" language.
  */
-export class DataProvider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider, vscode.WebviewPanelSerializer<State> {
+export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider, vscode.WebviewPanelSerializer<State> {
     private readonly extensionUri;
     private readonly subscriptions;
     private readonly previews: Preview[] = [];
@@ -577,7 +574,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
                         } satisfies MessageToWebview);
                     } else if ((messageIn.plotType === 'heatmap' || messageIn.plotType === 'contour') && messageIn.dataType === 'matrix') {
                         // Send back the original 2D array for a heatmap or contour plot.
-                        // No infomatioin about x- and y-scales are available in this format.
+                        // No information about x- and y-scales are available in this format.
 
                         // if (node.subtype !== 'matrix-xy' && node.subtype !== 'matrix-yx') { return; }
 
@@ -675,7 +672,7 @@ export class DataProvider implements vscode.FoldingRangeProvider, vscode.Documen
         const webview = preview.panel.webview;
         const filePath = preview.uri.path;
         const plotlyUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-cartesian-dist-min', 'plotly-cartesian.min.js'));
-        const controllerUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewController.js'));
+        const controllerUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewer.js'));
 
         preview.nodes = nodes;
         preview.panel.title = this.livePreview === preview ?

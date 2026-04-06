@@ -1,16 +1,15 @@
-/*
+/**
  * A JavaScript transpiled from this file is loaded by <script src="..."> in
  * a webview HTML file.
  */
 
-/*
+/**
  * At run-time, Plotly is separately loaded by `<script src=""...">` in the
  * HTML file and thus, is available in the global scope.
  */
-// import Plotly from 'plotly.js';
-declare const Plotly: any;
+declare const Plotly: any; // import Plotly from 'plotly.js';
 
-import type { MessageFromWebview, MessageToWebview, State, GraphState } from './previewTypes';
+import type { MessageFromWebview, MessageToWebview, State, GraphState } from '../types';
 
 const vscode = acquireVsCodeApi<State>();
 
@@ -42,8 +41,9 @@ let scrollsEditor = false;
 let lastScrollEditorTimeStamp = 0;
 let lastScrollPreviewTimeStamp = 0;
 
-let timer1: NodeJS.Timeout | undefined;
-let timer2: NodeJS.Timeout | undefined;
+type Timer = ReturnType<typeof setTimeout>; // NodeJS.Timeout or number, depending on the environment.
+let timer1: Timer | undefined;
+let timer2: Timer | undefined;
 
 /**
  * Called when the preview content is loaded or `enableMultipleSelection` message is received.
@@ -695,18 +695,18 @@ window.addEventListener('DOMContentLoaded', _event => {
             };
             state.graphStates.push(graphState);
         } else {
-            // Resore the state of the graph according to the stored state.
+            // Restore the state of the graph according to the stored state.
             // Axes-related attributes (selections and log scale) are restored later.
             graphState = state.graphStates[i];
             modeSelects[0].value = graphState.mode;
-            showPlotInputs[0].checked = !graphState.hidden;;
+            showPlotInputs[0].checked = !graphState.hidden;
         }
 
         // Update the visibility and attributes of related input elements according to the visibility of the plot.
         updateForShowPlotInput(i, scanDataDiv);
 
         // Update the visibility and attributes of related input elements according to the current mode.
-        // This also refrects the state of 'enableRightAxis'.
+        // This also reflects the state of 'enableRightAxis'.
         // If the state is fresh, the initial selections are set here.
         updateForModeSelect(i, scanDataDiv, isGraphStateFresh);
 
@@ -753,7 +753,7 @@ window.addEventListener('scrollend', _event => {
 });
 
 window.addEventListener('scroll', event => {
-    // The scroll position is stored 1 sec after a user stops scrolloing.
+    // The scroll position is stored 1 sec after a user stops scrolling.
     if (timer1) {
         clearTimeout(timer1);
     }

@@ -45,7 +45,7 @@ const testBundlePlugin = {
 			}
 		});
 		build.onLoad({ filter: /[\/\\]extensionTests\.ts$/ }, async args => {
-			const testsRoot = path.join(__dirname, 'src/test');
+			const testsRoot = path.join(__dirname, 'src/main/test');
 			// const testsRoot = path.join(__dirname, 'src/web/test/suite');
 			const files = await glob.glob('*.test.{ts,tsx}', { cwd: testsRoot, posix: true });
 			return {
@@ -62,7 +62,7 @@ const testBundlePlugin = {
 async function main() {
 	const nodeCtx = await esbuild.context({
 		entryPoints: [
-			'src/extension.ts'
+			'src/main/extension.ts'
 		],
 		bundle: true,
 		format: 'cjs',
@@ -81,8 +81,8 @@ async function main() {
 
 	const webCtx = await esbuild.context({
 		entryPoints: [
-			'src/extension.ts',
-			'src/test/extensionTests.ts'
+			'src/main/extension.ts',
+			'src/main/test/extensionTests.ts'
 		],
 		bundle: true,
 		format: 'cjs',
@@ -108,9 +108,9 @@ async function main() {
 		],
 	});
 
-	const scriptCtx = await esbuild.context({
+	const previewCtx = await esbuild.context({
 		entryPoints: [
-			'src/previewController.ts'
+			'src/preview/previewer.ts'
 		],
 		bundle: false,
 		format: 'iife',
@@ -130,15 +130,15 @@ async function main() {
 	if (watch) {
 		// await nodeCtx.watch();
 		// await webCtx.watch();
-        // await scriptCtx.watch();
-		await Promise.all([nodeCtx.watch(), webCtx.watch(), scriptCtx.watch()]);
+        // await previewCtx.watch();
+		await Promise.all([nodeCtx.watch(), webCtx.watch(), previewCtx.watch()]);
 	} else {
 		await nodeCtx.rebuild();
 		await nodeCtx.dispose();
 		await webCtx.rebuild();
 		await webCtx.dispose();
-        await scriptCtx.rebuild();
-		await scriptCtx.dispose();
+        await previewCtx.rebuild();
+		await previewCtx.dispose();
 	}
 }
 
