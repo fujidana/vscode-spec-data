@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "lib": [
+      "ES2020",
+      "WebWorker"
+    ],
+    "types": [
+      "node",
+      "mocha",
+    ]
+  },
+  "include": [
+    "./**/*",
+    "../types.ts"
+  ]
+}

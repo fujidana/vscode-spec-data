@@ -75,7 +75,7 @@ The _data template_ has a plot type (`scatter`, `heatmap`, or `contour`) as its 
 The objects in the array have properties that control the appearance of the data and they are applied cyclically if there are multiple traces in a graph.
 The _layout template_ is an object that directly has properties that control the appearance of the layout.
 
-The built-in templates are defined in [src/previewTemplates.ts](src/previewTemplates.ts).
+The built-in templates are defined in [src/main/template.ts](src/main/template.ts).
 They have the same structure as the JSON objects for the settings.
 Reading this file will help a user understand how to write the setting.
 The comprehensive list of the parameters can be found in Plotly.js's [Figure Reference](https://plotly.com/javascript/reference/index) page, especially for [scatter Traces](https://plotly.com/javascript/reference/scatter), [heatmap Traces](https://plotly.com/javascript/reference/heatmap), [contour Traces](https://plotly.com/javascript/reference/contour) and [Layout](https://plotly.com/javascript/reference/layout).

@@ -1,21 +1,29 @@
 /**
- * The two constants defined in this file, `defaultTemplate.data` and 
- * `defaultTemplate.layout` are used as the default templates for Plotly.js 
- * graphs.
+ * The appearance of the Plotly.js graphs can be configured via a _Template_
+ * object. The _Template_ object has two optional properties, `data` and 
+ * `layout`, and various settings for the appearance can be passed as values
+ * for these properties. Here the extension author calls the _Data Template_
+ * the value for the `data` property and the _Layout Template_ the value for
+ * the `layout_` property.
  * 
- * Users can customize the appearance of the graphs by defining their own 
- * templates in the following settings, which will override the default 
- * templates defined in this file:
+ * The two constants defined in this file, `defaultDataTemplate` and 
+ * `defaultLayoutTemplate` are used as the default _data template_ and
+ * _layout template_  for each color theme.
+ * Users can override the templates by defining their own templates in the
+ * following settings:
  * 
  * - `spec-data.preview.plot.template.data`
  * - `spec-data.preview.plot.template.layout`
  * 
- * The JSON objects for the the setting above have the same
- * structure as the objects defined in this file.
+ * The values for the setting keys above must have structures of a 
+ * _data template_ and a _layout template_ respectively,
+ * Text between an equal sign (`=`) and semi-colon (`;`) in the following code
+ * can be used as a JSON object for the respective setting values.
+ * (This is a JavaScript file but for this purpose, the code is written in a format 
+ * close to JSON, using double quotes for keys and string values, and no trailing commas.)
+ * 
  * See Plotly.js's [Figure Reference](https://plotly.com/javascript/reference/index)
  * for details about available parameters.
- * For a user to use the content of this file as a starting point for customizing the templates, 
- * the code in this file is written in a format close to JSON.
  */
 
 import type { Template } from 'plotly.js';
