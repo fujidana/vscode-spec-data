@@ -19,4 +19,5 @@ vsc-extension-quickstart.md
 dist/**/test/**
 pnpm-lock.yaml
 pnpm-workspace.yaml
+**/bundle.l10n.json
 syntaxes/*.yaml

@@ -7,4 +7,5 @@ node_modules
 .env
 .DS_Store
 *.tsbuildinfo
+bundle.l10n.json
 syntaxes/*.json
