@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      minimatch:
-        specifier: ^10.2.5
-        version: 10.2.5
     devDependencies:
       '@esbuild-plugins/node-globals-polyfill':
         specifier: ^0.2.3

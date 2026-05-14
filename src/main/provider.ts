@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import type { Template } from 'plotly.js';
 
 import { defaultDataTemplate, defaultLayoutTemplate, type ColorThemeKindLabel } from './template';
-import { parseDocument, parseTextFromUri, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './parser';
+import { parseDocument, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './parser';
 import type { Node, ParserResult, ParserSuccess, SupportedLanguage } from './parser';
 import type { State, GraphMode, MessageToWebview, MessageFromWebview } from '../types';
 
@@ -454,11 +454,32 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         }
     }
 
+    /**
+     * Parse the data of a file identified by its URI.
+     * If the document is already opened and the parser session exists, just return the existing session.
+     * Otherwise, open the document to trigger the `onDidOpenTextDocument` event and then, return 
+     * a parser session created by the event listener.
+     * @param uri URI of the file to be parsed.
+     * @returns 
+     */
     private async parseDataOfFileUri(uri: vscode.Uri) {
         const uriString = uri.toString();
-        return this.parserSessionMap.has(uriString) ?
-            await this.parserSessionMap.get(uriString)!.promise :
-            await parseTextFromUri(uri);
+
+        if (this.parserSessionMap.has(uriString)) {
+            return this.parserSessionMap.get(uriString)!.promise;
+        } else {
+            // console.log('Try to open document without editor:', vscode.workspace.asRelativePath(uri));
+            await vscode.workspace.openTextDocument(uri);
+            // console.log('Try to use parser session for document without editor:', vscode.workspace.asRelativePath(uri));
+
+            // It appears that the `workspace.openTextDocument(uri)` above immediately triggers the
+            // `onDidOpenTextDocument` event and thus the newly created parser session exists after
+            // this await function call.
+            // If the trigger is delayed, this code will not work.
+            // Use of `SetTimeout` or checking the existence of the parser session in a loop may 
+            // be a safer way.
+            return this.parserSessionMap.get(uriString)?.promise;
+        }
     }
 
     /**
@@ -856,9 +877,9 @@ function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.Configura
     const config = vscode.workspace.getConfiguration('spec-data.preview.plot', scope);
     const colorscale = config.get<string>('colorScale', 'RdBu');
     // const height = config.get<number>('height', 400);
-    const userDataTemplate = config.get<{ [key in ColorThemeKindLabel]?: Template['data'] }>('template.data', {});
-    const userLayoutTemplate = config.get<{ [key in ColorThemeKindLabel]?: Template['layout'] }>('template.layout', {});
-    const additionalDataTemplate: Template['data'] = {
+    const userDataTemplate = config.get<{ [key in ColorThemeKindLabel]?: NonNullable<Template['data']> }>('template.data', {});
+    const userLayoutTemplate = config.get<{ [key in ColorThemeKindLabel]?: NonNullable<Template['layout']> }>('template.layout', {});
+    const additionalDataTemplate: NonNullable<Template['data']> = {
         heatmap: [{ colorscale }], contour: [{ colorscale }],
     };
 

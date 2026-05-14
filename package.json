@@ -617,9 +617,6 @@
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.59.1"
 	},
-	"dependencies": {
-		"minimatch": "^10.2.5"
-	},
 	"pnpm": {
 		"onlyBuiltDependencies": [
 			"@playwright/browser-chromium",
