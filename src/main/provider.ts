@@ -3,27 +3,25 @@ import type { Template } from 'plotly.js';
 
 import { defaultDataTemplate, defaultLayoutTemplate, type ColorThemeKindLabel } from './template';
 import { parseDocument, SPEC_DATA_FILTER, DPPMCA_FILTER, DOCUMENT_SELECTOR } from './parser';
-import type { Node, ParserResult, ParserSuccess, SupportedLanguage } from './parser';
+import type { Node, ParserResult, SupportedLanguage } from './parser';
 import type { State, GraphMode, MessageToWebview, MessageFromWebview } from '../types';
 
-type Preview = {
+interface Preview {
     readonly panel: vscode.WebviewPanel;
     mode: 'locked' | 'live' | 'editor';
     uri: vscode.Uri;
     language: SupportedLanguage;
+    nodes: Node[];
     enableMultipleSelection: boolean;
     enableRightAxis: boolean;
-    nodes?: Node[];
-};
+}
 
-type ParserSession = {
-    promise: Promise<ParserResult>,
-    tokenSource: vscode.CancellationTokenSource | undefined,
-};
+interface ParserSession {
+    promise: Promise<ParserResult>;
+    tokenSource: vscode.CancellationTokenSource | undefined;
+}
 
-/**
- * Provider class for "spec-data" language.
- */
+/** Main controller class. */
 export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider, vscode.CustomTextEditorProvider, vscode.WebviewPanelSerializer<State> {
     private readonly extensionUri;
     private readonly subscriptions;
@@ -90,7 +88,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             };
         };
 
-        /** Creates a callback function for showing source files from previews ('spec-data.preview.showSource'). */
+        /** Callback function for showing source files from previews ('spec-data.preview.showSource'). */
         const showSourceCallback = (..._args: unknown[]) => {
             const preview = this.activePreview;
             if (preview) {
@@ -107,17 +105,17 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             }
         };
 
-        /** Creates a callback function for reopening files with the custom editor ('spec-data.preview.reopenAsPreview'). */
+        /** Callback function for reopening files with the custom editor ('spec-data.preview.reopenAsPreview'). */
         const reopenAsPreviewCallback = (..._args: unknown[]) => {
             vscode.commands.executeCommand('reopenActiveEditorWith', 'spec-data.preview.editor');
         };
 
-        /** Creates a callback function for reopening files with the built-in editor ('spec-data.preview.reopenAsSource'). */
+        /** Callback function for reopening files with the built-in editor ('spec-data.preview.reopenAsSource'). */
         const reopenAsSourceCallback = (..._args: unknown[]) => {
             vscode.commands.executeCommand('workbench.action.reopenTextEditor');
         };
 
-        /** Creates a callback function for refreshing previews ('spec-data.preview.refresh'). */
+        /** Callback function for refreshing previews ('spec-data.preview.refresh'). */
         const refreshPreviewCallback = (...args: unknown[]) => {
             const preview = this.findSelectedPreview(args);
             if (preview) {
@@ -127,7 +125,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             }
         };
 
-        /** Creates a callback function for toggling multiple selection ('spec-data.preview.toggleMultipleSelection'). */
+        /** Callback function for toggling multiple selection ('spec-data.preview.toggleMultipleSelection'). */
         const toggleMultipleSelectionCallback = (...args: unknown[]) => {
             const preview = this.findSelectedPreview(args);
             if (preview) {
@@ -142,7 +140,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             }
         };
 
-        /** Creates a callback function for toggling the right axis ('spec-data.preview.toggleRightAxis'). */
+        /** Callback function for toggling the right axis ('spec-data.preview.toggleRightAxis'). */
         const toggleRightAxisCallback = (...args: unknown[]) => {
             const preview = this.findSelectedPreview(args);
             if (preview) {
@@ -157,7 +155,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             }
         };
 
-        /** Creates a callback function for toggling the lock state of previews ('spec-data.preview.toggleLock'). */
+        /** Callback function for toggling the lock state of previews ('spec-data.preview.toggleLock'). */
         const togglePreviewLockCallback = (..._args: unknown[]) => {
             const preview = this.activePreview;
             if (!preview) {
@@ -313,7 +311,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             this.colorThemeKind = colorTheme.kind;
         };
 
-        // When the extension is activated by opening a file whose extension is supported by this extension,
+        // When the extension is activated by opening a file this extension supports,
         // the `onDidOpenTextDocument` event is not fired.
         // Thus, run the parser session for each open document here.
         for (const document of vscode.workspace.textDocuments) {
@@ -330,7 +328,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         };
 
         context.subscriptions.push(
-            // Register commands handler functions for showing preview and other actions.
+            // Register command handlers for showing preview and other actions.
             vscode.commands.registerCommand('spec-data.showPreview', makeShowPreviewCallback('live', false)),
             vscode.commands.registerCommand('spec-data.showPreviewToSide', makeShowPreviewCallback('live', true)),
             vscode.commands.registerCommand('spec-data.showLockedPreview', makeShowPreviewCallback('locked', false)),
@@ -379,7 +377,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
     }
 
     // Required implementation of vscode.CustomTextEditorProvider.
-    public async resolveCustomTextEditor(document: vscode.TextDocument, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
+    public async resolveCustomTextEditor(document: vscode.TextDocument, panel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
         // console.log('Resolving custom editor for document: ', vscode.workspace.asRelativePath(document.uri));
 
         // It appears this method is called after the didOpenTextDocument event is fired.
@@ -389,11 +387,11 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         if (token.isCancellationRequested) { return; }
 
         // If the file cannot be parsed successfully, show an error message in the webview.
-        if (!parserResult || parserResult.nodes === undefined) {
+        if (parserResult?.nodes === undefined) {
             const reopenWithCommand = `<a href="command:workbench.action.reopenWithEditor">Reopen Editor With...</a>`;
 
-            webviewPanel.webview.options = { enableCommandUris: true };
-            webviewPanel.webview.html = `<html>
+            panel.webview.options = { enableCommandUris: true };
+            panel.webview.html = `<html>
 <body>
 <h2>${vscode.l10n.t('Failed to parse the file')}</h2>
 <p>${vscode.l10n.t('To open the source file, call the "{0}" command and select the "Text Editor (Built-in)".', reopenWithCommand)}</p>
@@ -403,17 +401,15 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         }
 
         // Show the preview if the file is parsed successfully.
-        webviewPanel.webview.options = { enableScripts: true };
+        panel.webview.options = { enableScripts: true };
         const config = vscode.workspace.getConfiguration('spec-data.preview');
+        const { language, nodes } = parserResult;
+        const enableMultipleSelection = config.get<boolean>('plot.enableMultipleSelection', false);
+        const enableRightAxis = config.get<boolean>('plot.enableRightAxis', false);
         const preview: Preview = {
-            panel: webviewPanel,
-            mode: 'editor',
-            uri: document.uri,
-            language: parserResult.language,
-            enableMultipleSelection: config.get<boolean>('plot.enableMultipleSelection', false),
-            enableRightAxis: config.get<boolean>('plot.enableRightAxis', false)
+            panel, mode: 'editor', uri: document.uri, language, nodes, enableMultipleSelection, enableRightAxis
         };
-        await this.postCreatePreview(preview, parserResult);
+        this.postCreatePreview(preview);
         return;
     }
 
@@ -435,20 +431,17 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
 
         const uri = vscode.Uri.parse(state.sourceUri);
         const parserResult = await this.parseDataOfFileUri(uri);
-        if (!parserResult || parserResult.nodes === undefined) {
+        if (parserResult?.nodes === undefined) {
             const message = vscode.l10n.t('Failed to parse file: "{0}". This tab will be closed.', vscode.workspace.asRelativePath(uri));
             return vscode.window.showErrorMessage(message, 'OK').then(() => panel.dispose());
         }
 
+        const { language, nodes } = parserResult;
+        const { mode, enableMultipleSelection, enableRightAxis } = state;
         const preview: Preview = {
-            panel,
-            uri,
-            mode: state.mode,
-            language: parserResult.language,
-            enableMultipleSelection: state.enableMultipleSelection,
-            enableRightAxis: state.enableRightAxis,
+            panel, mode, uri, language, nodes, enableMultipleSelection, enableRightAxis
         };
-        await this.postCreatePreview(preview, parserResult);
+        this.postCreatePreview(preview);
         return;
     }
 
@@ -487,7 +480,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         // Create a new update session.
         const tokenSource = new vscode.CancellationTokenSource();
         const promise = new Promise<ParserResult>(resolve => resolve(
-            parseDocument(document, tokenSource.token, this.diagnosticCollection)
+            parseDocument(document, this.diagnosticCollection, tokenSource.token)
         ));
         const newSession: ParserSession = { promise, tokenSource };
         newSession.promise.finally(() => {
@@ -520,7 +513,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         } else {
             // Else create a new webview panel.
             const parserResult = await this.parseDataOfFileUri(uri);
-            if (!parserResult || !parserResult.nodes) {
+            if (parserResult?.nodes === undefined) {
                 const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
                 vscode.window.showErrorMessage(message);
                 return;
@@ -537,18 +530,16 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
                     retainContextWhenHidden: config.get<boolean>('retainContextWhenHidden', false),
                 }
             );
+            const { language, nodes } = parserResult;
+            const enableMultipleSelection = config.get<boolean>('plot.enableMultipleSelection', false);
+            const enableRightAxis = config.get<boolean>('plot.enableRightAxis', false);
             const preview: Preview = {
-                panel,
-                mode,
-                uri,
-                language: parserResult.language,
-                enableMultipleSelection: config.get<boolean>('plot.enableMultipleSelection', false),
-                enableRightAxis: config.get<boolean>('plot.enableRightAxis', false)
+                panel, mode, uri, language, nodes, enableMultipleSelection, enableRightAxis
             };
             if (showToSide && config.get<boolean>('autoLockGroup', false)) {
                 vscode.commands.executeCommand('workbench.action.lockEditorGroup');
             }
-            return await this.postCreatePreview(preview, parserResult);
+            return this.postCreatePreview(preview);
         }
     }
 
@@ -560,7 +551,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
      * @param uri URI of the file to be parsed.
      * @returns 
      */
-    private async parseDataOfFileUri(uri: vscode.Uri) {
+    private async parseDataOfFileUri(uri: vscode.Uri): Promise<ParserResult> {
         const uriString = uri.toString();
 
         if (this.parserSessionMap.has(uriString)) {
@@ -583,10 +574,9 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
     /**
      * Register event handlers and then make a content from source.
      * @param preview Preview object created during deserialization process or `showPreview`-type action command.
-     * @param parserResult ParserSuccess object
      * @returns Preview object if succeeded in parsing a file or `undefined`.
      */
-    private async postCreatePreview(preview: Preview, parserResult: ParserSuccess) {
+    private postCreatePreview(preview: Preview) {
         this.previews.push(preview);
         if (preview.mode === 'editor') {
             preview.panel.iconPath = new vscode.ThemeIcon('graph-line');
@@ -752,8 +742,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             }
         }, null, this.subscriptions);
 
-        this.updatePreviewWithNodes(preview, parserResult.language, parserResult.nodes);
-
+        updateWebviewContent(preview, this.extensionUri);
         return preview;
     }
 
@@ -771,40 +760,34 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         }
 
         const parserResult = await this.parseDataOfFileUri(uri);
-        if (!parserResult || !parserResult.nodes) {
+        if (parserResult?.nodes === undefined) {
             const message = vscode.l10n.t('Failed to parse file: "{0}"', vscode.workspace.asRelativePath(uri));
             vscode.window.showErrorMessage(message);
             return undefined;
         }
 
         preview.uri = uri;
-        this.updatePreviewWithNodes(preview, parserResult.language, parserResult.nodes);
+        preview.language = parserResult.language;
+        preview.nodes = parserResult.nodes;
+        updateWebviewContent(preview, this.extensionUri);
         return preview;
-    }
-
-    private updatePreviewWithNodes(preview: Preview, language: string, nodes: Node[]) {
-        const webview = preview.panel.webview;
-        const filePath = preview.uri.path;
-        const plotlyUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-cartesian-dist-min', 'plotly-cartesian.min.js'));
-        const controllerUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewer.js'));
-
-        preview.nodes = nodes;
-        if (preview.mode === 'live') {
-            preview.panel.title = vscode.l10n.t('Preview {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
-        } else if (preview.mode === 'locked') {
-            preview.panel.title = vscode.l10n.t('[Preview] {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
-        }
-        preview.panel.webview.html = getWebviewContent(preview, webview.cspSource, plotlyUri, controllerUri, language);
     }
 }
 
-function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscode.Uri, controllerUri: vscode.Uri, languageId: string): string {
-    if (!preview.nodes) { return ''; }
+function updateWebviewContent(preview: Preview, extensionUri: vscode.Uri) {
+    const webview = preview.panel.webview;
+    const filePath = preview.uri.path;
+
+    if (preview.mode === 'live') {
+        preview.panel.title = vscode.l10n.t('Preview {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
+    } else if (preview.mode === 'locked') {
+        preview.panel.title = vscode.l10n.t('[Preview] {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
+    }
 
     const nameLists: { [name: string]: string[] } = {};
     const mnemonicLists: { [name: string]: string[] } = {};
 
-    const config = vscode.workspace.getConfiguration('spec-data.preview', { languageId, uri: preview.uri });
+    const config = vscode.workspace.getConfiguration('spec-data.preview', { languageId: preview.language, uri: preview.uri });
     const hideTable = config.get<boolean>('table.hide', true);
     const columnsPerRow = config.get<number>('table.columnsPerRow', 8);
     const headerType = config.get<string>('table.headerType', 'Mnemonic');
@@ -813,7 +796,7 @@ function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscod
 
     // Apply CSP regardless of user settings when in untrusted workspaces.
     const metaCspStr = !vscode.workspace.isTrusted || config.get<boolean>('applyContentSecurityPolicy', true)
-        ? `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src ${cspSource}; connect-src ${cspSource};">`
+        ? `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline'; script-src ${webview.cspSource}; connect-src ${webview.cspSource};">`
         : '';
 
     function getSanitizedString(text: string) {
@@ -826,17 +809,20 @@ function getWebviewContent(preview: Preview, cspSource: string, plotlyUri: vscod
         return `id="l${node.lineStart}" class="${node.type}"`;
     }
 
-    const header = `<!DOCTYPE html>
+    const htmlHeader = `<!DOCTYPE html>
 <html lang="en">
 <head data-plot-height="${plotHeight}" data-source-uri="${preview.uri.toString()}" data-enable-multiple-selection="${Number(preview.enableMultipleSelection)}" data-enable-right-axis="${Number(preview.enableRightAxis)}">
 	<meta charset="UTF-8">
     ${metaCspStr}
-    <title>Preview of spec-data</title>
+    <title>spec data Preview</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="${plotlyUri}" defer></script>
-    <script src="${controllerUri}" defer></script>
+    <script src="${webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-cartesian-dist-min', 'plotly-cartesian.min.js'))}" defer></script>
+    <script src="${webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'preview', 'previewer.js'))}" defer></script>
 </head>
 <body>
+`;
+    const htmlFooter = `</body>
+</html>
 `;
 
     const lines: string[] = [];
@@ -964,8 +950,7 @@ mode:
         }
     }
 
-    return header + lines.join('\n') + `</body>
-    </html>`;
+    preview.panel.webview.html = htmlHeader + lines.join('\n') + htmlFooter;
 }
 
 function getPlotlyTemplate(kind: vscode.ColorThemeKind, scope?: vscode.ConfigurationScope): Template {

@@ -49,28 +49,28 @@ interface FScanParameter {
 
 export type ParserResult = ParserSuccess | ParserFailure | undefined;
 
-export type ParserSuccess = {
-    language: SupportedLanguage,
-    nodes: Node[],
-    diagnostics: vscode.Diagnostic[],
-    foldingRanges?: vscode.FoldingRange[],
-    documentSymbols?: vscode.DocumentSymbol[],
-};
+interface ParserSuccess {
+    language: SupportedLanguage;
+    nodes: Node[];
+    diagnostics: vscode.Diagnostic[];
+    foldingRanges?: vscode.FoldingRange[];
+    documentSymbols?: vscode.DocumentSymbol[];
+}
 
-export type ParserFailure = {
-    language: string | undefined,
-    nodes: undefined,
-    diagnostics: vscode.Diagnostic[],
+interface ParserFailure {
+    language: string | undefined;
+    nodes: undefined;
+    diagnostics: vscode.Diagnostic[];
 };
 
 /**
  * Parse a text document.
  * @param document The text document to parse.
- * @param token A cancellation token.
  * @param diagnosticCollection The diagnostic collection to update.
+ * @param token A cancellation token.
  * @returns The result of parsing. If cancelled, return `undefined`.
  */
-export function parseDocument(document: vscode.TextDocument, token: vscode.CancellationToken, diagnosticCollection: vscode.DiagnosticCollection): ParserResult {
+export function parseDocument(document: vscode.TextDocument, diagnosticCollection: vscode.DiagnosticCollection, token?: vscode.CancellationToken): ParserResult {
     let parserResult: ParserResult;
     if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
         parserResult = parseSpecDataContent(document.getText(), token);
