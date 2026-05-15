@@ -27,7 +27,7 @@ export interface State {
     tableStates: TableState[];
     graphStates: GraphState[];
     sourceUri: string;
-    lockPreview: boolean;
+    mode: 'live' | 'locked' | 'editor' | undefined; // undefined is only used as an initial value before the mode is set.
     enableMultipleSelection: boolean;
     enableRightAxis: boolean;
     scrollPosition: [number, number];
@@ -40,7 +40,7 @@ interface BaseMessage {
 // type CallbackType = 'newPlot' | 'relayout' | 'react';
 
 export type MessageToWebview =
-    | LockPreviewMessage
+    | SetModeMessage
     | ScrollPreviewMessage
     | SetTemplateMessage
     | UpdateLinePlotMessage
@@ -53,9 +53,9 @@ export type MessageToWebview =
     | SetScrollBehaviorMessage
     | RestoreScrollMessage;
 
-interface LockPreviewMessage extends BaseMessage {
-    type: 'lockPreview';
-    flag: boolean;
+interface SetModeMessage extends BaseMessage {
+    type: 'setMode';
+    mode: 'live' | 'locked' | 'editor';
 }
 interface ScrollPreviewMessage extends BaseMessage {
     type: 'scrollPreview';

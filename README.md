@@ -123,8 +123,6 @@ If you want to contribute code, please read [CONTRIBUTING.md](CONTRIBUTING.md).
 The extension relies on various npm packages, including [Plotly.js](https://plotly.com/javascript/).
 Thanks to the authors of these packages.
 
-The licenses of the software embedded into the extension's code after minification by `esbuild` are shown in [ThirdPartyNotices.txt](ThirdPartyNotices.txt).
-
 ## Tips
 
 ### File associations using the file contents

@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import { minimatch } from 'minimatch';
 
 export const SPEC_DATA_FILTER = { language: 'spec-data' } as const;
 export const CSV_COLUMNS_FILTER = { language: 'csv-column' } as const;
@@ -97,73 +96,6 @@ export function parseDocument(document: vscode.TextDocument, token: vscode.Cance
     }
 
     return parserResult;
-}
-
-/**
- * Parse a text content from a URI.
- * If the URI corresponds to an opened document, parse the document. Otherwise, read the content from the file and parse it.
- * @param uri The URI to parse.
- * @return The result of parsing.
- */
-export async function parseTextFromUri(uri: vscode.Uri): Promise<ParserResult> {
-    let text: string;
-    let language: string | undefined;
-
-    let document = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === uri.toString());
-    if (document && vscode.languages.match(DOCUMENT_SELECTOR, document)) {
-        language = document.languageId;
-        text = document.getText();
-    } else {
-        // Determine the file type (language ID) for a file.
-        // First, compare the filename with a user-defined setting ("files.associations"), 
-        // then with default extension patterns.
-        const associations = Object.entries(
-            vscode.workspace.getConfiguration('files', uri).get<Record<string, string>>('associations', {}),
-        ).concat([['*.spec', 'spec-data'], ['*.mca', 'dppmca'], ['*.chi', 'chiplot']]);
-
-        for (const [key, value] of associations) {
-            if (minimatch(uri.path, key, { matchBase: true })) {
-                if ((LANGUAGE_IDS as string[]).includes(value) === false) {
-                    const diagnostics = [new vscode.Diagnostic(
-                        new vscode.Range(0, 0, 0, 0),
-                        vscode.l10n.t('Unsupported language: {0}.', value),
-                    )];
-                    return { language: undefined, nodes: undefined, diagnostics };
-                }
-                language = value;
-                break;
-            }
-        }
-
-        if (language === undefined) {
-            const diagnostics = [new vscode.Diagnostic(
-                new vscode.Range(0, 0, 0, 0),
-                vscode.l10n.t('Undetermined file association.'),
-            )];
-            return { language: undefined, nodes: undefined, diagnostics };
-        }
-        // Read the content from a file.
-        text = await vscode.workspace.decode(await vscode.workspace.fs.readFile(uri), { uri });
-    }
-
-    if (language === SPEC_DATA_FILTER.language) {
-        return parseSpecDataContent(text);
-    } else if (language === CSV_COLUMNS_FILTER.language) {
-        return parseCsvContent(text, language);
-    } else if (language === CSV_ROWS_FILTER.language) {
-        return parseCsvContent(text, language);
-    } else if (language === DPPMCA_FILTER.language) {
-        return parseDppmcaContent(text);
-    } else if (language === CHIPLOT_FILTER.language) {
-        return parseChiplotContent(text);
-    } else {
-        // This case will not be hit because of the previous check.
-        const diagnostics = [new vscode.Diagnostic(
-            new vscode.Range(0, 0, 0, 0),
-            vscode.l10n.t('Unsupported language: {0}.', language),
-        )];
-        return { language: undefined, nodes: undefined, diagnostics };
-    }
 }
 
 function parseSpecDataContent(text: string, token?: vscode.CancellationToken): ParserResult {
@@ -289,7 +221,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                 // In case the number of items in "#L" line is different from the value  "#N" line.
                 diagnostics.push(new vscode.Diagnostic(
                     new vscode.Range(lineNumber, 0, lineNumber, line.length),
-                    vscode.l10n.t('Column count in this line ({0}) does not match the value in the preceeding "#N" line.', headers.length),
+                    vscode.l10n.t('Column count in this line ({0}) does not match the value in the preceding "#N" line.', headers.length),
                     vscode.DiagnosticSeverity.Warning,
                 ));
             }
@@ -314,7 +246,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                     if (rows.length !== headers.length) {
                         diagnostics.push(new vscode.Diagnostic(
                             new vscode.Range(lineNumber + 1, 0, lineNumber + 1, blockline.length),
-                            vscode.l10n.t('Column count in this line ({0}) does not match that in the preceeding "#L" line.', rows.length),
+                            vscode.l10n.t('Column count in this line ({0}) does not match that in the preceding "#L" line.', rows.length),
                             vscode.DiagnosticSeverity.Warning,
                         ));
                     }
@@ -323,7 +255,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                     // In case the second or any later lines, compare with the first line.
                     diagnostics.push(new vscode.Diagnostic(
                         new vscode.Range(lineNumber + 1, 0, lineNumber + 1, blockline.length),
-                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceeding data array.', rows.length),
+                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceding data array.', rows.length),
                     ));
                     return { language, nodes: undefined, diagnostics };
                 }
@@ -477,7 +409,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
                 if (currentRowCells.length !== rowCount) {
                     diagnostics.push(new vscode.Diagnostic(
                         new vscode.Range(lineNumber, 0, lineNumber, line.length),
-                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceeding data array.', currentRowCells.length),
+                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceding data array.', currentRowCells.length),
                     ));
                     return { language, nodes: undefined, diagnostics };
                 }
@@ -630,7 +562,7 @@ function parseChiplotContent(text: string, token?: vscode.CancellationToken): Pa
     if (index !== -1) {
         diagnostics.push(new vscode.Diagnostic(
             new vscode.Range(index + 4, 0, index + 4, lines[index + 4].length),
-            vscode.l10n.t('Column count in this line ({0}) does not match that of the preceeding data array.', data[index].length),
+            vscode.l10n.t('Column count in this line ({0}) does not match that of the preceding data array.', data[index].length),
         ));
         return { language, nodes: undefined, diagnostics };
     }
