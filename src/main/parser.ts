@@ -221,7 +221,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                 // In case the number of items in "#L" line is different from the value  "#N" line.
                 diagnostics.push(new vscode.Diagnostic(
                     new vscode.Range(lineNumber, 0, lineNumber, line.length),
-                    vscode.l10n.t('Column count in this line ({0}) does not match the value in the preceeding "#N" line.', headers.length),
+                    vscode.l10n.t('Column count in this line ({0}) does not match the value in the preceding "#N" line.', headers.length),
                     vscode.DiagnosticSeverity.Warning,
                 ));
             }
@@ -246,7 +246,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                     if (rows.length !== headers.length) {
                         diagnostics.push(new vscode.Diagnostic(
                             new vscode.Range(lineNumber + 1, 0, lineNumber + 1, blockline.length),
-                            vscode.l10n.t('Column count in this line ({0}) does not match that in the preceeding "#L" line.', rows.length),
+                            vscode.l10n.t('Column count in this line ({0}) does not match that in the preceding "#L" line.', rows.length),
                             vscode.DiagnosticSeverity.Warning,
                         ));
                     }
@@ -255,7 +255,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
                     // In case the second or any later lines, compare with the first line.
                     diagnostics.push(new vscode.Diagnostic(
                         new vscode.Range(lineNumber + 1, 0, lineNumber + 1, blockline.length),
-                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceeding data array.', rows.length),
+                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceding data array.', rows.length),
                     ));
                     return { language, nodes: undefined, diagnostics };
                 }
@@ -409,7 +409,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
                 if (currentRowCells.length !== rowCount) {
                     diagnostics.push(new vscode.Diagnostic(
                         new vscode.Range(lineNumber, 0, lineNumber, line.length),
-                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceeding data array.', currentRowCells.length),
+                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceding data array.', currentRowCells.length),
                     ));
                     return { language, nodes: undefined, diagnostics };
                 }
@@ -562,7 +562,7 @@ function parseChiplotContent(text: string, token?: vscode.CancellationToken): Pa
     if (index !== -1) {
         diagnostics.push(new vscode.Diagnostic(
             new vscode.Range(index + 4, 0, index + 4, lines[index + 4].length),
-            vscode.l10n.t('Column count in this line ({0}) does not match that of the preceeding data array.', data[index].length),
+            vscode.l10n.t('Column count in this line ({0}) does not match that of the preceding data array.', data[index].length),
         ));
         return { language, nodes: undefined, diagnostics };
     }

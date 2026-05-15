@@ -4,10 +4,12 @@
 	"command.spec-data.showLockedPreview.title": "ロックされたプレビューを開く",
 	"command.spec-data.showLockedPreviewToSide.title": "ロックされたプレビューを横に表示",
 	"command.spec-data.preview.showSource.title": "ソースを表示",
+	"command.spec-data.preview.toggleLock.title": "プレビューロックの切り替え",
+	"command.spec-data.reopenAsPreview.title": "プレビューとして再度開く",
+	"command.spec-data.reopenAsSource.title": "テキストとして再度開く",
 	"command.spec-data.preview.refresh.title": "プレビューを更新",
 	"command.spec-data.preview.toggleMultipleSelection.title": "複数選択の切り替え",
 	"command.spec-data.preview.toggleRightAxis.title": "右軸の切り替え",
-	"command.spec-data.preview.toggleLock.title": "プレビューロックの切り替え",
 	"configuration.spec-data.preview.scrollEditorWithPreview.description": "エディターのページスクロールを対応するプレビューのページスクロールと同期させます。",
 	"configuration.spec-data.preview.scrollPreviewWithEditor.description": "プレビューのページスクロールを対応するエディターのページスクロールと同期させます。",
 	"configuration.spec-data.preview.smoothScrolling.description": "プレビューがアニメーションを使用してスクロールするかどうかを制御します。エディターのスクロール動作を制御するには `#editor.smoothScrolling#` を使用してください。",
@@ -27,5 +29,5 @@
 	"configuration.spec-data.preview.table.columnsPerLine.description": "モーター位置テーブルの最大列数。溢れた列は次の段に折り返されて表示されます。",
 	"configuration.spec-data.preview.table.columnsPerRow.description": "モーター位置テーブルの最大列数。溢れた列は次の行に折り返されて表示されます。",
 	"configuration.spec-data.preview.table.headerType.description": "モーター位置テーブルのデータセルのヘッダー形式",
-	"capabilities.untrustedWorkspaces.description": "信頼されていないワークスペースでは、コンテンツセキュリティポリシーが強制的にプレビューに適用され、ワークスペース設定のPlotly.jsテンプレートは無視されます。"
+	"capabilities.untrustedWorkspaces.description": "信頼されていないワークスペースでは、コンテンツセキュリティポリシーが強制的にプレビューに適用され、Plotly.jsテンプレートに関するワークスペース設定は無視されます。"
 }

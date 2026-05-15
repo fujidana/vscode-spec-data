@@ -8,6 +8,7 @@ import type { State, GraphMode, MessageToWebview, MessageFromWebview } from '../
 
 type Preview = {
     readonly panel: vscode.WebviewPanel;
+    mode: 'locked' | 'live' | 'editor';
     uri: vscode.Uri;
     language: SupportedLanguage;
     enableMultipleSelection: boolean;
@@ -23,7 +24,7 @@ type ParserSession = {
 /**
  * Provider class for "spec-data" language.
  */
-export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider, vscode.WebviewPanelSerializer<State> {
+export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSymbolProvider, vscode.CustomTextEditorProvider, vscode.WebviewPanelSerializer<State> {
     private readonly extensionUri;
     private readonly subscriptions;
     private readonly previews: Preview[] = [];
@@ -31,26 +32,29 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
     private readonly diagnosticCollection = vscode.languages.createDiagnosticCollection('spec-data');
 
     private enablePreviewScroll: boolean;
-    private livePreview: Preview | undefined = undefined;
     private colorThemeKind: vscode.ColorThemeKind;
 
     private lastScrollEditorTimeStamp = 0;
     private lastScrollPreviewTimeStamp = 0;
 
+    /** Returns the active (i.e., currently focused) preview, if it exists. */
     private get activePreview(): Preview | undefined {
         return this.previews.find(preview => preview.panel.active);
+    }
+
+    /** Returns the live preview, if it exists. In some situations, there may be multiple live previews. In such cases, the first one is returned. */
+    private get livePreview(): Preview | undefined {
+        return this.previews.find(preview => preview.mode === 'live');
     }
 
     constructor(context: vscode.ExtensionContext) {
         this.extensionUri = context.extensionUri;
         this.subscriptions = context.subscriptions;
-
         this.colorThemeKind = vscode.window.activeColorTheme.kind;
-
         this.enablePreviewScroll = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollPreviewWithEditor', true);
 
-        // Create a command handler function that shows a preview.
-        const makeShowPreviewCallback = (lockPreview: boolean, showToSide: boolean) => {
+        /** Creates a callback function for showing previews. */
+        const makeShowPreviewCallback = (mode: 'live' | 'locked', showToSide: boolean) => {
             return (...args: unknown[]) => {
                 // Get the URIs of source files to be shown in the preview.
                 // The URI of the source file can be provided via the command arguments or 
@@ -60,8 +64,8 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
                     // Typically, the type of args is [vscode.Uri, vscode.Uri[]].
                     if (args.length >= 2 && Array.isArray(args[1]) && args[1].length > 0 && args[1].every(item => item instanceof vscode.Uri)) {
                         uris = args[1];
-                        // If not locked, a single preview is reused for multiple URIs and thus the URIs except the last one are not needed.
-                        if (!lockPreview) {
+                        // A single "live" preview is reused for multiple URIs and thus the URIs except the last one are not needed.
+                        if (mode === 'live') {
                             uris = [uris[uris.length - 1]];
                         }
                     } else if (args[0] instanceof vscode.Uri) {
@@ -82,44 +86,54 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
                 }
 
                 // Show the preview(s).
-                uris.forEach(uri => { this.showPreview(uri, lockPreview, showToSide); });
+                uris.forEach(uri => { this.showPreview(uri, mode, showToSide); });
             };
         };
 
-        // callback of 'spec-data.preview.showSource'.
+        /** Creates a callback function for showing source files from previews ('spec-data.preview.showSource'). */
         const showSourceCallback = (..._args: unknown[]) => {
-            const activePreview = this.activePreview;
-            if (activePreview) {
+            const preview = this.activePreview;
+            if (preview) {
                 const document = vscode.workspace.textDocuments.find(
-                    document => document.uri.toString() === activePreview.uri.toString()
+                    document => document.uri.toString() === preview.uri.toString()
                 );
                 if (document) {
                     vscode.window.showTextDocument(document);
                 } else {
-                    vscode.window.showTextDocument(activePreview.uri);
+                    vscode.window.showTextDocument(preview.uri);
                 }
             } else {
                 vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
         };
 
-        // callback of 'spec-data.preview.refresh'.
-        const refreshPreviewCallback = (..._args: unknown[]) => {
-            const activePreview = this.activePreview;
-            if (activePreview) {
-                this.reloadPreview(activePreview, activePreview.uri, true);
+        /** Creates a callback function for reopening files with the custom editor ('spec-data.preview.reopenAsPreview'). */
+        const reopenAsPreviewCallback = (..._args: unknown[]) => {
+            vscode.commands.executeCommand('reopenActiveEditorWith', 'spec-data.preview.editor');
+        };
+
+        /** Creates a callback function for reopening files with the built-in editor ('spec-data.preview.reopenAsSource'). */
+        const reopenAsSourceCallback = (..._args: unknown[]) => {
+            vscode.commands.executeCommand('workbench.action.reopenTextEditor');
+        };
+
+        /** Creates a callback function for refreshing previews ('spec-data.preview.refresh'). */
+        const refreshPreviewCallback = (...args: unknown[]) => {
+            const preview = this.findSelectedPreview(args);
+            if (preview) {
+                this.reloadPreview(preview, preview.uri, true);
             } else {
                 vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
             }
         };
 
-        // callback of 'spec-data.preview.toggleMultipleSelection'.
-        const toggleMultipleSelectionCallback = (..._args: unknown[]) => {
-            const activePreview = this.activePreview;
-            if (activePreview) {
-                const flag = !activePreview.enableMultipleSelection;
-                activePreview.enableMultipleSelection = flag;
-                activePreview.panel.webview.postMessage({
+        /** Creates a callback function for toggling multiple selection ('spec-data.preview.toggleMultipleSelection'). */
+        const toggleMultipleSelectionCallback = (...args: unknown[]) => {
+            const preview = this.findSelectedPreview(args);
+            if (preview) {
+                const flag = !preview.enableMultipleSelection;
+                preview.enableMultipleSelection = flag;
+                preview.panel.webview.postMessage({
                     type: 'enableMultipleSelection',
                     flag: flag
                 } satisfies MessageToWebview);
@@ -128,13 +142,13 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             }
         };
 
-        // callback of 'spec-data.preview.toggleRightAxis'.
-        const toggleRightAxisCallback = (..._args: unknown[]) => {
-            const activePreview = this.activePreview;
-            if (activePreview) {
-                const flag = !activePreview.enableRightAxis;
-                activePreview.enableRightAxis = flag;
-                activePreview.panel.webview.postMessage({
+        /** Creates a callback function for toggling the right axis ('spec-data.preview.toggleRightAxis'). */
+        const toggleRightAxisCallback = (...args: unknown[]) => {
+            const preview = this.findSelectedPreview(args);
+            if (preview) {
+                const flag = !preview.enableRightAxis;
+                preview.enableRightAxis = flag;
+                preview.panel.webview.postMessage({
                     type: 'enableRightAxis',
                     flag: flag,
                 } satisfies MessageToWebview);
@@ -143,64 +157,71 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             }
         };
 
-        // callback of 'spec-data.preview.toggleLock'.
+        /** Creates a callback function for toggling the lock state of previews ('spec-data.preview.toggleLock'). */
         const togglePreviewLockCallback = (..._args: unknown[]) => {
-            const activePreview = this.activePreview;
-            if (activePreview) {
-                const filePath = activePreview.uri.path;
-                if (this.livePreview && activePreview === this.livePreview) {
-                    // If the active view is a live preview, lock the view to the file.
-                    this.livePreview = undefined;
-                    activePreview.panel.webview.postMessage({
-                        type: 'lockPreview',
-                        flag: true,
-                    } satisfies MessageToWebview);
-                    activePreview.panel.title = vscode.l10n.t('[Preview] {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
-                } else {
-                    // If the active view is not a live preview...
-                    if (this.livePreview) {
-                        // Close the previous live view if it exists.
-                        this.livePreview.panel.dispose();
-                    }
-                    // Set the active view to live view.
-                    this.livePreview = activePreview;
-                    activePreview.panel.webview.postMessage({
-                        type: 'lockPreview',
-                        flag: false,
-                    } satisfies MessageToWebview);
-                    activePreview.panel.title = vscode.l10n.t('Preview {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
-                }
-            } else {
+            const preview = this.activePreview;
+            if (!preview) {
                 vscode.window.showErrorMessage(vscode.l10n.t('Failed to find an active preview.'));
+                return;
+            }
+
+            if (preview.mode === 'editor') {
+                vscode.window.showErrorMessage(vscode.l10n.t('The custom editor cannot be locked or unlocked.'));
+                return;
+            }
+
+            const filePath = preview.uri.path;
+            if (preview.mode === 'live') {
+                // If the active view is a live preview, lock the view to the file.
+                preview.mode = 'locked';
+                preview.panel.webview.postMessage({
+                    type: 'setMode',
+                    mode: 'locked',
+                } satisfies MessageToWebview);
+                preview.panel.title = vscode.l10n.t('[Preview] {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
+            } else {
+                // If the active view is not a live preview,
+                // 1) close the previous live view if it exists, and then 2) set the active view to live view.
+                this.livePreview?.panel.dispose();
+
+                preview.mode = 'live';
+                preview.panel.webview.postMessage({
+                    type: 'setMode',
+                    mode: 'live',
+                } satisfies MessageToWebview);
+                preview.panel.title = vscode.l10n.t('Preview {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
             }
         };
 
-        // a hander invoked when the document is opened
-        // this is also invoked after the user manually changed the language id
+        /** Event listener for when a text document is opened. Also fired when the language ID is manually changed. */
         const textDocumentDidOpenListener = (document: vscode.TextDocument) => {
+            // console.log('Document opened: ', vscode.workspace.asRelativePath(document.uri));
             if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
                 this.runParserSession(document);
             }
         };
 
-        // a hander invoked when the document is changed
+        /** Event listener for when a text document is changed.  */
         const textDocumentDidChangeListener = (event: vscode.TextDocumentChangeEvent) => {
+            // console.log('Document changed: ', vscode.workspace.asRelativePath(event.document.uri));
             const document = event.document;
             if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
                 this.runParserSession(document);
             }
         };
 
-        // a hander invoked when the document is closed
-        // this is also invoked after the user manually changed the language id
+        /** Event listener for when a text document is closed. Also fired when the language ID is manually changed. */
         const textDocumentDidCloseListener = (document: vscode.TextDocument) => {
+            // console.log('Document closed: ', vscode.workspace.asRelativePath(document.uri));
             if (vscode.languages.match(DOCUMENT_SELECTOR, document)) {
                 this.parserSessionMap.delete(document.uri.toString());
                 this.diagnosticCollection.delete(document.uri);
             }
         };
 
+        /** Event listener for when the active text editor changes. */
         const activeTextEditorChangeListener = (editor: vscode.TextEditor | undefined) => {
+            // console.log('Active text editor changed: ', editor?.document.uri ? vscode.workspace.asRelativePath(editor.document.uri) : undefined);
             if (editor) {
                 const document = editor.document;
                 if (vscode.languages.match(DOCUMENT_SELECTOR, document) && this.livePreview) {
@@ -209,6 +230,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             }
         };
 
+        /** Event listener for when the visible ranges of a text editor change. */
         const textEditorVisibleRangesChangeListener = (event: vscode.TextEditorVisibleRangesChangeEvent) => {
             const now = Date.now();
             const document = event.textEditor.document;
@@ -237,6 +259,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             }
         };
 
+        /** Event listener for when the configuration changes. */
         const configurationChangeListner = (event: vscode.ConfigurationChangeEvent) => {
             if (event.affectsConfiguration('spec-data.preview.scrollEditorWithPreview')) {
                 const flag = vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('scrollEditorWithPreview', true);
@@ -271,6 +294,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             }
         };
 
+        /** Event listener for when the active color theme changes. */
         const activeColorThemeChangeListener = (colorTheme: vscode.ColorTheme) => {
             if (this.colorThemeKind !== colorTheme.kind) {
                 // If the color theme kind is changed, query to change the plot template.
@@ -289,7 +313,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             this.colorThemeKind = colorTheme.kind;
         };
 
-        // When the extension is activated by opening a file for this extension,
+        // When the extension is activated by opening a file whose extension is supported by this extension,
         // the `onDidOpenTextDocument` event is not fired.
         // Thus, run the parser session for each open document here.
         for (const document of vscode.workspace.textDocuments) {
@@ -299,19 +323,31 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         }
 
         // Register providers and commands.
+        const customEditorOption: { webviewOptions: vscode.WebviewPanelOptions } = {
+            webviewOptions: {
+                retainContextWhenHidden: vscode.workspace.getConfiguration('spec-data.preview').get<boolean>('retainContextWhenHidden', false),
+            },
+        };
+
         context.subscriptions.push(
-            vscode.commands.registerCommand('spec-data.showPreview', makeShowPreviewCallback(false, false)),
-            vscode.commands.registerCommand('spec-data.showPreviewToSide', makeShowPreviewCallback(false, true)),
-            vscode.commands.registerCommand('spec-data.showLockedPreview', makeShowPreviewCallback(true, false)),
-            vscode.commands.registerCommand('spec-data.showLockedPreviewToSide', makeShowPreviewCallback(true, true)),
+            // Register commands handler functions for showing preview and other actions.
+            vscode.commands.registerCommand('spec-data.showPreview', makeShowPreviewCallback('live', false)),
+            vscode.commands.registerCommand('spec-data.showPreviewToSide', makeShowPreviewCallback('live', true)),
+            vscode.commands.registerCommand('spec-data.showLockedPreview', makeShowPreviewCallback('locked', false)),
+            vscode.commands.registerCommand('spec-data.showLockedPreviewToSide', makeShowPreviewCallback('locked', true)),
+            vscode.commands.registerCommand('spec-data.preview.toggleLock', togglePreviewLockCallback),
             vscode.commands.registerCommand('spec-data.preview.showSource', showSourceCallback),
+            vscode.commands.registerCommand('spec-data.reopenAsPreview', reopenAsPreviewCallback),
+            vscode.commands.registerCommand('spec-data.reopenAsSource', reopenAsSourceCallback),
             vscode.commands.registerCommand('spec-data.preview.refresh', refreshPreviewCallback),
             vscode.commands.registerCommand('spec-data.preview.toggleMultipleSelection', toggleMultipleSelectionCallback),
             vscode.commands.registerCommand('spec-data.preview.toggleRightAxis', toggleRightAxisCallback),
-            vscode.commands.registerCommand('spec-data.preview.toggleLock', togglePreviewLockCallback),
+            // Register providers.
             vscode.languages.registerFoldingRangeProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.languages.registerDocumentSymbolProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
+            vscode.window.registerCustomEditorProvider('spec-data.preview.editor', this, customEditorOption),
             vscode.window.registerWebviewPanelSerializer('spec-data.preview', this),
+            // Register event listeners.
             vscode.workspace.onDidOpenTextDocument(textDocumentDidOpenListener),
             vscode.workspace.onDidChangeTextDocument(textDocumentDidChangeListener),
             vscode.workspace.onDidCloseTextDocument(textDocumentDidCloseListener),
@@ -319,13 +355,12 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             vscode.window.onDidChangeTextEditorVisibleRanges(textEditorVisibleRangesChangeListener),
             vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
             vscode.workspace.onDidChangeConfiguration(configurationChangeListner),
+            // Other disposables.
             this.diagnosticCollection
         );
     }
 
-    /**
-     * Required implementation of vscode.FoldingRangeProvider.
-     */
+    // Required implementation of vscode.FoldingRangeProvider.
     public provideFoldingRanges(document: vscode.TextDocument, _context: vscode.FoldingContext, token: vscode.CancellationToken): vscode.ProviderResult<vscode.FoldingRange[]> {
         if (token.isCancellationRequested) { return; }
 
@@ -334,9 +369,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         );
     }
 
-    /**
-     * Required implementation of vscode.DocumentSymbolProvider.
-     */
+    // Required implementation of vscode.DocumentSymbolProvider.
     public provideDocumentSymbols(document: vscode.TextDocument, token: vscode.CancellationToken): vscode.ProviderResult<vscode.SymbolInformation[] | vscode.DocumentSymbol[]> {
         if (token.isCancellationRequested) { return; }
 
@@ -345,21 +378,57 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         );
     }
 
-    /**
-     * Required implementation of vscode.WebviewPanelSerializer.
-     */
+    // Required implementation of vscode.CustomTextEditorProvider.
+    public async resolveCustomTextEditor(document: vscode.TextDocument, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
+        // console.log('Resolving custom editor for document: ', vscode.workspace.asRelativePath(document.uri));
+
+        // It appears this method is called after the didOpenTextDocument event is fired.
+        // Then, the parser session for the documentURI is already created and thus
+        // `workspace.openTextDocument(uri)` is not needed here.
+        const parserResult = await this.parserSessionMap.get(document.uri.toString())?.promise;
+        if (token.isCancellationRequested) { return; }
+
+        // If the file cannot be parsed successfully, show an error message in the webview.
+        if (!parserResult || parserResult.nodes === undefined) {
+            const reopenWithCommand = `<a href="command:workbench.action.reopenWithEditor">Reopen Editor With...</a>`;
+
+            webviewPanel.webview.options = { enableCommandUris: true };
+            webviewPanel.webview.html = `<html>
+<body>
+<h2>${vscode.l10n.t('Failed to parse the file')}</h2>
+<p>${vscode.l10n.t('To open the source file, call the "{0}" command and select the "Text Editor (Built-in)".', reopenWithCommand)}</p>
+</body>
+</html>`;
+            return;
+        }
+
+        // Show the preview if the file is parsed successfully.
+        webviewPanel.webview.options = { enableScripts: true };
+        const config = vscode.workspace.getConfiguration('spec-data.preview');
+        const preview: Preview = {
+            panel: webviewPanel,
+            mode: 'editor',
+            uri: document.uri,
+            language: parserResult.language,
+            enableMultipleSelection: config.get<boolean>('plot.enableMultipleSelection', false),
+            enableRightAxis: config.get<boolean>('plot.enableRightAxis', false)
+        };
+        await this.postCreatePreview(preview, parserResult);
+        return;
+    }
+
+    // Required implementation of vscode.WebviewPanelSerializer.
     public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: State): Promise<void> {
-        if (!state) {
+        if (!state || state.mode === undefined) {
             const message = vscode.l10n.t('Failed to restore the preview content because the previous state is not recorded. This tab will be closed.');
             return vscode.window.showErrorMessage(message, 'OK').then(() => panel.dispose());
         }
 
         // When a preview tab carried over form the previous session is hidden
-        // (i.e., behind another tab), deserialization is triggered when the
-        // preview is revealed, not when the window is re-opened.
-        // Another live preview can exist when deserialization is triggered.
-        // In such cases, the deserialized preview will be closed.
-        if (!state.lockPreview && this.livePreview) {
+        // behind another tab, deserialization is deferred until the tab is focused.
+        // During that time, another live preview can be created. In such cases,
+        // the deserialized preview will be closed to avoid having multiple live previews.
+        if (state.mode === 'live' && this.livePreview) {
             const message = vscode.l10n.t('Another preview tab already exists. This tab will be closed.');
             return vscode.window.showWarningMessage(message, 'OK').then(() => panel.dispose());
         }
@@ -374,12 +443,38 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         const preview: Preview = {
             panel,
             uri,
+            mode: state.mode,
             language: parserResult.language,
             enableMultipleSelection: state.enableMultipleSelection,
             enableRightAxis: state.enableRightAxis,
         };
-        await this.postCreatePreview(preview, parserResult, state.lockPreview);
+        await this.postCreatePreview(preview, parserResult);
         return;
+    }
+
+    /**
+     * Find the selected preview based on the arguments passed to command handlers.
+     * The method returns a wrong preview when:
+     * - the command is called from a preview panel (not a custom editor) and
+     * - multiple view columns are used and
+     * - select an UI component (button or menu item) of a inactive panel.
+     * @param args Arguments passed to a command handler.
+     * @returns Preview object or `undefined` if the preview cannot be guessed.
+     */
+    private findSelectedPreview(args: unknown[]): Preview | undefined {
+        // The arguments passed to command handlers can be a type of [Uri, { groupID: number }].
+        // When the command is called from the custom editor, the URI points to the source URI
+        // and thus the correct preview is found.
+        // Otherwise, the URI does not point to the source file and thus preview is not found.
+        if (args && args.length > 0 && args[0] instanceof vscode.Uri) {
+            const uri = args[0];
+            const preview = this.previews.find(preview => preview.uri.toString() === uri.toString());
+            if (preview) {
+                return preview;
+            }
+        }
+        // Fallback to the active preview.
+        return this.activePreview;
     }
 
     /**
@@ -407,19 +502,21 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
     }
 
     /**
-     * Show a preview. If the live preview exists and new preview is not locked, 
+     * Show a preview. If the new preview is for live and another live preview preexists,
      * the preexisting panel is reused. Else a new panel is created.
      * @param uri Source file URI.
-     * @param lockPreview Flag whether the new preview panel is locked.
+     * @param mode Preview mode, either `"live"` or `"locked"`.
      * @param showToSide Flag whether the new preview panel is shown to side (`true`) or in the active editor (`false`).
      * @returns Preview object or `undefined` if failed to parse the file.
      */
-    private async showPreview(uri: vscode.Uri, lockPreview: boolean, showToSide: boolean) {
-        if (!lockPreview && this.livePreview) {
-            // Update the content if the URIs are different.
-            await this.reloadPreview(this.livePreview, uri, false);
-            this.livePreview.panel.reveal();
-            return this.livePreview;
+    private async showPreview(uri: vscode.Uri, mode: 'live' | 'locked', showToSide: boolean) {
+        const livePreview = this.livePreview;
+        if (mode === 'live' && livePreview) {
+            // Update the content of the existing panel.
+            // If the URI is not changed,, the content won't be updated.
+            await this.reloadPreview(livePreview, uri, false);
+            livePreview.panel.reveal();
+            return livePreview;
         } else {
             // Else create a new webview panel.
             const parserResult = await this.parseDataOfFileUri(uri);
@@ -442,6 +539,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             );
             const preview: Preview = {
                 panel,
+                mode,
                 uri,
                 language: parserResult.language,
                 enableMultipleSelection: config.get<boolean>('plot.enableMultipleSelection', false),
@@ -450,7 +548,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             if (showToSide && config.get<boolean>('autoLockGroup', false)) {
                 vscode.commands.executeCommand('workbench.action.lockEditorGroup');
             }
-            return await this.postCreatePreview(preview, parserResult, lockPreview);
+            return await this.postCreatePreview(preview, parserResult);
         }
     }
 
@@ -486,27 +584,22 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
      * Register event handlers and then make a content from source.
      * @param preview Preview object created during deserialization process or `showPreview`-type action command.
      * @param parserResult ParserSuccess object
-     * @param lockPreview flag to lock preview with source URI.
      * @returns Preview object if succeeded in parsing a file or `undefined`.
      */
-    private async postCreatePreview(preview: Preview, parserResult: ParserSuccess, lockPreview: boolean) {
+    private async postCreatePreview(preview: Preview, parserResult: ParserSuccess) {
         this.previews.push(preview);
-        preview.panel.iconPath = new vscode.ThemeIcon('graph-line');
-
-        if (!lockPreview) {
-            this.livePreview = preview;
+        if (preview.mode === 'editor') {
+            preview.panel.iconPath = new vscode.ThemeIcon('graph-line');
+        } else {
+            preview.panel.iconPath = new vscode.ThemeIcon('graph-scatter');
         }
 
         preview.panel.onDidDispose(() => {
-            // remove the closed preview from the array.
+            // console.log('Preview closed: ', vscode.workspace.asRelativePath(preview.uri));
+            // Remove the closed preview from the array.
             const index = this.previews.findIndex(preview2 => preview2.panel === preview.panel);
             if (index >= 0) {
                 this.previews.splice(index, 1);
-            }
-
-            // clear the live preview reference if the closed preview is the live preview.
-            if (this.livePreview?.panel === preview.panel) {
-                this.livePreview = undefined;
             }
         }, null, this.subscriptions);
 
@@ -632,8 +725,8 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
                 const config = vscode.workspace.getConfiguration('spec-data.preview', scope);
 
                 preview.panel.webview.postMessage({
-                    type: 'lockPreview',
-                    flag: this.livePreview?.panel !== preview.panel,
+                    type: 'setMode',
+                    mode: preview.mode,
                 } satisfies MessageToWebview);
 
                 preview.panel.webview.postMessage({
@@ -696,9 +789,11 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
         const controllerUri = webview.asWebviewUri(vscode.Uri.joinPath(this.extensionUri, 'dist', 'preview', 'previewer.js'));
 
         preview.nodes = nodes;
-        preview.panel.title = this.livePreview === preview ?
-            vscode.l10n.t('Preview {0}', filePath.substring(filePath.lastIndexOf('/') + 1)) :
-            vscode.l10n.t('[Preview] {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
+        if (preview.mode === 'live') {
+            preview.panel.title = vscode.l10n.t('Preview {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
+        } else if (preview.mode === 'locked') {
+            preview.panel.title = vscode.l10n.t('[Preview] {0}', filePath.substring(filePath.lastIndexOf('/') + 1));
+        }
         preview.panel.webview.html = getWebviewContent(preview, webview.cspSource, plotlyUri, controllerUri, language);
     }
 }

@@ -23,7 +23,7 @@ if (state === undefined) {
         tableStates: [],
         graphStates: [],
         sourceUri: headDataset.sourceUri ?? '',
-        lockPreview: false,
+        mode: undefined,
         enableMultipleSelection: Boolean(parseInt(headDataset.enableMultipleSelection ?? '0')),
         enableRightAxis: Boolean(parseInt(headDataset.enableRightAxis ?? '0')),
         scrollPosition: [0, 0],
@@ -551,9 +551,10 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
             Plotly.react(graphDiv, data, layout);
             // console.log('Plot reactivated.');
         }
-    } else if (messageIn.type === 'lockPreview') {
-        // Update the state to lock or unlock the preview.
-        state.lockPreview = messageIn.flag;
+    } else if (messageIn.type === 'setMode') {
+        // Update the mode in the state.
+        // The value is referred during deserialization.
+        state.mode = messageIn.mode;
         vscode.setState(state);
     } else if (messageIn.type === 'enableMultipleSelection') {
         // Update the state to toggle the multiple selection mode.

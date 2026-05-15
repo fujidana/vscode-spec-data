@@ -4,10 +4,12 @@
 	"command.spec-data.showLockedPreview.title": "Open Locked Preview",
 	"command.spec-data.showLockedPreviewToSide.title": "Open Locked Preview to the Side",
 	"command.spec-data.preview.showSource.title": "Show Source",
+	"command.spec-data.preview.toggleLock.title": "Toggle Preview Locking",
+	"command.spec-data.reopenAsPreview.title": "Reopen as Preview",
+	"command.spec-data.reopenAsSource.title": "Reopen as Text",
 	"command.spec-data.preview.refresh.title": "Refresh Preview",
 	"command.spec-data.preview.toggleMultipleSelection.title": "Toggle Multiple Selection",
 	"command.spec-data.preview.toggleRightAxis.title": "Toggle Right Axis",
-	"command.spec-data.preview.toggleLock.title": "Toggle Preview Locking",
 	"configuration.spec-data.preview.scrollEditorWithPreview.description": "Synchronizes page scroll of a editor with that of the corresoinding preview.",
 	"configuration.spec-data.preview.scrollPreviewWithEditor.description": "Synchronizes page scroll of a preview with that of the corresoinding editor.",
 	"configuration.spec-data.preview.smoothScrolling.description": "Controls whether the preview will scroll using an animation. Use `#editor.smoothScrolling#` to control the scroll behavior of the editor.",
@@ -27,5 +29,5 @@
 	"configuration.spec-data.preview.table.columnsPerLine.description": "Maximum column number of motor-position tables. Overflowed columns are folded in the next row.",
 	"configuration.spec-data.preview.table.columnsPerRow.description": "Maximum column number of motor-position tables. Overflowed columns are folded in the next row.",
 	"configuration.spec-data.preview.table.headerType.description": "Header type of data cells in motor-position tables.",
-	"capabilities.untrustedWorkspaces.description": "In untrusted workspaces, the content security policy is forcibly applied to the preview and Plotly.js templates in workspace settings are ignored."
+	"capabilities.untrustedWorkspaces.description": "In untrusted workspaces, the content security policy is forcibly applied to the preview and the workspace settings for Plotly.js templates are ignored."
 }

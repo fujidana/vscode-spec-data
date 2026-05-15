@@ -2,10 +2,10 @@
 	"publisher": "fujidana",
 	"name": "spec-data",
 	"displayName": "spec data",
-	"description": "spec data file support for VS Code",
-	"version": "2.2.0",
+	"description": "spec data and CSV support for VS Code",
+	"version": "2.3.0-alpha.0",
 	"engines": {
-		"vscode": "^1.110.0"
+		"vscode": "^1.120.0"
 	},
 	"categories": [
 		"Programming Languages",
@@ -87,6 +87,24 @@
 				"firstLine": "^\\S+: (2-theta|Q-Space) Scan$"
 			}
 		],
+		"customEditors": [
+			{
+				"viewType": "spec-data.preview.editor",
+				"displayName": "spec data Graph Preview",
+				"selector": [
+					{
+						"filenamePattern": "*.spec"
+					},
+					{
+						"filenamePattern": "*.mca"
+					},
+					{
+						"filenamePattern": "*.chi"
+					}
+				],
+				"priority": "option"
+			}
+		],
 		"grammars": [
 			{
 				"language": "spec-data",
@@ -144,6 +162,24 @@
 				"icon": "$(go-to-file)"
 			},
 			{
+				"command": "spec-data.preview.toggleLock",
+				"title": "%command.spec-data.preview.toggleLock.title%",
+				"category": "spec data",
+				"icon": "$(lock)"
+			},
+			{
+				"command": "spec-data.reopenAsPreview",
+				"title": "%command.spec-data.reopenAsPreview.title%",
+				"category": "spec data",
+				"icon": "$(file-media)"
+			},
+			{
+				"command": "spec-data.reopenAsSource",
+				"title": "%command.spec-data.reopenAsSource.title%",
+				"category": "spec data",
+				"icon": "$(file-text)"
+			},
+			{
 				"command": "spec-data.preview.refresh",
 				"title": "%command.spec-data.preview.refresh.title%",
 				"category": "spec data",
@@ -160,12 +196,6 @@
 				"title": "%command.spec-data.preview.toggleRightAxis.title%",
 				"category": "spec data",
 				"icon": "$(list-selection)"
-			},
-			{
-				"command": "spec-data.preview.toggleLock",
-				"title": "%command.spec-data.preview.toggleLock.title%",
-				"category": "spec data",
-				"icon": "$(lock)"
 			}
 		],
 		"menus": {
@@ -189,10 +219,9 @@
 					"group": "navigation"
 				},
 				{
-					"command": "spec-data.showLockedPreviewToSide",
-					"alt": "spec-data.showLockedPreview",
+					"command": "spec-data.reopenAsPreview",
 					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
-					"group": "2_specdata"
+					"group": "navigation"
 				},
 				{
 					"command": "spec-data.preview.showSource",
@@ -201,9 +230,15 @@
 					"group": "navigation@1"
 				},
 				{
+					"command": "spec-data.reopenAsSource",
+					"alt": "spec-data.preview.refresh",
+					"when": "!activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
+					"group": "navigation@1"
+				},
+				{
 					"command": "spec-data.preview.toggleMultipleSelection",
 					"alt": "spec-data.preview.toggleRightAxis",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
 					"group": "navigation@0"
 				},
 				{
@@ -224,77 +259,91 @@
 					"group": "1_open"
 				},
 				{
-					"command": "spec-data.preview.refresh",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
-					"group": "3_preview"
-				},
-				{
 					"command": "spec-data.preview.toggleLock",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
 					"group": "3_preview"
 				},
 				{
+					"command": "spec-data.preview.refresh",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
+					"group": "3_preview"
+				},
+				{
 					"command": "spec-data.preview.toggleMultipleSelection",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
 					"group": "4_specdata"
 				},
 				{
 					"command": "spec-data.preview.toggleRightAxis",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
 					"group": "4_specdata"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+					"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showPreviewToSide",
-					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+					"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+					"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreviewToSide",
-					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+					"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.preview.showSource",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
 				},
 				{
-					"command": "spec-data.preview.refresh",
+					"command": "spec-data.preview.toggleLock",
 					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+				},
+				{
+					"command": "spec-data.reopenAsPreview",
+					"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+				},
+				{
+					"command": "spec-data.reopenAsSource",
+					"when": "!activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
+				},
+				{
+					"command": "spec-data.preview.refresh",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
 				},
 				{
 					"command": "spec-data.preview.toggleMultipleSelection",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
 				},
 				{
 					"command": "spec-data.preview.toggleRightAxis",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
-				},
-				{
-					"command": "spec-data.preview.toggleLock",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
 				}
 			]
 		},
 		"keybindings": [
 			{
-				"command": "spec-data.showPreview",
+				"command": "spec-data.reopenAsPreview",
 				"key": "ctrl+shift+v",
 				"mac": "cmd+shift+v",
-				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+				"when": "!activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor' || editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+			},
+			{
+				"command": "spec-data.reopenAsSource",
+				"key": "ctrl+shift+v",
+				"mac": "cmd+shift+v",
+				"when": "!activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
 			},
 			{
 				"command": "spec-data.showPreviewToSide",
 				"key": "ctrl+k v",
 				"mac": "cmd+k v",
-				"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+				"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
 			}
 		],
 		"configuration": {
@@ -603,7 +652,7 @@
 		"@types/mocha": "^10.0.10",
 		"@types/node": "22.x",
 		"@types/plotly.js": "^3.0.10",
-		"@types/vscode": "^1.110.0",
+		"@types/vscode": "^1.120.0",
 		"@types/vscode-webview": "^1.57.5",
 		"@vscode/test-cli": "^0.0.12",
 		"@vscode/test-electron": "^2.5.2",
