@@ -664,12 +664,6 @@
 		"js-yaml": "^4.1.1",
 		"mocha": "^11.7.5",
 		"typescript": "^6.0.3",
-		"typescript-eslint": "^8.59.1"
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"@playwright/browser-chromium",
-			"esbuild"
-		]
+		"typescript-eslint": "^8.59.3"
 	}
 }
