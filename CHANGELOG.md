@@ -4,10 +4,21 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [2.3.0] -- 2026-05-15
+
+### Added
+
+- Equip Custom Editor (editor ID: `spec-data.preview.editor`). The preview can be shown in a Custom Editor in addition to a regular Webview panel. Issue [#42](https://github.com/fujidana/vscode-spec-data/issues/42).
+  - Add Several commands and corresponding menubar items for the Custom Editor.
+  - Reassign Ctrl+Shift+V (macOS: Cmd+Shift+V) keyboard shortcut from "Open Preview", which shows a regular WebView Panel, to "Reopen as Preview/Text", which toggles the Custom Editor.
+
 ### Changed
 
 - Rename several command IDs. This affects users who have customized keyboard shortcuts for these commands.
 - Rename the `spec-data.preview.table.columnsPerLine` setting key to `spec-data.preview.table.columnsPerRow`.
+- Raise the minimum VS Code version to 1.120.0.
+- Remove dependency on `minimatch`.
+
 
 ## [2.2.0] -- 2026-03-31
 
@@ -411,7 +422,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.0...v2.0.1

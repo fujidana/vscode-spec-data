@@ -1,11 +1,18 @@
-# __spec__ Data File Extension for Visual Studio Code
+# __spec__ Data File and CSV Extension for Visual Studio Code
 
 __NOTE__: As of v2.2.0, `spec-data.preview.plot.traceTemplate` and `spec-data.preview.plot.layoutTemplate` settings are deprecated.
-See [Extension Settings](#extension-settings) section in this document for details.
+See the [Extension Settings](#extension-settings) section in this document for details.
 
 The extension enables a user to browse spreadsheet-like data in a graph with Visual Studio Code.
+Data files in the __spec__ standard data file format and some other formats are supported, in addition to CSV files.
+See the [Supported file formats](#supported-file-formats) section for details.
+
 The graph feature can be controlled in a similar way to the built-in Markdown preview of VS Code.
-For example, _spec data:Open Preview_ command (Win/Linux: `Ctrl+Shift+V`, Mac: `Cmd+Shift+V`) is available when a supported file is open.
+For example, _Reopen with Preview/Text_ command (Win/Linux: `Ctrl+Shift+V`, Mac: `Cmd+Shift+V`) is available when a supported file is open.
+
+![screenshot](resources/screenshot.png)
+
+## Supported File Formats
 
 The data file formats the exension supports are as follows:
 
@@ -24,6 +31,25 @@ The data file formats the exension supports are as follows:
 
 While the default file associations (relations between language identifier and file extensions) are set as listed above, a user can customize them using `files.associations` setting.
 Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs/languages/overview) (official document of VS Code) for further details.
+
+The _Custom Editor_ the extension provides for previewing the files is currently configured as _optional_.
+This means that VS Code opens a file the extension supports with VS Code's built-in text editor and a user needs to switch the editor by calling the _Reopen With Editor_ command (or selecting the equivalent button/menu item) to preview data graphically.
+A user can change the default editor for files with the supported extensions by setting `workbench.editorAssociations` setting.
+
+The following example settings let VS Code open files whose filename end with `_mca.dat` and `.spec` with the extension's preview editor. Note that `*.spec` is by default associated with `spec-data` and thus setting it in `files.associations` is unnecessary.
+
+```json
+{
+    "files.associations": {
+        "*_mca.dat": "csv-column",
+    },
+    "workbench.editorAssociations": {
+        "*_mca.dat": "spec-data.preview.editor",
+        "*.spec": "spec-data.preview.editor"
+    }
+}
+```
+
 
 ## What's __spec__?
 
@@ -44,10 +70,9 @@ Use [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues) for bug
 - __Code folding__ (`spec-data` and `dppmca` only)
 - __Preview__
   - motor positions just before a scan in a table view (`spec-data` only)
-  - Data shown in a line plot, heatmap, or contour plot. This feature is powered by [Plotly.js](https://plotly.com/javascript/).
+  - data shown in a line plot, heatmap, or contour plot. This feature is powered by [Plotly.js](https://plotly.com/javascript/).
   - scroll sync between an editor and a preview
-
-![screenshot](resources/screenshot.png)
+  - Preview can be shown both in a regular __Webview Panel__ and in a __Custom Editor__ (editor ID: `spec-data.preview.editor`).
 
 ## Requirements
 
@@ -57,6 +82,10 @@ Nothing.
 
 This extension contributes configuration options, accecible from the _Settings_ editor (Win/Linux: `Ctrl+,`, Mac: `Cmd+,`).
 Read [Visual Studio Code User and Workspace Settings](https://code.visualstudio.com/docs/getstarted/settings) for details about the _Settings_ window.
+
+### File Associations
+
+See the [Supported File Formats](#supported-file-formats) section for details.
 
 ### Customization of Graph Appearances
 
