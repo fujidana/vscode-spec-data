@@ -4,6 +4,10 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Added
+
+- Support _fixed width format_ (contiguous whitespaces as a delimiter) in `csv-row` and `csv-column` language IDs. The extension automatically determines whether the file content of these languages IDs is either the _fixed width format_ or _single-character-delimited format_ (single whiltespace, tab, or comma as a delimiter). Issue [#45](https://github.com/fujidana/vscode-spec-data/issues/45).
+
 ## [2.3.0] -- 2026-05-15
 
 ### Added
@@ -18,7 +22,6 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 - Rename the `spec-data.preview.table.columnsPerLine` setting key to `spec-data.preview.table.columnsPerRow`.
 - Raise the minimum VS Code version to 1.120.0.
 - Remove dependency on `minimatch`.
-
 
 ## [2.2.0] -- 2026-03-31
 
