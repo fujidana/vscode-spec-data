@@ -832,9 +832,9 @@ function updateWebviewContent(preview: Preview, extensionUri: vscode.Uri) {
         if (node.type === 'file') {
             lines.push(`<h1 ${getAttributesForNode(node)}>${getSanitizedString(node.value)}</h1>`);
         } else if (node.type === 'date') {
-            lines.push(`<p ${getAttributesForNode(node)}>Date: ${getSanitizedString(node.value)}</p>`);
+            lines.push(`<p ${getAttributesForNode(node)}><em>Date</em>: ${getSanitizedString(node.value)}</p>`);
         } else if (node.type === 'comment') {
-            lines.push(`<p ${getAttributesForNode(node)}>Comment: ${getSanitizedString(node.value)}</p>`);
+            lines.push(`<p ${getAttributesForNode(node)}><em>#</em> ${getSanitizedString(node.value)}</p>`);
         } else if (node.type === 'nameList') {
             if (node.subtype === 'mnemonic') {
                 mnemonicLists[node.kind] = node.values.map(value => getSanitizedString(value));
@@ -946,7 +946,9 @@ mode:
             }
             lines.push(`</div></div>`);
         } else if (node.type === 'unknown') {
-            // lines.push(`<p>#${node.kind} ${node.value}</p>`);
+            if (preview.language !== SPEC_DATA_FILTER.language) {
+                lines.push(`<p ${getAttributesForNode(node)}><em>${getSanitizedString(node.kind)}</em> ${getSanitizedString(node.value)}</p>`);
+            }
         }
     }
 

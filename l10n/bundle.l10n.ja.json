@@ -17,8 +17,11 @@
   "Column count in this line ({0}) does not match the value in the preceding \"#N\" line.": "この行の列数 {0} は、前の \"#N\" 行の値と一致しません。",
   "Column count in this line ({0}) does not match that in the preceding \"#L\" line.": "この行の列数 {0} は、前の \"#L\" 行の列数と一致しません。",
   "Column count in this line ({0}) does not match that of the preceding data array.": "この行の列数 {0} は、前のデータ配列の列数と一致しません。",
+  "Mismatched line length.": "行の長さが一致しません。",
+  "Expected a whitespace as a delimiter.": "区切り文字の空白がありません。",
+  "Mismatched column count.": "列数が一致しません。",
   "Too few lines.": "行数が少なすぎます。",
   "Data row count is not found.": "データ行数が見つかりません。",
   "Invalid data row count.": "無効なデータ行数です。",
-  "This value does not match the row count of following data array ({0}).": "この値は後のデータ配列の行数 {0} と一致しません。"
+  "Mismatched with number of rows in the following data block ({0}).": "後のデータブロックの行数 {0} と一致しません。"
 }

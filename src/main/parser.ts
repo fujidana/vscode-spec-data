@@ -302,7 +302,13 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
     }
 }
 
-// character-separated values. The delimiter is auto-detected from a horizontal tab, a whitespace, or a comma. 
+/**
+ * Parses CSV content.
+ * 
+ * The following formats are supported and auto-detected:
+ * - Fixed-width format using continous whitespaces as a delimiter
+ * - character-separated-values format using a horizontal tab, a whitespace, or a comma as a delimiter.
+ */
 function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.CancellationToken): ParserResult {
     const lines = text.split(/\r\n|\n/);
     const lineCount = lines.length;
@@ -310,113 +316,195 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
     const nodes: Node[] = [];
     const diagnostics: vscode.Diagnostic[] = [];
 
+    // TODO: Parsing numeric values more strictly.
+    // JavaScript has two build-in functions to parse numeric values from a string: `parseFloat` and `Number`.
+    // The former parses a number at the beginning of the string and ignores the rest, 
+    // while the latter parses the whole string and returns NaN if it contains non-numeric characters.
+    // Another difference is that the former returns 0 for an empty string, while the latter returns NaN.
+    // Therefore, each function has good and bad points for parsing cells strictly.
+    // Currently only the first line in the data block is strictly validated using regular expressions,
+    // and the rest of lines are parsed using `parseFloat` for simplicity and performance.
+
     for (let lineNumber = 0; lineNumber < lineCount; lineNumber++) {
         if (token && token.isCancellationRequested === true) { return; }
 
-        let delimRegexp: RegExp | undefined;
-        let rowCount = 0;
-        let headers: string[] | undefined;
-        let data: number[][] = [];
-        let dataStartIndex = 0;
-        let isEsrfMca = false;
-        // let columnCount = 0;
+        const line = lines[lineNumber];
 
-        // skip lines until data array.
-        for (; lineNumber < lineCount; lineNumber++) {
-            const line = lines[lineNumber];
+        if (line.trim().length === 0) {
+            // Skip an empty line.
 
-            if (line.trim().length === 0) {
-                // Skip an empty line.
-                continue;
-            } else if (line.startsWith('#')) {
-                // Skip a comment line after appending the text to the nodes.
-                nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: line.substring(1) });
-                continue;
-            } else if (language === 'csv-row' && line.startsWith('@A ')) {
-                // If the line starts with "@A", it is data in ESRF's MCA format.
-                // Trim the prefix: "@A ".
-                isEsrfMca = true;
+        } else if (line.startsWith('#')) {
+            // Skip a comment line after appending the text to the nodes.
+            nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: line.substring(1) });
 
-                // Concatenate the lines that ends with a backslash.
-                let line2 = line.substring(3);
-                while (line2.endsWith('\\') && lineNumber + 1 < lineCount) {
-                    line2 = line2.slice(0, -1) + lines[lineNumber + 1];
-                    lineNumber++;
-                }
-                const firstRowCells = line2.trim().split(/\s+/);
-                delimRegexp = new RegExp(/\s+/);
-                rowCount = firstRowCells.length;
-                data.push(firstRowCells.map(cell => parseFloat(cell)));
-                dataStartIndex = lineNumber;
+        } else if (language === 'csv-row' && line.startsWith('@A ')) {
+            // If the line starts with "@A", it is data in ESRF's MCA format.
+            // Trim the prefix ("@A") and concatenate lines that end with a backslash.
+            const lineStart = lineNumber;
+            let line2 = line.substring(3);
+            while (line2.endsWith('\\') && lineNumber + 1 < lineCount) {
+                line2 = line2.slice(0, -1) + lines[lineNumber + 1];
                 lineNumber++;
-                break;
-            } else {
-                let firstCell: string;
-                let delimMatch: RegExpExecArray | null;
-                if ((delimMatch = /[\t, ]/.exec(line)) !== null) {
-                    // If the first cell delimited by a delimiter (a tab, comma, or whitespace) is a number, go to the next step.
-                    firstCell = line.slice(0, delimMatch.index);
-                    if (delimMatch[0] === ' ') {
-                        delimRegexp = / +/;
-                    } else {
-                        delimRegexp = new RegExp(delimMatch[0]);
-                    }
-                } else {
-                    firstCell = line;
-                    delimRegexp = /[\t, ]/;
+            }
+            const cells = line2.trim().split(/\s+/);
+
+            if (cells.length === 0) { continue; }
+            const data: number[][] = [cells.map(cell => parseFloat(cell))];
+            nodes.push(makeScanDataNode(language, undefined, data, lineStart, lineNumber));
+
+        } else {
+            // First try to detect fixed-width format if the line contains 
+            // multiple whitespaces or starts with a whitespace.
+            if (line.startsWith(' ') || line.includes('  ')) {
+                const indexesInRow: [number, number, number][] = [];
+                const dataInRow0: number[] = [];
+                const fwfMatchAll = line.matchAll(/(( *)([+\-]?(?:\d+(?:\.\d+)?(?:e[+\-]?\d+)?)|inf(?:inity)?|nan))( |$)/igy);
+                for (const match of fwfMatchAll) {
+                    indexesInRow.push([match.index, match.index + match[1].length, match.index + match[0].length]);
+                    dataInRow0.push(parseFloat(match[3]));
                 }
 
-                if (firstCell.toLowerCase() === 'nan' || !isNaN(Number(firstCell))) {
-                    const firstRowCells = line.split(delimRegexp);
-                    rowCount = firstRowCells.length;
-                    data.push(firstRowCells.map(cell => parseFloat(cell)));
+                // Regard as a fixed-width format if the line perfectly matches the pattern
+                // (reaching the end of line after the last match), 
+                if (indexesInRow.length !== 0 && indexesInRow[indexesInRow.length - 1][2] === line.length) {
+                    const data: number[][] = [dataInRow0];
+                    let headers: string[] | undefined = undefined;
 
-                    // if the previous line has the same number of cells, treat it as a column header.
-                    if (lineNumber > 0) {
-                        const prevline = lines[lineNumber - 1];
-                        const prevline2 = prevline.startsWith('#') ? prevline.substring(1).trimStart() : prevline;
-                        const colLabels = prevline2.split(delimRegexp);
-                        if (colLabels.length === rowCount) {
-                            headers = colLabels;
+                    // If the previous line has the same line length and delimiter positions,
+                    // treat it as a header lines for columns.
+                    if (lineNumber > 0 && lines[lineNumber - 1].length === line.length) {
+                        const prevLine = lines[lineNumber - 1];
+                        const tmpHeaders: string[] = [];
+                        const isPrevLineHeader = indexesInRow.every(([start, end0, end1]) => {
+                            tmpHeaders.push(prevLine.substring(start, end0).trimStart());
+                            return (end0 === end1 || prevLine.substring(end0, end1) === ' ');
+                        });
+                        if (isPrevLineHeader) {
+                            headers = tmpHeaders;
+                            const prevNode = nodes[nodes.length - 1];
+                            if (prevNode && (prevNode.type === 'comment' || prevNode.type === 'unknown') && prevNode.lineStart === lineNumber - 1) {
+                                nodes.pop();
+                            }
                         }
                     }
 
-                    dataStartIndex = lineNumber;
-                    lineNumber++;
-                    break;
+                    // Read the rest of lines and append numeric cells to `data`.
+                    const lineStart = lineNumber;
+                    for (lineNumber = lineStart + 1; lineNumber < lineCount; lineNumber++) {
+                        const lineI = lines[lineNumber];
+
+                        // Stop reading more lines if an empty line or a comment line is found.
+                        // Exit with an error if the line length is different from the first line of the block.
+                        if (lineI.length === 0 || lineI.startsWith('#')) {
+                            lineNumber--;
+                            break;
+                        } else if (lineI.length !== line.length) {
+                            diagnostics.push(new vscode.Diagnostic(
+                                new vscode.Range(lineNumber, 0, lineNumber, lineI.length),
+                                vscode.l10n.t('Mismatched line length.'),
+                            ));
+                            return { language, nodes: undefined, diagnostics };
+                        }
+
+                        // Append numeric cells in the line to `data`.
+                        // Exit with an error if the delimiter positions are different from the first line of the block.
+                        const dataInRowI: number[] = [];
+                        const misaligned = indexesInRow.find(([start, end0, end1]) => {
+                            dataInRowI.push(parseFloat(lineI.substring(start, end0)));
+                            return end0 !== end1 && lineI.substring(end0, end1) !== ' ';
+                        });
+                        if (misaligned) {
+                            diagnostics.push(new vscode.Diagnostic(
+                                new vscode.Range(lineNumber, misaligned[0], lineNumber, misaligned[2]),
+                                vscode.l10n.t('Expected a whitespace as a delimiter.'),
+                            ));
+                            return { language, nodes: undefined, diagnostics };
+                        }
+                        data.push(dataInRowI);
+                    }
+                    nodes.push(makeScanDataNode(language, headers, data, lineStart, lineNumber));
+                    continue;
                 }
             }
-        }
 
-        // If no numeric cell is found, exit.
-        if (data.length === 0 || !delimRegexp) {
-            break;
-        }
+            // Second, try to detect a character-separated format whose delimiter is
+            // a horizontal tab, a whitespace, or a comma.
+            const csvMatchAll = [...line.matchAll(/([+\-]?(?:\d+(?:\.\d+)?(?:e[+\-]?\d+)?)|inf(?:inity)?|nan)( |,|\t|$)/igy)];
+            if (
+                csvMatchAll.length !== 0 &&
+                csvMatchAll.every((match, i, arr) => i === arr.length - 1 ? match[2].length === 0 : match[2] === arr[0][2])
+            ) {
+                const delimiter = csvMatchAll[0][2];
+                const dataInRow0 = csvMatchAll.map(match => parseFloat(match[1]));
+                const data: number[][] = [dataInRow0];
+                let headers: string[] | undefined = undefined;
 
-        // Read the rest of lines and append numeric cells to `data`.
-        for (; lineNumber < lineCount; lineNumber++) {
-            const line = lines[lineNumber];
-            if (line.length === 0) {
-                break;
-            } else if (line.startsWith('#')) {
-                lineNumber--;
-                break;
-            } else if (isEsrfMca) {
-                lineNumber--;
-                break;
-            } else {
-                const currentRowCells = line.split(delimRegexp);
-                if (currentRowCells.length !== rowCount) {
-                    diagnostics.push(new vscode.Diagnostic(
-                        new vscode.Range(lineNumber, 0, lineNumber, line.length),
-                        vscode.l10n.t('Column count in this line ({0}) does not match that of the preceding data array.', currentRowCells.length),
-                    ));
-                    return { language, nodes: undefined, diagnostics };
+                // If the previous line has the same number of cells, treat 
+                // them as column header items.
+                if (lineNumber > 0) {
+                    let prevLine = lines[lineNumber - 1];
+                    if (prevLine.startsWith('#')) {
+                        prevLine = prevLine.substring(1).trimStart();
+                    }
+                    const delimiter2 = delimiter === '\t' ? '\\t' : delimiter === '' ? '$' : delimiter;
+                    const csvHeaderRegExp = new RegExp(`(?:("(?:""|[^"])*")|([^${delimiter2}]+))(${delimiter2}|\$)`, 'gy');
+                    const csvHeaderMatchAll = [...prevLine.matchAll(csvHeaderRegExp)];
+                    if (
+                        csvHeaderMatchAll.length === dataInRow0.length &&
+                        csvHeaderMatchAll.every((match, i, arr) => i === arr.length - 1 ? match[3].length === 0 : match[3] === delimiter)
+                    ) {
+                        headers = csvHeaderMatchAll.map(match => {
+                            if (match[1]) {
+                                return match[1].slice(1, -1).replace(/""/g, '"');
+                            } else if (match[2]) {
+                                return match[2];
+                            } else {
+                                return '';
+                            }
+                        });
+                        const prevNode = nodes[nodes.length - 1];
+                        if (prevNode && (prevNode.type === 'comment' || prevNode.type === 'unknown') && prevNode.lineStart === lineNumber - 1) {
+                            nodes.pop();
+                        }
+                    }
                 }
-                data.push(currentRowCells.map(cell => parseFloat(cell)));
-            }
-        }
 
+                // Read the rest of lines and append numeric cells to `data`.
+                const lineStart = lineNumber;
+                for (lineNumber = lineStart + 1; lineNumber < lineCount; lineNumber++) {
+                    const lineI = lines[lineNumber];
+
+                    // Stop reading more lines if an empty line or a comment line is found.
+                    // Exit with an error if the line length is different from the first line of the block.
+                    if (lineI.length === 0 || lineI.startsWith('#')) {
+                        lineNumber--;
+                        break;
+                    } else {
+                        const dataInRowI = delimiter.length > 0 ?
+                            lineI.split(delimiter) :
+                            [lineI];
+                        if (dataInRowI.length !== dataInRow0.length) {
+                            diagnostics.push(new vscode.Diagnostic(
+                                new vscode.Range(lineNumber, 0, lineNumber, lineI.length),
+                                vscode.l10n.t('Mismatched column count.'),
+                            ));
+                            return { language, nodes: undefined, diagnostics };
+                        }
+                        data.push(dataInRowI.map(cell => parseFloat(cell)));
+                    }
+                }
+                nodes.push(makeScanDataNode(language, headers, data, lineStart, lineNumber));
+                continue;
+            }
+            nodes.push({ type: 'unknown', kind: '', lineStart: lineNumber, lineEnd: lineNumber, value: line });
+        }
+    }
+
+    if (nodes.some(node => node.type === 'scanData')) {
+        return { language, nodes, diagnostics };
+    }
+
+    function makeScanDataNode(language: 'csv-column' | 'csv-row', headers: string[] | undefined, data: number[][], lineStart: number, lineEnd: number): Node {
         // Add the read data to the nodes.
         let subtype: 'matrix-xy' | 'matrix-yx';
         if (language === 'csv-column') {
@@ -432,12 +520,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
             // Create a header.
             headers = Array(data.length).fill(0).map((_x, i) => `row ${i}`);
         }
-
-        nodes.push({ type: 'scanData', subtype, lineStart: dataStartIndex, lineEnd: lineNumber - 1, headers, data });
-    }
-
-    if (nodes.some(node => node.type === 'scanData')) {
-        return { language, nodes, diagnostics };
+        return { type: 'scanData', subtype, lineStart, lineEnd, headers, data };
     }
 }
 
@@ -569,7 +652,7 @@ function parseChiplotContent(text: string, token?: vscode.CancellationToken): Pa
     if (data.length !== rowCount) {
         diagnostics.push(new vscode.Diagnostic(
             new vscode.Range(3, 0, 3, lines[4].length),
-            vscode.l10n.t('This value does not match the row count of following data array ({0}).', data.length),
+            vscode.l10n.t('Mismatched with number of rows in the following data block ({0}).', data.length),
             vscode.DiagnosticSeverity.Warning,
         ));
     }
