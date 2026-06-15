@@ -23,5 +23,5 @@
   "Too few lines.": "行数が少なすぎます。",
   "Data row count is not found.": "データ行数が見つかりません。",
   "Invalid data row count.": "無効なデータ行数です。",
-  "Mismatched with number of rows in the following data block ({0}).": "後のデータブロックの行数 {0} と一致しません。"
+  "Value not equal to number of rows in the following data block ({0}).": "値が後のデータブロックの行数 {0} と一致しません。"
 }

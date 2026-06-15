@@ -3,12 +3,12 @@
 __NOTE__: As of v2.2.0, `spec-data.preview.plot.traceTemplate` and `spec-data.preview.plot.layoutTemplate` settings are deprecated.
 See the [Extension Settings](#extension-settings) section in this document for details.
 
-The extension enables a user to browse spreadsheet-like data in a graph with Visual Studio Code.
-Data files in the __spec__ standard data file format and some other formats are supported, in addition to CSV files.
+With this extension, users can browse spreadsheet-like data as a line plot, heatmap, or contour plot in the editor panes of Visual Studio Code (VS Code).
+Supported file formats are CSV, __spec__ standard data file format and some others.
 See the [Supported file formats](#supported-file-formats) section for details.
 
-The graph feature can be controlled in a similar way to the built-in Markdown preview of VS Code.
-For example, _Reopen with Preview/Text_ command (Win/Linux: `Ctrl+Shift+V`, Mac: `Cmd+Shift+V`) is available when a supported file is open.
+The graph feature can be controlled in a similar way to VS Code's built-in Markdown preview.
+For example, _Reopen as Preview/Text_ command (Win/Linux: `Ctrl+Shift+V`, Mac: `Cmd+Shift+V`) is available when a supported file is open.
 
 ![screenshot](resources/screenshot.png)
 
@@ -19,7 +19,7 @@ The data file formats the exension supports are as follows:
 - __CSV file__ (ID: `csv-column`, `csv-row`): CSV (character-separated values) files.
   - A pair of columns in a `csv-column` file and that of rows in a `csv-row` file can be graphically plotted.
   - All cells must be numeric; string may appear only in a header line that starts with a hash character (`#`).
-  - A delimiter may be either a whitespace, tab, or comma, and is auto-detected.
+  - _Fixed-width format_ (contiguous whitespaces as a delimiter) and _single-character-delimited format_ (single whitespace, tab, or comma as a delimiter) are supported. They are automatically detected by the file content.
   - The extension does not associate file extensions such as `.csv`, `.tsv`, or `.dat` with the language IDs for the following reasons:
     - The extension can not determine from the file extension which direction (column-wise or row-wise) an array should be extracted from a table.
     - The extension does not support all possible formats of CSV files. The extension focuses on drawing a graph and thus files consisting of only numberic values are supported.
@@ -34,11 +34,12 @@ Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs
 
 The _Custom Editor_ the extension provides for previewing the files is currently configured as _optional_.
 This means that VS Code opens a file the extension supports with VS Code's built-in text editor and a user needs to switch the editor by calling the _Reopen With Editor_ command (or selecting the equivalent button/menu item) to preview data graphically.
-A user can change the default editor for files with the supported extensions by setting `workbench.editorAssociations` setting.
+A user can change the precedence of the editors via `workbench.editorAssociations` setting.
 
 The following example settings let VS Code open files whose filename end with `_mca.dat` and `.spec` with the extension's preview editor. Note that `*.spec` is by default associated with `spec-data` and thus setting it in `files.associations` is unnecessary.
 
 ```json
+// settings.json
 {
     "files.associations": {
         "*_mca.dat": "csv-column",
@@ -49,7 +50,6 @@ The following example settings let VS Code open files whose filename end with `_
     }
 }
 ```
-
 
 ## What's __spec__?
 
@@ -112,7 +112,7 @@ The comprehensive list of the parameters can be found in Plotly.js's [Figure Ref
 Shorthand such as `"marker.color"` is not available as a key of the object.
 
 Color can be defined in various ways: it seems the color format Plotly.js
-accepts as the template properties is the same as that of CSS. 
+accepts as the template properties is the same as that of CSS.
 
 As of v2.2.0, the built-in templates are shallow-merged (not overwritten) with the user-defined templates on the level of the objects for color theme keys.
 As the result, passing `null` or `[]` to a property of the object in the user settings clears the corresponding built-in property and thus the appearance for that is reverted to Plotly'js's vanilla one.

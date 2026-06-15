@@ -306,7 +306,7 @@ function parseSpecDataContent(text: string, token?: vscode.CancellationToken): P
  * Parses CSV content.
  * 
  * The following formats are supported and auto-detected:
- * - Fixed-width format using continous whitespaces as a delimiter
+ * - Fixed-width format using continuous whitespaces as a delimiter
  * - character-separated-values format using a horizontal tab, a whitespace, or a comma as a delimiter.
  */
 function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.CancellationToken): ParserResult {
@@ -317,7 +317,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
     const diagnostics: vscode.Diagnostic[] = [];
 
     // TODO: Parsing numeric values more strictly.
-    // JavaScript has two build-in functions to parse numeric values from a string: `parseFloat` and `Number`.
+    // JavaScript has two built-in functions to parse numeric values from a string: `parseFloat` and `Number`.
     // The former parses a number at the beginning of the string and ignores the rest, 
     // while the latter parses the whole string and returns NaN if it contains non-numeric characters.
     // Another difference is that the former returns 0 for an empty string, while the latter returns NaN.
@@ -652,7 +652,7 @@ function parseChiplotContent(text: string, token?: vscode.CancellationToken): Pa
     if (data.length !== rowCount) {
         diagnostics.push(new vscode.Diagnostic(
             new vscode.Range(3, 0, 3, lines[4].length),
-            vscode.l10n.t('Mismatched with number of rows in the following data block ({0}).', data.length),
+            vscode.l10n.t('Value not equal to number of rows in the following data block ({0}).', data.length),
             vscode.DiagnosticSeverity.Warning,
         ));
     }

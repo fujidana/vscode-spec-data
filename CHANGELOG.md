@@ -4,9 +4,15 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [2.4.0] -- 2026-06-15
+
 ### Added
 
-- Support _fixed width format_ (contiguous whitespaces as a delimiter) in `csv-row` and `csv-column` language IDs. The extension automatically determines whether the file content of these languages IDs is either the _fixed width format_ or _single-character-delimited format_ (single whiltespace, tab, or comma as a delimiter). Issue [#45](https://github.com/fujidana/vscode-spec-data/issues/45).
+- Support _fixed width format_ (contiguous whitespaces as a delimiter) in `csv-row` and `csv-column` language IDs. The extension automatically determines whether the file content of these languages IDs is either the _fixed width format_ or _single-character-delimited format_ (single whitespace, tab, or comma as a delimiter). Issue [#45](https://github.com/fujidana/vscode-spec-data/issues/45).
+
+### Changed
+
+- Bump `plotly.js-cartesian-dist-min` dependency to 3.6.0.
 
 ## [2.3.0] -- 2026-05-15
 
@@ -425,7 +431,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.0.1...v2.1.0
