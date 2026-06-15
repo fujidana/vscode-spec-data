@@ -678,7 +678,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
                         } satisfies MessageToWebview);
                     } else if ((messageIn.plotType === 'heatmap' || messageIn.plotType === 'contour') && messageIn.dataType === 'matrix') {
                         // Send back the original 2D array for a heatmap or contour plot.
-                        // No information about x- and y-scales are available in this format.
+                        // X- and Y-scales are not configurable in this format.
 
                         // if (node.subtype !== 'matrix-xy' && node.subtype !== 'matrix-yx') { return; }
 
@@ -835,12 +835,10 @@ function updateWebviewContent(preview: Preview, extensionUri: vscode.Uri) {
             lines.push(`<p ${getAttributesForNode(node)}><em>Date</em>: ${getSanitizedString(node.value)}</p>`);
         } else if (node.type === 'comment') {
             lines.push(`<p ${getAttributesForNode(node)}><em>#</em> ${getSanitizedString(node.value)}</p>`);
+        } else if (node.type === 'mnemonicList') {
+            mnemonicLists[node.kind] = node.values.map(value => getSanitizedString(value));
         } else if (node.type === 'nameList') {
-            if (node.subtype === 'mnemonic') {
-                mnemonicLists[node.kind] = node.values.map(value => getSanitizedString(value));
-            } else {
-                nameLists[node.kind] = node.values.map(value => getSanitizedString(value));
-            }
+            nameLists[node.kind] = node.values.map(value => getSanitizedString(value));
         } else if (node.type === 'scanHead') {
             lines.push(`<h2 ${getAttributesForNode(node)}>Scan ${node.index}: <code>${getSanitizedString(node.code)}</code></h2>`);
         } else if (node.type === 'valueList') {
