@@ -27,7 +27,7 @@ interface NameListNode extends BaseListNode { type: 'nameList', kind: 'motor' | 
 interface MnemonicListNode extends BaseListNode { type: 'mnemonicList', kind: 'motor' | 'counter', values: string[] }
 interface ValueListNode extends BaseListNode { type: 'valueList', kind: 'motor', values: number[] }
 interface ScanHeadNode extends BaseNode { type: 'scanHead', index: number, code: string }
-interface ScanDataNode extends BaseNode { type: 'scanData', subtype: ScanDataSubtype, headers: string[], data: number[][], parameter?: ScanParameter }
+interface ScanDataNode extends BaseNode { type: 'scanData', subtype: ScanDataSubtype, headers: string[], data: number[][], parameter?: ScanParameter, defaultAxes?: AxisIndexes }
 interface UnknownNode extends BaseNode { type: 'unknown', kind: string, value: string }
 
 type ScanDataSubtype = 'serial' | 'matrix-xy' | 'matrix-yx';
@@ -52,6 +52,8 @@ interface FScanParameter {
     file: string;
     time: string | number;
 }
+
+interface AxisIndexes { line?: [number, number, number] }
 
 export type ParserResult = ParserSuccess | ParserFailure | undefined;
 
@@ -324,6 +326,10 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
     const nodes: Node[] = [];
     const diagnostics: vscode.Diagnostic[] = [];
 
+    const SCAN_LINE_REGEXP = /^(Scan\s+(\d+)\s{3}(\S.*?)\s{3})(?:(file\s*=\s*)(\S.*?)|\*\*NO DATA FILE\*\*)(?=\s{2})\s+(\S.*?)\s{2}user\s*=\s*(\S.*)$/;
+    let scanHeadMatch: RegExpMatchArray | null;
+    let isSpecOutput = false;
+    
     // TODO: Parsing numeric values more strictly.
     // JavaScript has two built-in functions to parse numeric values from a string: `parseFloat` and `Number`.
     // The former parses a number at the beginning of the string and ignores the rest, 
@@ -342,8 +348,20 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
             // Skip an empty line.
 
         } else if (line.startsWith('#')) {
-            // Skip a comment line after appending the text to the nodes.
-            nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: line.substring(1) });
+            // Append the text to the nodes unless it's a mode line.
+            if (lineNumber === 0 && /^#\s*(.*)\bmode\s*:\s*csv-(column|row)\b/.test(line)) {
+                // Simply skip.
+            } else {
+                nodes.push({ type: 'comment', lineStart: lineNumber, lineEnd: lineNumber, value: line.substring(1) });
+            }
+
+        } else if (lineNumber + 2 < lineCount && lines[lineNumber + 2].trim().length === 0 && (scanHeadMatch = line.match(SCAN_LINE_REGEXP)) !== null) {
+            // Treat specially for the case of spec screen output.
+            nodes.push({ type: 'file', lineStart: lineNumber, lineEnd: lineNumber, value: scanHeadMatch[5] ?? '**NO DATA FILE**' });
+            nodes.push({ type: 'scanHead', lineStart: lineNumber, lineEnd: lineNumber, index: parseInt(scanHeadMatch[2]), code: lines[lineNumber + 1] });
+            nodes.push({ type: 'date', lineStart: lineNumber, lineEnd: lineNumber, value: scanHeadMatch[3] });
+            lineNumber += 2;
+            isSpecOutput = true;
 
         } else if (language === 'csv-row' && line.startsWith('@A ')) {
             // If the line starts with "@A", it is data in ESRF's MCA format.
@@ -377,22 +395,40 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
                 if (indexesInRow.length !== 0 && indexesInRow[indexesInRow.length - 1][2] === line.length) {
                     const data: number[][] = [dataInRow0];
                     let headers: string[] | undefined = undefined;
+                    let defaultAxes: AxisIndexes | undefined = undefined;
 
                     // If the previous line has the same line length and delimiter positions,
                     // treat it as a header lines for columns.
                     if (lineNumber > 0 && lines[lineNumber - 1].length === line.length) {
                         const prevLine = lines[lineNumber - 1];
                         const tmpHeaders: string[] = [];
-                        const isPrevLineHeader = indexesInRow.every(([start, end0, end1]) => {
-                            tmpHeaders.push(prevLine.substring(start, end0).trimStart());
+                        let isPrevLineHeader = indexesInRow.every(([start, end0, end1]) => {
+                            tmpHeaders.push(prevLine.substring(start, end0));
                             return (end0 === end1 || prevLine.substring(end0, end1) === ' ');
                         });
+                        isPrevLineHeader = isPrevLineHeader && tmpHeaders.every(header => header.trimEnd() === header);
                         if (isPrevLineHeader) {
-                            headers = tmpHeaders;
                             const prevNode = nodes[nodes.length - 1];
                             if (prevNode && (prevNode.type === 'comment' || prevNode.type === 'unknown') && prevNode.lineStart === lineNumber - 1) {
                                 nodes.pop();
                             }
+
+                            // Treat specially for the case of spec screen output.
+                            if (
+                                isSpecOutput && 
+                                tmpHeaders.length > 2 && 
+                                tmpHeaders[0].trimStart() === '#' && tmpHeaders[0].length >= 3
+                            ) {
+                                // Guess the main counter (DET) from the column width.
+                                // First, a column of 3-or-4-letter width for scan point appears.
+                                // Second, columns of 10-letter width for motors appear
+                                // Then column of 9-letter width for DET appears.
+                                // See the comment above `_loop_head()` function in standard.mac for the details of the format.
+                                const yIndex = tmpHeaders.slice(1).findIndex(header => header.length === 8) + 1;
+                                defaultAxes = { line: [1, yIndex, tmpHeaders.length] };
+                            }
+
+                            headers = tmpHeaders.map(header => header.trimStart());
                         }
                     }
 
@@ -410,8 +446,10 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
                             diagnostics.push(new vscode.Diagnostic(
                                 new vscode.Range(lineNumber, 0, lineNumber, lineI.length),
                                 vscode.l10n.t('Mismatched line length.'),
+                                vscode.DiagnosticSeverity.Warning,
                             ));
-                            return { language, nodes: undefined, diagnostics };
+                            lineNumber--;
+                            break;
                         }
 
                         // Append numeric cells in the line to `data`.
@@ -430,7 +468,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
                         }
                         data.push(dataInRowI);
                     }
-                    nodes.push(makeScanDataNode(language, headers, data, lineStart, lineNumber));
+                    nodes.push(makeScanDataNode(language, headers, data, lineStart, lineNumber, defaultAxes));
                     continue;
                 }
             }
@@ -512,7 +550,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
         return { language, nodes, diagnostics };
     }
 
-    function makeScanDataNode(language: 'csv-column' | 'csv-row', headers: string[] | undefined, data: number[][], lineStart: number, lineEnd: number): Node {
+    function makeScanDataNode(language: 'csv-column' | 'csv-row', headers: string[] | undefined, data: number[][], lineStart: number, lineEnd: number, defaultAxes?: AxisIndexes): Node {
         // Add the read data to the nodes.
         let subtype: 'matrix-xy' | 'matrix-yx';
         if (language === 'csv-column') {
@@ -528,7 +566,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
             // Create a header.
             headers = Array(data.length).fill(0).map((_x, i) => `row ${i}`);
         }
-        return { type: 'scanData', subtype, lineStart, lineEnd, headers, data };
+        return { type: 'scanData', subtype, lineStart, lineEnd, headers, data, defaultAxes };
     }
 }
 

@@ -919,11 +919,14 @@ mode:
 <span class="axesSpan">`);
 
                 for (let i = 0; i < 3; i++) {
+                    const lineSelectionAttr = node.defaultAxes?.line ?
+                        ` data-line-selection="${node.defaultAxes.line[i]}"`:
+                        '';
                     lines.push(`<span class="x${i} axisSpan">
 ;
 <label class="x${i} dataLabel">
 <span class="x${i} dataAxisNameSpan"><var>x</var><sub>${i}</sub></span>:
-<select class="x${i} dataSelect">`);
+<select class="x${i} dataSelect"${lineSelectionAttr}>`);
 
                     [...headers, '[extra]'].forEach((header, j) => {
                         lines.push(`<option value="${j}">${getSanitizedString(header)}</option>`);
