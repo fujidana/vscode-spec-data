@@ -170,7 +170,10 @@ const updateForModeSelect = function (index: number, scanDataDiv: HTMLDivElement
             options[options.length - 1].hidden = hideExtraOptions[j];
             logSpans[j].hidden = hideLogSpans[j];
             if (updateSelection) {
-                dataSelects[j].selectedIndex = selections[j];
+                const defaultSelectionStr = dataSelects[j].dataset.lineSelection;
+                dataSelects[j].selectedIndex = defaultSelectionStr !== undefined ?
+                    parseInt(defaultSelectionStr) :
+                    selections[j];
                 graphState.selections[j] = selections[j];
             }
         }

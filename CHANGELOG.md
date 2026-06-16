@@ -4,11 +4,15 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Changed
+
+- Select proper axes of newly created graphs when the source is _fixed width text format_ __spec__ outputs. Issue [#48](https://github.com/fujidana/vscode-spec-data/issues/48).
+
 ## [2.4.0] -- 2026-06-15
 
 ### Added
 
-- Support _fixed width format_ (contiguous whitespaces as a delimiter) in `csv-row` and `csv-column` language IDs. The extension automatically determines whether the file content of these languages IDs is either the _fixed width format_ or _single-character-delimited format_ (single whitespace, tab, or comma as a delimiter). Issue [#45](https://github.com/fujidana/vscode-spec-data/issues/45).
+- Support _fixed width text format_ (continuous whitespaces as a delimiter and padding) in `csv-row` and `csv-column` language IDs. The extension automatically determines whether the file content of these languages IDs is either the _fixed width text format_ or _delimiter-separated values format_ (a single whitespace, tab, or comma as a delimiter). Issue [#45](https://github.com/fujidana/vscode-spec-data/issues/45).
 
 ### Changed
 
