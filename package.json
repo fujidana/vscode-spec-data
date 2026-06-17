@@ -3,7 +3,7 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data and CSV support for VS Code",
-	"version": "2.4.0",
+	"version": "2.4.1",
 	"engines": {
 		"vscode": "^1.120.0"
 	},
