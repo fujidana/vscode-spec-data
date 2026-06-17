@@ -174,7 +174,7 @@ const updateForModeSelect = function (index: number, scanDataDiv: HTMLDivElement
                 dataSelects[j].selectedIndex = defaultSelectionStr !== undefined ?
                     parseInt(defaultSelectionStr) :
                     selections[j];
-                graphState.selections[j] = selections[j];
+                graphState.selections[j] = dataSelects[j].selectedIndex;
             }
         }
     } else if (graphState.mode === 'heatmap-serial' || graphState.mode === 'heatmap-matrix' || graphState.mode === 'contour-serial' || graphState.mode === 'contour-matrix') {

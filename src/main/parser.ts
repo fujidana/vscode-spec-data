@@ -329,7 +329,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
     const SCAN_LINE_REGEXP = /^(Scan\s+(\d+)\s{3}(\S.*?)\s{3})(?:(file\s*=\s*)(\S.*?)|\*\*NO DATA FILE\*\*)(?=\s{2})\s+(\S.*?)\s{2}user\s*=\s*(\S.*)$/;
     let scanHeadMatch: RegExpMatchArray | null;
     let isSpecOutput = false;
-    
+
     // TODO: Parsing numeric values more strictly.
     // JavaScript has two built-in functions to parse numeric values from a string: `parseFloat` and `Number`.
     // The former parses a number at the beginning of the string and ignores the rest, 
@@ -380,8 +380,13 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
 
         } else {
             // First try to detect fixed-width format if the line contains 
-            // multiple whitespaces or starts with a whitespace.
-            if (line.startsWith(' ') || line.includes('  ')) {
+            // multiple whitespaces or starts with a whitespace, and the
+            // next line has the same length.
+            if (
+                (line.startsWith(' ') || line.includes('  ')) &&
+                lineNumber + 1 < lineCount &&
+                line.length === lines[lineNumber + 1].length
+            ) {
                 const indexesInRow: [number, number, number][] = [];
                 const dataInRow0: number[] = [];
                 const fwfMatchAll = line.matchAll(/(( *)([+\-]?(?:\d+(?:\.\d+)?(?:e[+\-]?\d+)?)|inf(?:inity)?|nan))( |$)/igy);
@@ -415,16 +420,24 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
 
                             // Treat specially for the case of spec screen output.
                             if (
-                                isSpecOutput && 
-                                tmpHeaders.length > 2 && 
+                                isSpecOutput &&
+                                tmpHeaders.length > 2 &&
                                 tmpHeaders[0].trimStart() === '#' && tmpHeaders[0].length >= 3
                             ) {
                                 // Guess the main counter (DET) from the column width.
-                                // First, a column of 3-or-4-letter width for scan point appears.
-                                // Second, columns of 10-letter width for motors appear
-                                // Then column of 9-letter width for DET appears.
-                                // See the comment above `_loop_head()` function in standard.mac for the details of the format.
-                                const yIndex = tmpHeaders.slice(1).findIndex(header => header.length === 8) + 1;
+
+                                // The widths of columns in spec output are not equal to each other,
+                                // so we can guess the DET column from the width of header text.
+                                // See https://github.com/fujidana/vscode-spec-data/issues/48 for details.
+
+                                // The column width of motors preceding DET is 9, excluding the trailing space.
+                                let yIndex = tmpHeaders.slice(1).findIndex(header => header.length !== 9) + 1;
+                                if (yIndex > 0 && yIndex === tmpHeaders.slice(1).findIndex(header => header.length === 10) + 1) {
+                                    // In the case the column width of counters is 9 (i.e., the same as motors),
+                                    // findIndex returns the index for the time column, whose width is always 10.
+                                    // The previous to that is column for MON (if MON exists) or DET.
+                                    yIndex -= 1;
+                                }
                                 defaultAxes = { line: [1, yIndex, tmpHeaders.length] };
                             }
 
