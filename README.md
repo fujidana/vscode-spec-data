@@ -16,10 +16,11 @@ For example, _Reopen as Preview/Text_ command (Win/Linux: `Ctrl+Shift+V`, Mac: `
 
 The data file formats the exension supports are as follows:
 
-- __CSV file__ (ID: `csv-column`, `csv-row`): CSV (character-separated values) files.
-  - A pair of columns in a `csv-column` file and that of rows in a `csv-row` file can be graphically plotted.
-  - All cells must be numeric; string may appear only in a header line that starts with a hash character (`#`).
-  - _Fixed-width format_ (contiguous whitespaces as a delimiter) and _single-character-delimited format_ (single whitespace, tab, or comma as a delimiter) are supported. They are automatically detected by the file content.
+- __CSV file__ (ID: `csv-column`, `csv-row`): _character-separated values_ formats.
+  - A pair of columns in a `csv-column` file and that of rows in a `csv-row` file is graphically plotted.
+  - _Fixed width text format_ (contiguous whitespaces as a delimiter and padding) and _delimiter-separated values format_ (a single whitespace, tab, or comma as a delimiter) are supported. They are automatically detected by the file content.
+  - All cells must be numeric (or `NaN` or `(+|-)Infinity`); string may appear only in a header line.
+  - Comments are allowed. They should start with a hash character (`#`).
   - The extension does not associate file extensions such as `.csv`, `.tsv`, or `.dat` with the language IDs for the following reasons:
     - The extension can not determine from the file extension which direction (column-wise or row-wise) an array should be extracted from a table.
     - The extension does not support all possible formats of CSV files. The extension focuses on drawing a graph and thus files consisting of only numberic values are supported.
