@@ -15,6 +15,9 @@ const vscode = acquireVsCodeApi<State>();
 
 const headDataset = document.head.dataset;
 const plotHeight = parseInt(headDataset.plotHeight ?? '100');
+const exportFormat: 'png' | 'jpeg' | 'webp' | 'svg' =
+    (headDataset.plotExportFormat === 'png' || headDataset.plotExportFormat === 'jpeg' || headDataset.plotExportFormat === 'webp' || headDataset.plotExportFormat === 'svg') ?
+        headDataset.plotExportFormat : 'png';
 
 let state = vscode.getState();
 if (state === undefined) {
@@ -549,7 +552,13 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         }
 
         if (messageIn.action === 'newPlot') {
-            Plotly.newPlot(graphDiv, data, layout, { responsive: true });
+            const config: Partial<Plotly.Config> = {
+                responsive: true,
+                toImageButtonOptions: {
+                    format: exportFormat,
+                },
+            };
+            Plotly.newPlot(graphDiv, data, layout, config);
         } else if (messageIn.action === 'react') {
             Plotly.react(graphDiv, data, layout);
             // console.log('Plot reactivated.');

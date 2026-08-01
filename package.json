@@ -460,6 +460,7 @@
 					"type": "object",
 					"scope": "language-overridable",
 					"markdownDescription": "%configuration.spec-data.preview.plot.template.data.description%",
+					"additionalProperties": false,
 					"properties": {
 						"light": {
 							"type": "object",
@@ -549,6 +550,24 @@
 							"type": "object"
 						}
 					}
+				},
+				"spec-data.preview.plot.exportFormat": {
+					"type": "string",
+					"scope": "language-overridable",
+					"enum": [
+						"png",
+						"svg",
+						"jpeg",
+						"webp"
+					],
+					"enumItemLabels": [
+						"PNG",
+						"SVG",
+						"JPEG",
+						"WebP"
+					],
+					"default": "png",
+					"description": "%configuration.spec-data.preview.plot.exportFormat.description%"
 				},
 				"spec-data.preview.plot.enableMultipleSelection": {
 					"type": "boolean",
