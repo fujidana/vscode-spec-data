@@ -4,9 +4,16 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [2.5.0] -- 2026-08-02
+
+## Added
+
+- Make exported image format selectable in `spec-data.preview.plot.exportFormat` setting. The default is `png`. Issue [#52](https://github.com/fujidana/vscode-spec-data/issues/52).
+
 ### Changed
 
 - Raise the minimum VS Code version to 1.125.0.
+- Bump `plotly.js-cartesian-dist-min` dependency to 3.7.0.
 
 ## [2.4.1] -- 2026-06-17
 
@@ -441,7 +448,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.4.1...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.4.1...v2.5.0
 [2.4.1]: https://github.com/fujidana/vscode-spec-data/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.2.0...v2.3.0
