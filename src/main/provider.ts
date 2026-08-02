@@ -793,6 +793,10 @@ function updateWebviewContent(preview: Preview, extensionUri: vscode.Uri) {
     const headerType = config.get<string>('table.headerType', 'Mnemonic');
     const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
     const plotHeight = config.get<number>('plot.height', 400);
+    const exportFormat = config.get<string>('plot.exportFormat', 'png');
+    const exportFormatSanitized =
+        (exportFormat === 'png' || exportFormat === 'jpeg' || exportFormat === 'webp' || exportFormat === 'svg') ?
+            exportFormat : 'png';
 
     // Apply CSP regardless of user settings when in untrusted workspaces.
     const metaCspStr = !vscode.workspace.isTrusted || config.get<boolean>('applyContentSecurityPolicy', true)
@@ -811,7 +815,7 @@ function updateWebviewContent(preview: Preview, extensionUri: vscode.Uri) {
 
     const htmlHeader = `<!DOCTYPE html>
 <html lang="en">
-<head data-plot-height="${plotHeight}" data-source-uri="${preview.uri.toString()}" data-enable-multiple-selection="${Number(preview.enableMultipleSelection)}" data-enable-right-axis="${Number(preview.enableRightAxis)}">
+<head data-plot-height="${Number(plotHeight)}" data-source-uri="${preview.uri.toString()}" data-enable-multiple-selection="${Number(preview.enableMultipleSelection)}" data-enable-right-axis="${Number(preview.enableRightAxis)}" data-plot-export-format="${exportFormatSanitized}">
 	<meta charset="UTF-8">
     ${metaCspStr}
     <title>spec data Preview</title>
