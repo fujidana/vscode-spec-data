@@ -14,10 +14,11 @@ import type { MessageFromWebview, MessageToWebview, State, GraphState } from '..
 const vscode = acquireVsCodeApi<State>();
 
 const headDataset = document.head.dataset;
-const plotHeight = parseInt(headDataset.plotHeight ?? '100');
-const exportFormat: 'png' | 'jpeg' | 'webp' | 'svg' =
-    (headDataset.plotExportFormat === 'png' || headDataset.plotExportFormat === 'jpeg' || headDataset.plotExportFormat === 'webp' || headDataset.plotExportFormat === 'svg') ?
-        headDataset.plotExportFormat : 'png';
+const plotHeight = parseInt(headDataset.plotHeight ?? '100', 10);
+const exportFormat = headDataset.plotExportFormat;
+const exportFormatSanitized =
+    (exportFormat === 'png' || exportFormat === 'jpeg' || exportFormat === 'webp' || exportFormat === 'svg') ?
+        exportFormat : 'png';
 
 let state = vscode.getState();
 if (state === undefined) {
@@ -555,7 +556,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
             const config: Partial<Plotly.Config> = {
                 responsive: true,
                 toImageButtonOptions: {
-                    format: exportFormat,
+                    format: exportFormatSanitized,
                 },
             };
             Plotly.newPlot(graphDiv, data, layout, config);
