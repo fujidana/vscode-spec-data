@@ -4,9 +4,13 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Changed
+
+- Use source filename plus graph index as default filename for image export Issue [#57](https://github.com/fujidana/vscode-spec-data/issues/57).
+
 ## [2.5.0] -- 2026-08-02
 
-## Added
+### Added
 
 - Make exported image format selectable in `spec-data.preview.plot.exportFormat` setting. The default is `png`. Issue [#52](https://github.com/fujidana/vscode-spec-data/issues/52).
 

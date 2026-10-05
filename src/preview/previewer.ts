@@ -54,6 +54,13 @@ if (state === undefined) {
     vscode.setState(state);
 }
 
+/**
+ * The base name of the source file without the extension, used for graph export.
+ * `state.sourceUri` must be a URI string validly encoded and not containing
+ * any query string or fragment.
+ */
+const fileBasename = decodeURIComponent(state.sourceUri.split('/').pop()?.replace(/(?!^)\.[^/.]*$/, '') ?? '');
+
 let scrollsEditor = false;
 let lastScrollEditorTimeStamp = 0;
 let lastScrollPreviewTimeStamp = 0;
@@ -556,9 +563,14 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         }
 
         if (messageIn.action === 'newPlot') {
+            const filename = fileBasename.length > 0 && state.graphStates.length > 1 ?
+                `${fileBasename} ${messageIn.graphNumber + 1}` :
+                fileBasename;
+
             const config: Partial<Plotly.Config> = {
                 responsive: true,
                 toImageButtonOptions: {
+                    filename: filename,
                     format: exportFormat,
                 },
             };
