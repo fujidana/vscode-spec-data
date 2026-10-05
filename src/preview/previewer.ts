@@ -1,24 +1,37 @@
 /**
- * A JavaScript transpiled from this file is loaded by <script src="..."> in
- * a webview HTML file.
+ * Script that communicates with the extension's main process and controls
+ * Plotly to draw graphs. It is loaded through a <script> tag and executed
+ * in the webview context.
  */
-
-/**
- * At run-time, Plotly is separately loaded by `<script src=""...">` in the
- * HTML file and thus, is available in the global scope.
- */
-declare const Plotly: any; // import Plotly from 'plotly.js';
 
 import type { MessageFromWebview, MessageToWebview, State, GraphState } from '../types';
+
+/**
+ * Extend the type definitions of Plotly in `@types/plotly.js`.
+ */
+declare module 'plotly.js' {
+    // Extend the type definitions for the right y-axis.
+    interface Layout {
+        'yaxis2.type': AxisType;
+    }
+}
+
+/**
+ * Declare the global variable `Plotly` to be of the type of the module
+ * 'plotly.js'.
+ * 
+ * At run-time, Plotly is separately loaded through a `<script>` tag in the
+ * HTML file. Therefore, ambient declaration is used instead of direct import.
+ */
+declare var Plotly: typeof import('plotly.js');
 
 const vscode = acquireVsCodeApi<State>();
 
 const headDataset = document.head.dataset;
 const plotHeight = parseInt(headDataset.plotHeight ?? '100', 10);
-const exportFormat = headDataset.plotExportFormat;
-const exportFormatSanitized =
-    (exportFormat === 'png' || exportFormat === 'jpeg' || exportFormat === 'webp' || exportFormat === 'svg') ?
-        exportFormat : 'png';
+const exportFormat = (fmt =>
+    (fmt === 'png' || fmt === 'jpeg' || fmt === 'webp' || fmt === 'svg') ? fmt : 'png'
+)(headDataset.plotExportFormat);
 
 let state = vscode.getState();
 if (state === undefined) {
@@ -460,17 +473,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
 
         const graphState = state.graphStates[messageIn.graphNumber];
 
-        // `PlotData` in @types/plotly.js@3.0.10 does not have several properties
-        // for heatmap and contour plots,
-        // so we need to extend the type here.
-        type ModifiedPlotlyData = Plotly.PlotData & {
-            x0: number,
-            dx: number,
-            y0: number,
-            dy: number,
-        };
-
-        const data: Partial<ModifiedPlotlyData>[] = []; //Partial<Plotly.PlotData>[];
+        const data: Partial<Plotly.PlotData>[] = [];
         const layout: Partial<Plotly.Layout> = {
             template: state.template,
             height: plotHeight,
@@ -556,7 +559,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
             const config: Partial<Plotly.Config> = {
                 responsive: true,
                 toImageButtonOptions: {
-                    format: exportFormatSanitized,
+                    format: exportFormat,
                 },
             };
             Plotly.newPlot(graphDiv, data, layout, config);

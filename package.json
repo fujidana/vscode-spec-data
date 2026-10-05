@@ -670,7 +670,7 @@
 		"@types/assert": "^1.5.11",
 		"@types/mocha": "^10.0.10",
 		"@types/node": "24.x",
-		"@types/plotly.js": "^3.0.13",
+		"@types/plotly.js": "^3.0.14",
 		"@types/vscode": "^1.125.0",
 		"@types/vscode-webview": "^1.57.5",
 		"@vscode/test-cli": "^0.0.15",
