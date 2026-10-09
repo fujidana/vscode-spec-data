@@ -11,12 +11,13 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Changed
 
 - Reflect source filename in the default filename for exporting graphs. Issue [#57](https://github.com/fujidana/vscode-spec-data/issues/57).
+- Bump `plotly.js-cartesian-dist-min` dependency to 4.1.2.
 
 ## [2.5.0] -- 2026-08-02
 
 ### Added
 
-- Enable to select file format for exporting graphs via `spec-data.preview.plot.exportFormat` setting. The default is `png`. Issue [#52](https://github.com/fujidana/vscode-spec-data/issues/52).
+- Make file format for exporting graphs selectable via `spec-data.preview.plot.exportFormat` setting. The default is `png`. Issue [#52](https://github.com/fujidana/vscode-spec-data/issues/52).
 
 ### Changed
 
@@ -171,7 +172,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 - Redesign the mechanism for a user to specify Plotly.js templates for easier customization of graph appearance.
   - Deprecate `spec-data.preview.plot.templates` setting.
   - Instead introduce `spec-data.preview.plot.traceTemplate` and `spec-data.preview.plot.layoutTemplate` settings. Now the customization for traces and layout are separately specified.
-  - When a user provides a template for a color theme, the extension's template for the coresppoinding color theme is overwritten. Previously it was merged (but then it was difficult to revert to Plotly.js's native behavior).
+  - When a user provides a template for a color theme, the extension's template for the corresponding color theme is overwritten. Previously it was merged (but then it was difficult to revert to Plotly.js's native behavior).
 - Change the default (i.e., extension's) Plotly.js templates so that multiple traces are depicted in different colors.
 - Make the following configuration setting available from _Folder Settings_ in a multi-root workspace:
   - `spec-data.preview.scrollPreviewWithEditor`
