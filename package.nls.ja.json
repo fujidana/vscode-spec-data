@@ -23,7 +23,7 @@
 	"configuration.spec-data.preview.plot.template.layout.description": "背景色などのレイアウト関連の外観をカスタマイズします。詳細については、README.mdの _Extension Settings_ 節およびPlotly.jsの [Figure Reference: layout](https://plotly.com/javascript/reference/layout) を参照してください。",
 	"configuration.spec-data.preview.plot.traceTemplate.description": "トレースの色などのトレース外観をカスタマイズします。キーは `\"light\"`、`\"dark\"`、`\"highContrast\"`、または `\"highContrastLight\"` のいずれかでなければならず、値はPlotly.jsスキャッターテンプレートの配列でなければなりません。README.mdの「拡張機能設定」セクションを参照してください。テンプレート属性の完全なリストは [Plotly.js Reference](https://plotly.com/javascript/reference/index/) ページで確認できます。",
 	"configuration.spec-data.preview.plot.layoutTemplate.description": "背景色などのレイアウト外観をカスタマイズします。キーは `\"light\"`、`\"dark\"`、`\"highContrast\"`、または `\"highContrastLight\"` のいずれかでなければならず、値はPlotly.jsレイアウトテンプレートでなければなりません。README.mdの「拡張機能設定」セクションを参照してください。テンプレート属性の完全なリストは [Plotly.js Reference](https://plotly.com/javascript/reference/index/) ページで確認できます。",
-	"configuration.spec-data.preview.plot.exportFormat.description": "ダウンロードボタンで書き出されるグラフの画像フォーマット。このオプションの変更は、すでに開いているプレビューには影響しません。",
+	"configuration.spec-data.preview.plot.exportFormat.description": "グラフ書き出し時のファイル形式。このオプションの変更は、すでに開いているプレビューには影響しません。",
 	"configuration.spec-data.preview.plot.enableMultipleSelection.description": "プレビューの作成時に、複数のデータ列をグラフ用に選択可能にします。",
 	"configuration.spec-data.preview.plot.enableRightAxis.description": "プレビューの作成時に、右軸をグラフ用に利用可能にします。",
 	"configuration.spec-data.preview.table.hide.description": "プレビューの作成時に、モーター位置テーブルを非表示にします。",
