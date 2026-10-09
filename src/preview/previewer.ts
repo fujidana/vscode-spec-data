@@ -573,6 +573,7 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
                     filename: exportFilename,
                     format: exportFormat,
                 },
+                modeBarButtonsToRemove: ['sendChartToCloud'],
             };
             Plotly.newPlot(graphDiv, data, layout, config);
         } else if (messageIn.action === 'react') {
