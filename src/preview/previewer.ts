@@ -29,8 +29,8 @@ const vscode = acquireVsCodeApi<State>();
 
 const headDataset = document.head.dataset;
 const plotHeight = parseInt(headDataset.plotHeight ?? '100', 10);
-const exportFormat = (fmt =>
-    (fmt === 'png' || fmt === 'jpeg' || fmt === 'webp' || fmt === 'svg') ? fmt : 'png'
+const exportFormat = (
+    fmt => fmt === 'png' || fmt === 'jpeg' || fmt === 'webp' || fmt === 'svg' || fmt === 'full-json' ? fmt : 'png'
 )(headDataset.plotExportFormat);
 
 let state = vscode.getState();
@@ -563,14 +563,14 @@ window.addEventListener('message', (event: MessageEvent<MessageToWebview>) => {
         }
 
         if (messageIn.action === 'newPlot') {
-            const filename = fileBasename.length > 0 && state.graphStates.length > 1 ?
+            const exportFilename = fileBasename.length > 0 && state.graphStates.length > 1 ?
                 `${fileBasename} ${messageIn.graphNumber + 1}` :
                 fileBasename;
 
             const config: Partial<Plotly.Config> = {
                 responsive: true,
                 toImageButtonOptions: {
-                    filename: filename,
+                    filename: exportFilename,
                     format: exportFormat,
                 },
             };
