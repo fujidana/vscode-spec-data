@@ -301,9 +301,10 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
                     // only delivered if the webview is live (either visible or in 
                     // the background with `retainContextWhenHidden`).
                     // However, it seems invisible webviews also handle the following messages.
+                    const scope = { languageId: preview.language, uri: preview.uri };
                     preview.panel.webview.postMessage({
                         type: 'setTemplate',
-                        template: getPlotlyTemplate(colorTheme.kind, { uri: preview.uri, languageId: preview.language }),
+                        template: getPlotlyTemplate(colorTheme.kind, scope),
                         callback: 'relayout',
                     } satisfies MessageToWebview);
                 }
@@ -344,7 +345,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             vscode.languages.registerFoldingRangeProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.languages.registerDocumentSymbolProvider([SPEC_DATA_FILTER, DPPMCA_FILTER], this),
             vscode.window.registerCustomEditorProvider('spec-data.preview.editor', this, customEditorOption),
-            vscode.window.registerWebviewPanelSerializer('spec-data.preview', this),
+            vscode.window.registerWebviewPanelSerializer('spec-data.preview.panel', this),
             // Register event listeners.
             vscode.workspace.onDidOpenTextDocument(textDocumentDidOpenListener),
             vscode.workspace.onDidChangeTextDocument(textDocumentDidChangeListener),
@@ -354,7 +355,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
             vscode.window.onDidChangeActiveColorTheme(activeColorThemeChangeListener),
             vscode.workspace.onDidChangeConfiguration(configurationChangeListner),
             // Other disposables.
-            this.diagnosticCollection
+            this.diagnosticCollection,
         );
     }
 
@@ -521,7 +522,7 @@ export class Provider implements vscode.FoldingRangeProvider, vscode.DocumentSym
 
             const config = vscode.workspace.getConfiguration('spec-data.preview');
             const panel = vscode.window.createWebviewPanel(
-                'spec-data.preview',
+                'spec-data.preview.panel',
                 'Preview spec data',
                 showToSide ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active,
                 {
@@ -790,10 +791,14 @@ function updateWebviewContent(preview: Preview, extensionUri: vscode.Uri) {
     const config = vscode.workspace.getConfiguration('spec-data.preview', { languageId: preview.language, uri: preview.uri });
     const hideTable = config.get<boolean>('table.hide', true);
     const columnsPerRow = config.get<number>('table.columnsPerRow', 8);
-    const headerType = config.get<string>('table.headerType', 'Mnemonic');
     const maximumPlots = config.get<number>('plot.maximumNumberOfPlots', 25);
     const plotHeight = config.get<number>('plot.height', 400);
-    /** Export format. Sanitized for use in HTML attributes. */
+
+    // Sanitize strings directly used in HTML attributes. Since VS Code's
+    // settings editor blocks invalid values, this check may be redundant.
+    const headerType = (
+        text => text === 'Name' || text === 'Mnemonic' || text === 'None' ? text : 'Mnemonic'
+    )(config.get<string>('table.headerType', 'Mnemonic'));
     const exportFormat = (
         fmt => fmt === 'png' || fmt === 'jpeg' || fmt === 'webp' || fmt === 'svg' || fmt === 'full-json' ? fmt : 'png'
     )(config.get<string>('plot.exportFormat', 'png'));

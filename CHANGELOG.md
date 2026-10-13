@@ -12,6 +12,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Changed
 
 - Reflect source filename in the default filename for exporting graphs. Issue [#57](https://github.com/fujidana/vscode-spec-data/issues/57).
+- Change the webview panel ID from `spec-data.preview` to `spec-data.preview.panel`.
 - Bump `plotly.js-cartesian-dist-min` dependency to 4.1.2.
 
 ## [2.5.0] -- 2026-08-02

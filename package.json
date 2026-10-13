@@ -33,7 +33,7 @@
 		"onLanguage:csv-row",
 		"onLanguage:dppmca",
 		"onLanguage:chiplot",
-		"onWebviewPanel:spec-data.preview"
+		"onWebviewPanel:spec-data.preview.panel"
 	],
 	"main": "./dist/node/extension.js",
 	"browser": "./dist/web/extension.js",
@@ -226,7 +226,7 @@
 				{
 					"command": "spec-data.preview.showSource",
 					"alt": "spec-data.preview.refresh",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel'",
 					"group": "navigation@1"
 				},
 				{
@@ -238,12 +238,12 @@
 				{
 					"command": "spec-data.preview.toggleMultipleSelection",
 					"alt": "spec-data.preview.toggleRightAxis",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
 					"group": "navigation@0"
 				},
 				{
 					"command": "spec-data.preview.toggleLock",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel'",
 					"group": "2_specdata"
 				}
 			],
@@ -255,27 +255,27 @@
 				},
 				{
 					"command": "spec-data.preview.showSource",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel'",
 					"group": "1_open"
 				},
 				{
 					"command": "spec-data.preview.toggleLock",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel'",
 					"group": "3_preview"
 				},
 				{
 					"command": "spec-data.preview.refresh",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
 					"group": "3_preview"
 				},
 				{
 					"command": "spec-data.preview.toggleMultipleSelection",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
 					"group": "4_specdata"
 				},
 				{
 					"command": "spec-data.preview.toggleRightAxis",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'",
 					"group": "4_specdata"
 				}
 			],
@@ -298,11 +298,11 @@
 				},
 				{
 					"command": "spec-data.preview.showSource",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel'"
 				},
 				{
 					"command": "spec-data.preview.toggleLock",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview'"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel'"
 				},
 				{
 					"command": "spec-data.reopenAsPreview",
@@ -314,15 +314,15 @@
 				},
 				{
 					"command": "spec-data.preview.refresh",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
 				},
 				{
 					"command": "spec-data.preview.toggleMultipleSelection",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
 				},
 				{
 					"command": "spec-data.preview.toggleRightAxis",
-					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
+					"when": "resourceScheme == webview-panel && activeWebviewPanelId == 'spec-data.preview.panel' || !activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor'"
 				}
 			]
 		},
