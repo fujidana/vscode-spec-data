@@ -7,6 +7,7 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 ### Added
 
 - Support graph exports in JSON format. Issue [#59](https://github.com/fujidana/vscode-spec-data/issues/59).
+- Enable graph preview feature for files of `csv` and `tsv`, which are language IDs defined by other extensions. Issue [#62](https://github.com/fujidana/vscode-spec-data/issues/62).
 
 ### Changed
 

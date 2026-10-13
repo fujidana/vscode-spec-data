@@ -1,19 +1,25 @@
 import * as vscode from 'vscode';
 
+// Internal language IDs defined by this extension.
 export const SPEC_DATA_FILTER = { language: 'spec-data' } as const;
-export const CSV_COLUMNS_FILTER = { language: 'csv-column' } as const;
-export const CSV_ROWS_FILTER = { language: 'csv-row' } as const;
+export const CSV_COLUMN_FILTER = { language: 'csv-column' } as const;
+export const CSV_ROW_FILTER = { language: 'csv-row' } as const;
 export const DPPMCA_FILTER = { language: 'dppmca' } as const;
 export const CHIPLOT_FILTER = { language: 'chiplot' } as const;
 
-const CSV_DOCUMENT_SELECTOR = [CSV_COLUMNS_FILTER, CSV_ROWS_FILTER] as const;
+// External language IDs, defined by other extensions.
+export const CSV_FILTER = { language: 'csv' } as const;
+export const TSV_FILTER = { language: 'tsv' } as const;
+
+const CSV_DOCUMENT_SELECTOR = [CSV_COLUMN_FILTER, CSV_ROW_FILTER, CSV_FILTER, TSV_FILTER] as const;
 // const CSV_LANGUAGES = CSV_DOCUMENT_SELECTOR.map(filter => filter.language);
 // typeof CSV_LANGUAGES[number];
 type CsvLanguage = typeof CSV_DOCUMENT_SELECTOR[number]['language'];
 
-export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMNS_FILTER, CSV_ROWS_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER] as const;
-const LANGUAGE_IDS = DOCUMENT_SELECTOR.map(filter => filter.language);
-export type SupportedLanguage = typeof LANGUAGE_IDS[number];
+export const DOCUMENT_SELECTOR = [SPEC_DATA_FILTER, CSV_COLUMN_FILTER, CSV_ROW_FILTER, CSV_FILTER, TSV_FILTER, DPPMCA_FILTER, CHIPLOT_FILTER] as const;
+// const LANGUAGE_IDS = DOCUMENT_SELECTOR.map(filter => filter.language);
+// export type SupportedLanguage = typeof LANGUAGE_IDS[number];
+export type SupportedLanguage = typeof DOCUMENT_SELECTOR[number]['language'];
 
 export type Node = FileNode | DateNode | CommentNode | NameListNode | MnemonicListNode | ValueListNode | ScanHeadNode | ScanDataNode | UnknownNode;
 
@@ -82,10 +88,14 @@ export function parseDocument(document: vscode.TextDocument, diagnosticCollectio
     let parserResult: ParserResult;
     if (vscode.languages.match(SPEC_DATA_FILTER, document)) {
         parserResult = parseSpecDataContent(document.getText(), token);
-    } else if (vscode.languages.match(CSV_COLUMNS_FILTER, document)) {
-        parserResult = parseCsvContent(document.getText(), CSV_COLUMNS_FILTER.language, token);
-    } else if (vscode.languages.match(CSV_ROWS_FILTER, document)) {
-        parserResult = parseCsvContent(document.getText(), CSV_ROWS_FILTER.language, token);
+    } else if (vscode.languages.match(CSV_COLUMN_FILTER, document)) {
+        parserResult = parseCsvContent(document.getText(), CSV_COLUMN_FILTER.language, token);
+    } else if (vscode.languages.match(CSV_ROW_FILTER, document)) {
+        parserResult = parseCsvContent(document.getText(), CSV_ROW_FILTER.language, token);
+    } else if (vscode.languages.match(CSV_FILTER, document)) {
+        parserResult = parseCsvContent(document.getText(), CSV_FILTER.language, token);
+    } else if (vscode.languages.match(TSV_FILTER, document)) {
+        parserResult = parseCsvContent(document.getText(), TSV_FILTER.language, token);
     } else if (vscode.languages.match(DPPMCA_FILTER, document)) {
         parserResult = parseDppmcaContent(document.getText(), token);
     } else if (vscode.languages.match(CHIPLOT_FILTER, document)) {
@@ -376,7 +386,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
 
             if (cells.length === 0) { continue; }
             const data: number[][] = [cells.map(cell => parseFloat(cell))];
-            nodes.push(makeScanDataNode(language, undefined, data, lineStart, lineNumber));
+            nodes.push(makeScanDataNode(language !== 'csv-row', undefined, data, lineStart, lineNumber));
 
         } else {
             // First try to detect fixed-width format if the line contains 
@@ -481,7 +491,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
                         }
                         data.push(dataInRowI);
                     }
-                    nodes.push(makeScanDataNode(language, headers, data, lineStart, lineNumber, defaultAxes));
+                    nodes.push(makeScanDataNode(language !== 'csv-row', headers, data, lineStart, lineNumber, defaultAxes));
                     continue;
                 }
             }
@@ -552,7 +562,7 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
                         data.push(dataInRowI.map(cell => parseFloat(cell)));
                     }
                 }
-                nodes.push(makeScanDataNode(language, headers, data, lineStart, lineNumber));
+                nodes.push(makeScanDataNode(language !== 'csv-row', headers, data, lineStart, lineNumber));
                 continue;
             }
             nodes.push({ type: 'unknown', kind: '', lineStart: lineNumber, lineEnd: lineNumber, value: line });
@@ -563,10 +573,10 @@ function parseCsvContent(text: string, language: CsvLanguage, token?: vscode.Can
         return { language, nodes, diagnostics };
     }
 
-    function makeScanDataNode(language: 'csv-column' | 'csv-row', headers: string[] | undefined, data: number[][], lineStart: number, lineEnd: number, defaultAxes?: AxisIndexes): Node {
+    function makeScanDataNode(columnWise: boolean, headers: string[] | undefined, data: number[][], lineStart: number, lineEnd: number, defaultAxes?: AxisIndexes): Node {
         // Add the read data to the nodes.
         let subtype: 'matrix-xy' | 'matrix-yx';
-        if (language === 'csv-column') {
+        if (columnWise) { // language !== 'csv-row'
             subtype = 'matrix-yx';
             // Transpose the two-dimensional data array.
             data = data[0].map((_, colIndex) => data.map(row => row[colIndex]));

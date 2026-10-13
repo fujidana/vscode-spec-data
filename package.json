@@ -202,12 +202,12 @@
 			"explorer/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "resourceLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/",
 					"group": "navigation"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "resourceLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/",
 					"group": "navigation"
 				}
 			],
@@ -215,12 +215,12 @@
 				{
 					"command": "spec-data.showPreviewToSide",
 					"alt": "spec-data.showPreview",
-					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/",
 					"group": "navigation"
 				},
 				{
 					"command": "spec-data.reopenAsPreview",
-					"when": "editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
+					"when": "editorLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/",
 					"group": "navigation"
 				},
 				{
@@ -250,7 +250,7 @@
 			"editor/title/context": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "resourceLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/",
+					"when": "resourceLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/",
 					"group": "1_open"
 				},
 				{
@@ -282,19 +282,19 @@
 			"commandPalette": [
 				{
 					"command": "spec-data.showPreview",
-					"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+					"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showPreviewToSide",
-					"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+					"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreview",
-					"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+					"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.showLockedPreviewToSide",
-					"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+					"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.preview.showSource",
@@ -306,7 +306,7 @@
 				},
 				{
 					"command": "spec-data.reopenAsPreview",
-					"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+					"when": "!notebookEditorFocused && editorLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/"
 				},
 				{
 					"command": "spec-data.reopenAsSource",
@@ -331,7 +331,7 @@
 				"command": "spec-data.reopenAsPreview",
 				"key": "ctrl+shift+v",
 				"mac": "cmd+shift+v",
-				"when": "!activeCustomEditorTextDiff && activeCustomEditorId == 'spec-data.preview.editor' || editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+				"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/"
 			},
 			{
 				"command": "spec-data.reopenAsSource",
@@ -343,7 +343,7 @@
 				"command": "spec-data.showPreviewToSide",
 				"key": "ctrl+k v",
 				"mac": "cmd+k v",
-				"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv-(row|column)|dppmca|chiplot)$/"
+				"when": "editorFocus && !notebookEditorFocused && editorLangId =~ /^(spec-data|csv(-row|-column)?|tsv|dppmca|chiplot)$/"
 			}
 		],
 		"configuration": {
