@@ -1,7 +1,7 @@
 # __spec__ Data File and CSV Extension for Visual Studio Code
 
-__NOTE__: As of v2.2.0, `spec-data.preview.plot.traceTemplate` and `spec-data.preview.plot.layoutTemplate` settings are deprecated.
-See the [Extension Settings](#extension-settings) section in this document for details.
+> [!NOTE]
+> The extension bumped the bundled Plotly.js version from v3.x to v4.x in v2.6.0. Plotly.js changed acceptable color formats in v4.x. Extension users who have customized the graph appearance using the settings may be affected by this change. See the document titled [Migrating to Plotly.js v4 in JavaScript](https://plotly.com/javascript/guides/migrating-to-v4/#removed-color-inputs) for details.
 
 With this extension, users can browse spreadsheet-like data as a line plot, heatmap, or contour plot in the editor panes of Visual Studio Code (VS Code).
 Supported file formats are CSV, __spec__ standard data file format and some others.
@@ -16,25 +16,23 @@ For example, _Reopen as Preview/Text_ command (Win/Linux: `Ctrl+Shift+V`, Mac: `
 
 The data file formats the exension supports are as follows:
 
-- __CSV file__ (ID: `csv-column`, `csv-row`): _character-separated values_ formats.
-  - A pair of columns in a `csv-column` file and that of rows in a `csv-row` file is graphically plotted.
+- __CSV file__ (ID: `csv-column`, `csv-row`, `csv`, `tsv`): _character-separated values_ formats.
+  - `csv-column` and `csv-row` are preferred language IDs for the extension. A pair of columns in a `csv-column` file and that of rows in a `csv-row` file is graphically plotted. Also, most language features the extension provides are applied to both formats.
+  - `csv` and `tsv` (defined by other extensions) are partially supported. The extension provides the preview feature, regarding the file content as column-wise. See Issue [#62](https://github.com/fujidana/vscode-spec-data/issues/62) for the reasons why the extension does not define them directly.
   - _Fixed width text format_ (contiguous whitespaces as a delimiter and padding) and _delimiter-separated values format_ (a single whitespace, tab, or comma as a delimiter) are supported. They are automatically detected by the file content.
   - All cells must be numeric (or `NaN` or `(+|-)Infinity`); string may appear only in a header line.
   - Comments are allowed. They should start with a hash character (`#`).
-  - The extension does not associate file extensions such as `.csv`, `.tsv`, or `.dat` with the language IDs for the following reasons:
-    - The extension can not determine from the file extension which direction (column-wise or row-wise) an array should be extracted from a table.
-    - The extension does not support all possible formats of CSV files. The extension focuses on drawing a graph and thus files consisting of only numberic values are supported.
   - A data file exported by ESRF's __spec__ macro, [BLISS / mca.mac](https://www.esrf.fr/blissdb/macros/macdoc.py?macname=mca.mac), is also covered in `csv-row`.
 - __spec standard data file__ (ID: `spec-data`, extension: `.spec`): a text file the __spec__ software outputs during various scan commands.
-  - Note that the __spec__ software does not specify a file extension for the data format. Use of `.spec` for __spec__ data file is just the preference of the extension author.
+  - Note that the __spec__ software does not specify a file extension for the data format. Use of `.spec` for __spec__ data file is a preference of the extension author.
 - __fit2d chiplot file format__ (ID: `chiplot`, extension: `.chi`): a text file format in which __fit2d__ software imports and exports one-dimensional dataset such as scattering profiles.
 - __DppMCA spectra data file format__ (ID: `dppmca`, extension: `.mca`): a text file exported by Amptek's DppMCA.exe (DP5 Digital Pulse Prosessor Display & Acquisition Software for Multichannel Analyzers).
 
 While the default file associations (relations between language identifier and file extensions) are set as listed above, a user can customize them using `files.associations` setting.
 Read [Language Support in Visual Studio Code](https://code.visualstudio.com/docs/languages/overview) (official document of VS Code) for further details.
 
-The _Custom Editor_ the extension provides for previewing the files is currently configured as _optional_.
-This means that VS Code opens a file the extension supports with VS Code's built-in text editor and a user needs to switch the editor by calling the _Reopen With Editor_ command (or selecting the equivalent button/menu item) to preview data graphically.
+The _Custom Editor_ feature the extension provides for previewing the files is currently configured as _optional_.
+This means that VS Code opens a file supported by the extension with VS Code's built-in text editor and a user needs to switch the editor by calling the _Reopen With Editor_ command (or selecting the equivalent button/menu item) to preview data graphically.
 A user can change the precedence of the editors via `workbench.editorAssociations` setting.
 
 The following example settings let VS Code open files whose filename end with `_mca.dat` and `.spec` with the extension's preview editor. Note that `*.spec` is by default associated with `spec-data` and thus setting it in `files.associations` is unnecessary.
@@ -73,7 +71,7 @@ Use [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues) for bug
   - motor positions just before a scan in a table view (`spec-data` only)
   - data shown in a line plot, heatmap, or contour plot. This feature is powered by [Plotly.js](https://plotly.com/javascript/).
   - scroll sync between an editor and a preview
-  - Preview can be shown both in a regular __Webview Panel__ and in a __Custom Editor__ (editor ID: `spec-data.preview.editor`).
+  - Preview can be shown both in a __Webview Panel__ (panel ID: `spec-data.preview.panel`) and in a __Custom Editor__ (editor ID: `spec-data.preview.editor`).
 
 ## Requirements
 
@@ -108,15 +106,15 @@ The _layout template_ is an object that directly has properties that control the
 The built-in templates are defined in [src/main/template.ts](src/main/template.ts).
 They have the same structure as the JSON objects for the settings.
 Reading this file will help a user understand how to write the setting.
-The comprehensive list of the parameters can be found in Plotly.js's [Figure Reference](https://plotly.com/javascript/reference/index) page, especially for [scatter Traces](https://plotly.com/javascript/reference/scatter), [heatmap Traces](https://plotly.com/javascript/reference/heatmap), [contour Traces](https://plotly.com/javascript/reference/contour) and [Layout](https://plotly.com/javascript/reference/layout).
+The comprehensive list of the parameters can be found in the following Plotly.js documentation: [scatter Traces](https://plotly.com/javascript/reference/scatter), [heatmap Traces](https://plotly.com/javascript/reference/heatmap), [contour Traces](https://plotly.com/javascript/reference/contour) and [Layout](https://plotly.com/javascript/reference/layout).
 
 Shorthand such as `"marker.color"` is not available as a key of the object.
 
-Color can be defined in various ways: it seems the color format Plotly.js
-accepts as the template properties is the same as that of CSS.
+Color can be defined in various formats according to the CSS Color 4 specification.
+See the following documents by Plotly.js for details: [Specifying Colors in JavaScript](https://plotly.com/javascript/colors/) and [Migrating to Plotly.js v4 in JavaScript](https://plotly.com/javascript/guides/migrating-to-v4/#removed-color-inputs).
 
 As of v2.2.0, the built-in templates are shallow-merged (not overwritten) with the user-defined templates on the level of the objects for color theme keys.
-As the result, passing `null` or `[]` to a property of the object in the user settings clears the corresponding built-in property and thus the appearance for that is reverted to Plotly'js's vanilla one.
+As the result, passing `null` or `[]` to a property of the object in the user settings clears the corresponding built-in property and thus the appearance for that is reverted to the vanilla one of Plotly.js.
 The following example settings clear the built-in data templates for `scatter` plots and `plot_bgcolor` layout property in the `dark` theme, while keeping the built-in data templates for the other plot types (if it exists) and the other layout properties in the `dark` theme and all the built-in data templates and the layout properties for the other themes.
 
 ```json
