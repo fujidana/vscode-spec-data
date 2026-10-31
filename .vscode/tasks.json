@@ -5,23 +5,24 @@
 	"tasks": [
 		{
 			"label": "compile",
-			"detail": "Run tsc, eslint, and esbuild",
+			"detail": "Run tsc (noEmit), eslint, and esbuild",
 			"icon": {
-				"id": "tools"
+				"id": "build"
 			},
 			"type": "npm",
 			"script": "compile",
+			"group": "build",
 			"problemMatcher": [
-				"$tsc",
 				"$eslint-stylish",
+				"$tsc",
 				"$esbuild"
 			]
 		},
 		{
 			"label": "watch",
-			"detail": "Watch tsc and esbuild",
+			"detail": "Watch tsc (noEmit) and esbuild",
 			"icon": {
-				"id": "tools"
+				"id": "build"
 			},
 			"dependsOn": [
 				"npm: watch:tsc",
@@ -37,6 +38,9 @@
 		},
 		{
 			"label": "npm: watch:esbuild",
+			"icon": {
+				"id": "build"
+			},
 			"type": "npm",
 			"script": "watch:esbuild",
 			"group": "build",
@@ -49,6 +53,9 @@
 		},
 		{
 			"label": "npm: watch:tsc",
+			"icon": {
+				"id": "build"
+			},
 			"type": "npm",
 			"script": "watch:tsc",
 			"group": "build",
@@ -60,22 +67,51 @@
 			}
 		},
 		{
+			"label": "npm: watch-tests",
+			"icon": {
+				"id": "build"
+			},
 			"type": "npm",
 			"script": "watch-tests",
 			"group": "build",
-			"presentation": {
-				"reveal": "never",
-				"group": "watchers"
-			},
+			"problemMatcher": "$tsc-watch",
 			"isBackground": true,
-			"problemMatcher": "$tsc-watch"
+			"presentation": {
+				"group": "watchers",
+				"reveal": "never"
+			}
 		},
 		{
-			"label": "tasks: watch-tests",
+			"label": "test",
+			"detail": "watch tsc (w/o noEmit) and esbuild, then run vscode-test",
+			"icon": {
+				"id": "beaker"
+			},
+			"type": "npm",
+			"script": "test",
 			"dependsOn": [
-				"npm: watch",
-				"npm: watch-tests"
+				"npm: watch-tests",
+				"npm: watch:esbuild"
 			],
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "test-web",
+			"detail": "Watch tsc (noEmit) and esbuild, then run vscode-test-web",
+			"icon": {
+				"id": "beaker"
+			},
+			"type": "npm",
+			"script": "test-web",
+			"dependsOn": [
+				"npm: watch:tsc",
+				"npm: watch:esbuild"
+			],
+			"group": "test",
 			"problemMatcher": []
 		}
 	]
