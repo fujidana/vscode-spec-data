@@ -6,6 +6,11 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+### Changed
+
+- Raise the minimum VS Code version to 1.140.0.
+- Bump `plotly.js-cartesian-dist-min` dependency to 4.2.0.
+
 ## [2.6.0] -- 2026-10-13
 
 ### Added
