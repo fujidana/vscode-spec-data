@@ -825,7 +825,7 @@ function updateWebviewContent(preview: Preview, extensionUri: vscode.Uri) {
     ${metaCspStr}
     <title>spec data Preview</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="${webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'preview', 'node_modules', 'plotly.js-cartesian-dist-min', 'plotly-cartesian.min.js'))}" defer></script>
+    <script src="${webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'preview', 'plotly-cartesian.min.js'))}" defer></script>
     <script src="${webview.asWebviewUri(vscode.Uri.joinPath(extensionUri, 'dist', 'preview', 'previewer.js'))}" defer></script>
 </head>
 <body>
