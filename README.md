@@ -1,5 +1,7 @@
 # __spec__ Data File and CSV Extension for Visual Studio Code
 
+<!-- markdownlint-disable line-length fenced-code-language -->
+
 > [!NOTE]
 > The extension bumped the bundled Plotly.js version from v3.x to v4.x in v2.6.0. Plotly.js changed acceptable color formats in v4.x. Extension users who have customized the graph appearance using the settings may be affected by this change. See the document titled [Migrating to Plotly.js v4 in JavaScript](https://plotly.com/javascript/guides/migrating-to-v4/#removed-color-inputs) for details.
 
