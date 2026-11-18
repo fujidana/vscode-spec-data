@@ -143,15 +143,14 @@ See [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues) for a l
 
 See [CHANGELOG.md](CHANGELOG.md).
 
+## Acknowledgements
+
+This extension bundles [Plotly.js](https://plotly.com/javascript/) (MIT License) for rendering, while relying on several open-source packages during development. Special thanks to the authors and maintainers of these projects!
+
 ## Contributing
 
 The extension is open to contributions. Create an issue in [GitHub Issues](https://github.com/fujidana/vscode-spec-data/issues) for a bug report or a feature request.
 If you want to contribute code, please read [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Acknowledgements
-
-The extension relies on various npm packages, including [Plotly.js](https://plotly.com/javascript/).
-Thanks to the authors of these packages.
 
 ## Tips
 

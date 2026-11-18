@@ -3,7 +3,7 @@
 	"name": "spec-data",
 	"displayName": "spec data",
 	"description": "spec data and CSV support for VS Code, including graph/plot preview",
-	"version": "2.6.1-alpha.0",
+	"version": "2.6.1",
 	"engines": {
 		"vscode": "^1.140.0"
 	},
@@ -666,7 +666,7 @@
 		"js-yaml:dppmca": "js-yaml syntaxes/dppmca.tmLanguage.yaml > syntaxes/dppmca.tmLanguage.json",
 		"js-yaml:chiplot": "js-yaml syntaxes/chiplot.tmLanguage.yaml > syntaxes/chiplot.tmLanguage.json",
 		"l10n-export": "pnpm dlx @vscode/l10n-dev export -o ./l10n ./src",
-		"fetch-plotly": "curl --fail --create-dirs --output ./dist/preview/plotly-cartesian.min.js https://cdn.plot.ly/plotly-cartesian-4.2.0.min.js"
+		"fetch-plotly": "curl --fail --create-dirs --output ./dist/preview/plotly-cartesian.min.js https://cdn.plot.ly/plotly-cartesian-4.3.0.min.js"
 	},
 	"devDependencies": {
 		"@esbuild-plugins/node-globals-polyfill": "^0.2.3",
@@ -681,11 +681,11 @@
 		"@vscode/test-web": "^0.0.81",
 		"assert": "^2.1.0",
 		"esbuild": "^0.28.2",
-		"eslint": "^10.14.0",
+		"eslint": "^10.15.0",
 		"glob": "^13.0.7",
 		"js-yaml": "^5.5.0",
 		"mocha": "^11.8.0",
 		"typescript": "^6.0.3",
-		"typescript-eslint": "^8.72.1"
+		"typescript-eslint": "^8.73.0"
 	}
 }

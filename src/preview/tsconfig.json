@@ -6,7 +6,6 @@
       "DOM"
     ],
     "types": [
-      "plotly.js",
       "vscode-webview"
     ]
   },

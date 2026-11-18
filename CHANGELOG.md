@@ -6,10 +6,12 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 
 ## [Unreleased]
 
+## [2.6.1] -- 2026-11-18
+
 ### Changed
 
 - Raise the minimum VS Code version to 1.140.0.
-- Bump `plotly.js-cartesian-dist-min` dependency to 4.2.0.
+- Bump `plotly.js-cartesian-dist-min` dependency to 4.3.0.
 
 ## [2.6.0] -- 2026-10-13
 
@@ -23,14 +25,14 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
 - Reflect source filename in the default filename for exporting graphs. Issue [#57](https://github.com/fujidana/vscode-spec-data/issues/57).
 - Change the webview panel ID from `spec-data.preview` to `spec-data.preview.panel`.
 - Bump `plotly.js-cartesian-dist-min` dependency to 4.1.2.
-  - Plotly.js changed the behavior to parse color inputs Extension users who has customized the graph appearance using the settings may be affected by this change. See Plotly.js's documents, [Specifying Colors in JavaScript](https://plotly.com/javascript/colors/) and [Migrating to Plotly.js v4 in JavaScript](https://plotly.com/javascript/guides/migrating-to-v4/#removed-color-inputs), for details.
+  - Plotly.js changed the behavior to parse color inputs. Extension users who has customized the graph appearance using the settings may be affected by this change. See Plotly.js's documents, [Specifying Colors in JavaScript](https://plotly.com/javascript/colors/) and [Migrating to Plotly.js v4 in JavaScript](https://plotly.com/javascript/guides/migrating-to-v4/#removed-color-inputs), for details.
   - Hide the "Share Chart" button by default shown in the modebar because it is unavailable in VS Code's webview sandbox. Issue [#54](https://github.com/fujidana/vscode-spec-data/issues/54).
 
 ## [2.5.0] -- 2026-08-02
 
 ### Added
 
-- Make file format for exporting graphs selectable via `spec-data.preview.plot.exportFormat` setting. The default is `png`. Issue [#52](https://github.com/fujidana/vscode-spec-data/issues/52).
+- Make a format for exporting graphs selectable via `spec-data.preview.plot.exportFormat` setting. The default is `png`. Issue [#52](https://github.com/fujidana/vscode-spec-data/issues/52).
 
 ### Changed
 
@@ -470,7 +472,8 @@ All notable changes to the `fujidana.spec-data` VS Code extension will be docume
   - _Open Preview_
   - _Open Preview to the Side_
 
-[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/fujidana/vscode-spec-data/compare/v2.6.1...HEAD
+[2.6.1]: https://github.com/fujidana/vscode-spec-data/compare/v2.6.0...v2.6.1
 [2.6.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/fujidana/vscode-spec-data/compare/v2.4.1...v2.5.0
 [2.4.1]: https://github.com/fujidana/vscode-spec-data/compare/v2.4.0...v2.4.1
